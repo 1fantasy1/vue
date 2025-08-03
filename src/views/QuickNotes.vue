@@ -1,0 +1,956 @@
+<template>
+  <div class="page">
+    <div class="header">
+      <button class="back-btn" @click="goBack">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"/>
+        </svg>
+        返回首页
+      </button>
+      <h1 class="page-title">随手记录</h1>
+    </div>
+
+    <div class="quick-add">
+      <div class="add-card">
+        <h3>快速记录</h3>
+        <textarea 
+          v-model="newNote" 
+          placeholder="记录你的想法、灵感或待办事项..."
+          class="quick-input"
+          @keydown.ctrl.enter="addQuickNote"
+        ></textarea>
+        <div class="add-actions">
+          <div class="mood-selector">
+            <button 
+              v-for="mood in moods" 
+              :key="mood.value"
+              class="mood-btn"
+              :class="{ active: selectedMood === mood.value }"
+              @click="selectedMood = mood.value"
+              :title="mood.label"
+            >
+              {{ mood.emoji }}
+            </button>
+          </div>
+          <button class="add-btn" @click="addQuickNote" :disabled="!newNote.trim()">
+            添加记录
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="search-filter">
+        <div class="search-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
+          </svg>
+          <input type="text" placeholder="搜索记录..." v-model="searchQuery">
+        </div>
+        
+        <select v-model="filterMood" class="mood-filter">
+          <option value="">所有心情</option>
+          <option v-for="mood in moods" :key="mood.value" :value="mood.value">
+            {{ mood.emoji }} {{ mood.label }}
+          </option>
+        </select>
+      </div>
+
+      <div class="view-toggle">
+        <button 
+          class="toggle-btn" 
+          :class="{ active: viewMode === 'grid' }"
+          @click="viewMode = 'grid'"
+          title="网格视图"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3,11H11V3H3M3,21H11V13H3M13,21H21V13H13M13,3V11H21V3"/>
+          </svg>
+        </button>
+        <button 
+          class="toggle-btn" 
+          :class="{ active: viewMode === 'list' }"
+          @click="viewMode = 'list'"
+          title="列表视图"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M9,5V9H21V5M9,19H21V15H9M9,14H21V10H9M4,9H8V5H4M4,19H8V15H4M4,14H8V10H4"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="notes-container" :class="viewMode">
+      <div class="note-item" v-for="note in filteredNotes" :key="note.id">
+        <div class="note-header">
+          <div class="note-info">
+            <span class="note-mood">{{ getMoodEmoji(note.mood) }}</span>
+            <span class="note-time">{{ note.time }}</span>
+          </div>
+          <div class="note-actions">
+            <button class="action-btn" @click="editNote(note)" title="编辑">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.13,5.12L18.88,8.87M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25Z"/>
+              </svg>
+            </button>
+            <button class="action-btn" @click="deleteNote(note.id)" title="删除">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <div class="note-content" @click="viewNote(note)">
+          {{ note.content }}
+        </div>
+        
+        <div class="note-footer" v-if="note.tags && note.tags.length > 0">
+          <div class="note-tags">
+            <span class="tag" v-for="tag in note.tags" :key="tag">#{{ tag }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 编辑模态框 -->
+    <div class="modal-overlay" v-if="editingNote" @click="closeEdit">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>编辑记录</h3>
+          <button class="close-btn" @click="closeEdit">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <textarea 
+            v-model="editContent" 
+            class="edit-input"
+            placeholder="编辑你的记录..."
+          ></textarea>
+          <div class="edit-mood">
+            <label>心情：</label>
+            <div class="mood-options">
+              <button 
+                v-for="mood in moods" 
+                :key="mood.value"
+                class="mood-btn"
+                :class="{ active: editMood === mood.value }"
+                @click="editMood = mood.value"
+              >
+                {{ mood.emoji }}
+              </button>
+            </div>
+          </div>
+          <div class="edit-tags">
+            <label>标签：</label>
+            <input 
+              v-model="editTagsInput" 
+              placeholder="用空格分隔多个标签"
+              class="tags-input"
+            >
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn secondary" @click="closeEdit">取消</button>
+          <button class="btn primary" @click="saveEdit">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stats-info">
+      <div class="stats-card">
+        <div class="stat-number">{{ notes.length }}</div>
+        <div class="stat-label">总记录数</div>
+      </div>
+      <div class="stats-card">
+        <div class="stat-number">{{ todayNotes }}</div>
+        <div class="stat-label">今日新增</div>
+      </div>
+      <div class="stats-card">
+        <div class="stat-number">{{ weekNotes }}</div>
+        <div class="stat-label">本周记录</div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import { useRouter } from 'vue-router'
+import { ref, computed } from 'vue'
+
+export default {
+  name: 'QuickNotes',
+  setup() {
+    const router = useRouter()
+    const newNote = ref('')
+    const selectedMood = ref('neutral')
+    const searchQuery = ref('')
+    const filterMood = ref('')
+    const viewMode = ref('grid')
+    const editingNote = ref(null)
+    const editContent = ref('')
+    const editMood = ref('neutral')
+    const editTagsInput = ref('')
+    
+    const moods = ref([
+      { value: 'happy', emoji: '😊', label: '开心' },
+      { value: 'excited', emoji: '🎉', label: '兴奋' },
+      { value: 'neutral', emoji: '😐', label: '平静' },
+      { value: 'thinking', emoji: '🤔', label: '思考' },
+      { value: 'tired', emoji: '😴', label: '疲惫' },
+      { value: 'sad', emoji: '😔', label: '难过' }
+    ])
+    
+    const notes = ref([
+      {
+        id: 1,
+        content: '今天学习了Vue 3的组合式API，感觉比Options API更灵活，特别是在逻辑复用方面。需要多练习几个实际项目来加深理解。',
+        mood: 'thinking',
+        time: '2024-01-15 14:30',
+        tags: ['学习', 'Vue3', '编程']
+      },
+      {
+        id: 2,
+        content: '项目演示非常成功！团队合作很愉快，大家都很有干劲。下一步要优化性能和用户体验。',
+        mood: 'excited',
+        time: '2024-01-15 10:15',
+        tags: ['项目', '团队', '成功']
+      },
+      {
+        id: 3,
+        content: '遇到了一个复杂的算法问题，花了一整天才解决。虽然累但很有成就感。',
+        mood: 'tired',
+        time: '2024-01-14 18:45',
+        tags: ['算法', '解决问题', '成就感']
+      },
+      {
+        id: 4,
+        content: '看了一篇关于TypeScript高级类型的文章，泛型的使用真的很强大，可以让代码更加类型安全。',
+        mood: 'happy',
+        time: '2024-01-14 16:20',
+        tags: ['TypeScript', '泛型', '学习']
+      },
+      {
+        id: 5,
+        content: '今天的代码review发现了几个可以优化的地方，同事的建议很中肯，学到了新的写法。',
+        mood: 'neutral',
+        time: '2024-01-13 15:30',
+        tags: ['代码review', '学习', '优化']
+      },
+      {
+        id: 6,
+        content: '设计师给出的新UI方案很棒，用户体验会提升很多。期待实现后的效果。',
+        mood: 'excited',
+        time: '2024-01-13 11:45',
+        tags: ['UI设计', '用户体验', '期待']
+      },
+      {
+        id: 7,
+        content: 'Bug修复花了比预期更长的时间，但最终找到了根本原因。调试技巧还需要提升。',
+        mood: 'thinking',
+        time: '2024-01-12 17:20',
+        tags: ['Bug修复', '调试', '技巧提升']
+      },
+      {
+        id: 8,
+        content: '周末学习了一些产品设计的知识，对用户需求分析有了新的认识。',
+        mood: 'happy',
+        time: '2024-01-12 09:30',
+        tags: ['产品设计', '用户需求', '周末学习']
+      }
+    ])
+
+    const filteredNotes = computed(() => {
+      let filtered = notes.value
+
+      if (searchQuery.value) {
+        filtered = filtered.filter(note => 
+          note.content.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+          note.tags.some(tag => tag.toLowerCase().includes(searchQuery.value.toLowerCase()))
+        )
+      }
+
+      if (filterMood.value) {
+        filtered = filtered.filter(note => note.mood === filterMood.value)
+      }
+
+      return filtered.sort((a, b) => new Date(b.time) - new Date(a.time))
+    })
+
+    const todayNotes = computed(() => {
+      const today = new Date().toDateString()
+      return notes.value.filter(note => 
+        new Date(note.time).toDateString() === today
+      ).length
+    })
+
+    const weekNotes = computed(() => {
+      const weekAgo = new Date()
+      weekAgo.setDate(weekAgo.getDate() - 7)
+      return notes.value.filter(note => 
+        new Date(note.time) >= weekAgo
+      ).length
+    })
+
+    const goBack = () => {
+      router.push('/')
+    }
+
+    const getMoodEmoji = (mood) => {
+      const moodObj = moods.value.find(m => m.value === mood)
+      return moodObj ? moodObj.emoji : '😐'
+    }
+
+    const addQuickNote = () => {
+      if (!newNote.value.trim()) return
+      
+      const note = {
+        id: Date.now(),
+        content: newNote.value,
+        mood: selectedMood.value,
+        time: new Date().toLocaleString('zh-CN', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+        tags: []
+      }
+      
+      notes.value.unshift(note)
+      newNote.value = ''
+      selectedMood.value = 'neutral'
+    }
+
+    const editNote = (note) => {
+      editingNote.value = note
+      editContent.value = note.content
+      editMood.value = note.mood
+      editTagsInput.value = note.tags ? note.tags.join(' ') : ''
+    }
+
+    const closeEdit = () => {
+      editingNote.value = null
+      editContent.value = ''
+      editMood.value = 'neutral'
+      editTagsInput.value = ''
+    }
+
+    const saveEdit = () => {
+      if (editingNote.value) {
+        editingNote.value.content = editContent.value
+        editingNote.value.mood = editMood.value
+        editingNote.value.tags = editTagsInput.value
+          .split(' ')
+          .filter(tag => tag.trim())
+          .map(tag => tag.trim())
+        
+        closeEdit()
+      }
+    }
+
+    const deleteNote = (noteId) => {
+      if (confirm('确定要删除这条记录吗？')) {
+        const index = notes.value.findIndex(note => note.id === noteId)
+        if (index > -1) {
+          notes.value.splice(index, 1)
+        }
+      }
+    }
+
+    const viewNote = (note) => {
+      // 在网格视图中可以展开查看完整内容
+      console.log('查看记录:', note)
+    }
+
+    return {
+      newNote,
+      selectedMood,
+      searchQuery,
+      filterMood,
+      viewMode,
+      editingNote,
+      editContent,
+      editMood,
+      editTagsInput,
+      moods,
+      notes,
+      filteredNotes,
+      todayNotes,
+      weekNotes,
+      goBack,
+      getMoodEmoji,
+      addQuickNote,
+      editNote,
+      closeEdit,
+      saveEdit,
+      deleteNote,
+      viewNote
+    }
+  }
+}
+</script>
+
+<style scoped>
+.page {
+  padding: 24px;
+  background: #f8f9fa;
+  min-height: calc(100vh - 48px);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  padding: 8px 16px;
+  color: #6c757d;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.back-btn:hover {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.page-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.quick-add {
+  margin-bottom: 24px;
+}
+
+.add-card {
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.add-card h3 {
+  margin: 0 0 16px 0;
+  color: #2c3e50;
+  font-size: 1.1rem;
+}
+
+.quick-input {
+  width: 100%;
+  min-height: 100px;
+  padding: 16px;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+  margin-bottom: 16px;
+}
+
+.quick-input:focus {
+  outline: none;
+  border-color: #a8edea;
+}
+
+.add-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mood-selector {
+  display: flex;
+  gap: 8px;
+}
+
+.mood-btn {
+  width: 36px;
+  height: 36px;
+  border: 2px solid #e9ecef;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: all 0.3s ease;
+}
+
+.mood-btn.active {
+  border-color: #a8edea;
+  background: #f0fff4;
+}
+
+.mood-btn:hover {
+  border-color: #a8edea;
+}
+
+.add-btn {
+  background: #a8edea;
+  color: #2c3e50;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.add-btn:hover:not(:disabled) {
+  background: #98e6e0;
+}
+
+.add-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+  border: 2px solid #e9ecef;
+}
+
+.search-filter {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+}
+
+.search-box {
+  position: relative;
+  flex: 1;
+  max-width: 300px;
+}
+
+.search-box svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6c757d;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 12px 12px 12px 36px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: #a8edea;
+}
+
+.mood-filter {
+  padding: 12px 16px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+}
+
+.mood-filter:focus {
+  outline: none;
+  border-color: #a8edea;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 4px;
+  background: #f8f9fa;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.toggle-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+  transition: all 0.3s ease;
+}
+
+.toggle-btn.active {
+  background: #a8edea;
+  color: #2c3e50;
+}
+
+.notes-container.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.notes-container.list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.note-item {
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.note-item:hover {
+  border-color: #a8edea;
+  box-shadow: 0 2px 8px rgba(168, 237, 234, 0.2);
+}
+
+.notes-container.list .note-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 12px 16px;
+}
+
+.note-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.notes-container.list .note-header {
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+.note-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.note-mood {
+  font-size: 16px;
+}
+
+.note-time {
+  color: #6c757d;
+  font-size: 12px;
+}
+
+.note-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.note-item:hover .note-actions {
+  opacity: 1;
+}
+
+.action-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: #f8f9fa;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+  transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+  background: #e9ecef;
+  color: #2c3e50;
+}
+
+.note-content {
+  color: #2c3e50;
+  line-height: 1.5;
+  margin-bottom: 12px;
+  flex: 1;
+}
+
+.notes-container.grid .note-content {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.notes-container.list .note-content {
+  margin-bottom: 0;
+}
+
+.note-footer {
+  border-top: 1px solid #e9ecef;
+  padding-top: 8px;
+}
+
+.notes-container.list .note-footer {
+  border-top: none;
+  padding-top: 0;
+  flex-shrink: 0;
+}
+
+.note-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  background: #f0fff4;
+  color: #a8edea;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* 模态框样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.close-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: #f8f9fa;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+}
+
+.close-btn:hover {
+  background: #e9ecef;
+}
+
+.modal-body {
+  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.edit-input {
+  width: 100%;
+  min-height: 120px;
+  padding: 16px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+  margin-bottom: 16px;
+}
+
+.edit-input:focus {
+  outline: none;
+  border-color: #a8edea;
+}
+
+.edit-mood,
+.edit-tags {
+  margin-bottom: 16px;
+}
+
+.edit-mood label,
+.edit-tags label {
+  display: block;
+  margin-bottom: 8px;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.mood-options {
+  display: flex;
+  gap: 8px;
+}
+
+.tags-input {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.tags-input:focus {
+  outline: none;
+  border-color: #a8edea;
+}
+
+.modal-footer {
+  padding: 20px;
+  border-top: 2px solid #e9ecef;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.btn.secondary {
+  background: white;
+  color: #6c757d;
+}
+
+.btn.primary {
+  background: #a8edea;
+  border-color: #a8edea;
+  color: #2c3e50;
+}
+
+.btn:hover {
+  opacity: 0.8;
+}
+
+.stats-info {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  gap: 12px;
+}
+
+.stats-card {
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  padding: 12px 16px;
+  text-align: center;
+  min-width: 80px;
+}
+
+.stat-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #a8edea;
+  margin-bottom: 2px;
+}
+
+.stat-label {
+  color: #6c757d;
+  font-size: 11px;
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 16px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .page-title {
+    font-size: 1.5rem;
+  }
+
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .search-filter {
+    flex-direction: column;
+  }
+
+  .notes-container.grid {
+    grid-template-columns: 1fr;
+  }
+
+  .notes-container.list .note-item {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .stats-info {
+    position: static;
+    margin-top: 24px;
+    justify-content: center;
+  }
+}
+</style>
