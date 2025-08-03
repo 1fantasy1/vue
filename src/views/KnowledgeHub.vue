@@ -1,11 +1,11 @@
 <template>
   <div class="knowledge-hub">
     <!-- 移动端提示 -->
-    <div class="mobile-hint" v-show="isMobile && sidebarCollapsed">点击左上角菜单图标打开侧边栏</div>
+    <div class="mobile-hint" v-show="isMobile && sidebarCollapsed && showMobileHint">点击左上角菜单图标打开侧边栏</div>
     
-    <div class="doubao-container">
+    <div class="chat-container">
       <!-- 左侧边栏 -->
-      <div class="doubao-sidebar" :class="{ 'mobile-open': !sidebarCollapsed }">
+      <div class="chat-sidebar" :class="{ 'mobile-open': !sidebarCollapsed }">
         <div class="sidebar-header">
           <div class="header-top">
             <button class="back-btn" @click="goBack" title="返回首页">
@@ -15,7 +15,7 @@
             </button>
             <div class="logo-section">
               <div class="logo-icon">🧠</div>
-              <h2>智库助手</h2>
+              <h2>智库聊天AI</h2>
             </div>
           </div>
           <button class="new-chat-btn" @click="startNewChat">
@@ -27,7 +27,6 @@
         <div class="chat-history-section">
           <div class="history-header">
             <span>最近对话</span>
-            <button class="clear-btn" @click="clearAllChats">🗑️</button>
           </div>
           <div class="chat-history-list">
             <div 
@@ -37,24 +36,57 @@
               :class="{ active: chat.id === currentChatId }"
               @click="selectChat(chat)"
             >
-              <div class="chat-title">{{ chat.title }}</div>
-              <div class="chat-time">{{ chat.time }}</div>
+              <div class="chat-content">
+                <div class="chat-title">{{ chat.title }}</div>
+                <div class="chat-time">{{ chat.time }}</div>
+              </div>
+              <button class="delete-chat-btn" @click.stop="deleteIndividualChat(chat.id)" title="删除对话">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
+                </svg>
+              </button>
             </div>
           </div>
         </div>
         
         <div class="sidebar-footer">
-          <div class="user-profile" @click="showUserProfile">
-            <div class="user-avatar">👤</div>
-            <div class="user-info">
-              <div class="user-name">用户</div>
-              <div class="user-plan">智库专业版</div>
-            </div>
-          </div>
           <div class="sidebar-actions">
-            <button class="action-btn" @click="showSettings" title="设置">⚙️</button>
-            <button class="action-btn" @click="showHelp" title="帮助">❓</button>
-            <button class="action-btn" @click="goHome" title="返回首页">🏠</button>
+            <button class="action-btn" @click="toggleSettings" title="设置">⚙️</button>
+          </div>
+          
+          <!-- 设置面板 -->
+          <div class="settings-panel" :class="{ 'show': showSettingsPanel }">
+            <div class="settings-content">
+              <h4>模型设置</h4>
+              <div class="setting-item">
+                <label>模型温度</label>
+                <div class="slider-container">
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="2" 
+                    step="0.1" 
+                    v-model="modelTemperature" 
+                    class="slider"
+                  >
+                  <span class="slider-value">{{ modelTemperature }}</span>
+                </div>
+              </div>
+              <div class="setting-item">
+                <label>上下文长度</label>
+                <div class="slider-container">
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="35" 
+                    step="1" 
+                    v-model="contextLength" 
+                    class="slider"
+                  >
+                  <span class="slider-value">{{ contextLength }}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -74,7 +106,7 @@
       </button>
 
       <!-- 主聊天区域 -->
-      <div class="doubao-main">
+      <div class="chat-main">
         <!-- 顶部工具栏 -->
         <div class="chat-header">
           <div class="chat-title-section">
@@ -87,8 +119,7 @@
           </div>
           <div class="chat-actions">
             <button class="action-btn" @click="shareChat" title="分享对话">📤</button>
-            <button class="action-btn" @click="exportChat" title="导出对话">💾</button>
-            <button class="action-btn" @click="deleteChat" title="删除对话">🗑️</button>
+            <button class="action-btn" @click="goHome" title="返回首页">🏠</button>
           </div>
         </div>
 
@@ -119,26 +150,27 @@
             </div>
           </div>
 
-          <div class="chat-messages">
+          <div class="chat-messages" v-show="chatHistory.length > 0">
             <div 
               v-for="message in chatHistory" 
               :key="message.id" 
-              class="doubao-message" 
+              class="chat-message" 
               :class="message.type"
             >
-              <div class="doubao-message-avatar">
+              <div class="message-avatar">
                 <span v-if="message.type === 'user'">👤</span>
                 <span v-else>🧠</span>
               </div>
-              <div class="doubao-message-content">
-                <div class="doubao-message-bubble" v-html="formatMessage(message.content)"></div>
-                <div class="doubao-message-time">{{ formatTime(message.timestamp) }}</div>
+              <div class="message-content">
+                <div v-if="message.type === 'ai'" class="model-name">{{ message.model ? message.model.toUpperCase() : selectedModel.toUpperCase() }}</div>
+                <div class="message-bubble" :class="{ 'short': isShortMessage(message.content) }" v-html="formatMessage(message.content)"></div>
+                <div class="message-time">{{ formatTime(message.timestamp) }}</div>
               </div>
             </div>
 
-            <div v-if="isTyping" class="doubao-message ai">
-              <div class="doubao-message-avatar">🧠</div>
-              <div class="doubao-message-content">
+            <div v-if="isTyping" class="chat-message ai">
+              <div class="message-avatar">🧠</div>
+              <div class="message-content">
                 <div class="typing-indicator">
                   <span></span>
                   <span></span>
@@ -169,7 +201,7 @@
               @click="toggleTool('knowledge')" 
               title="知识库检索"
             >
-              <span class="tool-icon">�</span>
+              <span class="tool-icon">📚</span>
               <span class="tool-text">知识库</span>
             </button>
             <button 
@@ -183,22 +215,17 @@
             </button>
             <button 
               class="tool-btn" 
-              :class="{ active: enabledTools.includes('code') }"
-              @click="toggleTool('code')" 
-              title="代码执行"
+              :class="{ active: enabledTools.includes('mcp') }"
+              @click="toggleTool('mcp')" 
+              title="MCP工具"
             >
-              <span class="tool-icon">💻</span>
-              <span class="tool-text">代码执行</span>
+              <span class="tool-icon">🔌</span>
+              <span class="tool-text">MCP工具</span>
             </button>
           </div>
           
           <div class="input-area">
             <div class="input-wrapper">
-              <button class="upload-btn" @click="triggerFileUpload" title="上传文件">
-                <svg class="upload-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z M12,12L16,16H13.5V19H10.5V16H8L12,12Z"></path>
-                </svg>
-              </button>
               <input 
                 type="file" 
                 ref="fileUploadInput" 
@@ -264,9 +291,16 @@ export default {
     const fileUploadInput = ref(null)
     const currentChatId = ref(1)
     const dailyUsage = ref(12)
+    const modelTemperature = ref(0.7)
+    const contextLength = ref(8000)
+    const showSettingsPanel = ref(false)
 
     // 检查是否为移动设备
     const isMobile = ref(window.innerWidth <= 768)
+    
+    // 控制移动端提示显示
+    const showMobileHint = ref(false)
+    let mobileHintTimer = null
 
     // 聊天历史列表
     const chatHistoryList = ref([
@@ -304,7 +338,8 @@ export default {
         id: 2,
         type: 'ai',
         content: '在机器学习项目中应用创新思维可以从以下几个维度考虑：<br><br><strong>🎯 问题重新定义</strong><br>• 不要局限于传统的解决方案<br>• 从多个角度审视问题本质<br>• 尝试将复杂问题分解为更简单的子问题<br><br><strong>📊 数据创新</strong><br>• 探索非传统数据源和特征工程<br>• 尝试数据增强和合成技术<br>• 考虑多模态数据融合<br><br><strong>🔬 模型融合</strong><br>• 尝试不同算法的创新组合<br>• 探索集成学习的新方法<br>• 引入领域知识指导模型设计<br><br><strong>🌐 跨领域应用</strong><br>• 将其他领域的方法引入机器学习<br>• 借鉴生物学、物理学等领域的原理<br>• 探索与其他技术的结合可能性',
-        timestamp: new Date(Date.now() - 5000)
+        timestamp: new Date(Date.now() - 5000),
+        model: 'gpt-4'
       }
     ])
 
@@ -313,6 +348,14 @@ export default {
       const currentChat = chatHistoryList.value.find(chat => chat.id === currentChatId.value)
       return currentChat ? currentChat.title : '新建对话'
     })
+
+    // 检查是否为短消息（用于动态调整气泡宽度）
+    const isShortMessage = (content) => {
+      if (!content) return true
+      // 移除HTML标签计算纯文本长度
+      const textContent = content.replace(/<[^>]*>/g, '')
+      return textContent.length <= 50
+    }
 
     // 格式化消息内容
     const formatMessage = (content) => {
@@ -331,12 +374,38 @@ export default {
     // 切换侧边栏
     const toggleSidebar = () => {
       sidebarCollapsed.value = !sidebarCollapsed.value
+      // 打开侧边栏时隐藏提示
+      if (!sidebarCollapsed.value) {
+        showMobileHint.value = false
+        clearMobileHintTimer()
+      }
     }
 
     // 关闭侧边栏
     const closeSidebar = () => {
       if (isMobile.value) {
         sidebarCollapsed.value = true
+        // 关闭侧边栏时显示提示，3秒后自动隐藏
+        showMobileHintWithTimer()
+      }
+    }
+
+    // 显示移动端提示并设置定时器
+    const showMobileHintWithTimer = () => {
+      if (isMobile.value && sidebarCollapsed.value) {
+        showMobileHint.value = true
+        clearMobileHintTimer()
+        mobileHintTimer = setTimeout(() => {
+          showMobileHint.value = false
+        }, 3000) // 3秒后自动隐藏
+      }
+    }
+
+    // 清除移动端提示定时器
+    const clearMobileHintTimer = () => {
+      if (mobileHintTimer) {
+        clearTimeout(mobileHintTimer)
+        mobileHintTimer = null
       }
     }
 
@@ -352,6 +421,7 @@ export default {
       })
       if (isMobile.value) {
         sidebarCollapsed.value = true
+        showMobileHintWithTimer()
       }
     }
 
@@ -361,6 +431,7 @@ export default {
       // 这里可以加载对应的聊天记录
       if (isMobile.value) {
         sidebarCollapsed.value = true
+        showMobileHintWithTimer()
       }
     }
 
@@ -369,6 +440,26 @@ export default {
       if (confirm('确定要清空所有对话记录吗？')) {
         chatHistoryList.value = []
         chatHistory.value = []
+      }
+    }
+
+    // 删除单个对话
+    const deleteIndividualChat = (chatId) => {
+      if (confirm('确定要删除此对话吗？')) {
+        const index = chatHistoryList.value.findIndex(chat => chat.id === chatId)
+        if (index > -1) {
+          chatHistoryList.value.splice(index, 1)
+          // 如果删除的是当前对话，清空聊天记录
+          if (chatId === currentChatId.value) {
+            chatHistory.value = []
+            // 如果还有其他对话，切换到第一个
+            if (chatHistoryList.value.length > 0) {
+              currentChatId.value = chatHistoryList.value[0].id
+            } else {
+              currentChatId.value = Date.now()
+            }
+          }
+        }
       }
     }
 
@@ -446,7 +537,8 @@ export default {
           id: Date.now(),
           type: 'ai',
           content: `${randomResponse}<br><br>针对您的问题"${userMessage}"，我认为需要从多个维度来分析。如果您需要更详细的解释，请随时告诉我！`,
-          timestamp: new Date()
+          timestamp: new Date(),
+          model: selectedModel.value
         })
         
         isTyping.value = false
@@ -478,20 +570,13 @@ export default {
     }
 
     // 用户相关操作
-    const showUserProfile = () => {
-      console.log('显示用户资料')
-    }
-
-    const showSettings = () => {
-      console.log('显示设置')
-    }
-
-    const showHelp = () => {
-      console.log('显示帮助')
+    const toggleSettings = () => {
+      showSettingsPanel.value = !showSettingsPanel.value
     }
 
     const goHome = () => {
-      console.log('返回首页')
+      // 返回首页
+      window.location.href = '/'
     }
 
     const goBack = () => {
@@ -504,27 +589,34 @@ export default {
       console.log('分享对话')
     }
 
-    const exportChat = () => {
-      console.log('导出对话')
-    }
-
-    const deleteChat = () => {
-      if (confirm('确定要删除此对话吗？')) {
-        console.log('删除对话')
-      }
-    }
-
     // 监听窗口大小变化
     onMounted(() => {
       const handleResize = () => {
+        const wasMobile = isMobile.value
         isMobile.value = window.innerWidth <= 768
+        
+        // 如果从桌面端切换到移动端，显示提示
+        if (!wasMobile && isMobile.value && sidebarCollapsed.value) {
+          showMobileHintWithTimer()
+        }
+        // 如果从移动端切换到桌面端，隐藏提示
+        if (wasMobile && !isMobile.value) {
+          showMobileHint.value = false
+          clearMobileHintTimer()
+        }
       }
       
       window.addEventListener('resize', handleResize)
       scrollToBottom()
+      
+      // 初始化时如果是移动端则显示提示
+      if (isMobile.value && sidebarCollapsed.value) {
+        showMobileHintWithTimer()
+      }
 
       return () => {
         window.removeEventListener('resize', handleResize)
+        clearMobileHintTimer()
       }
     })
 
@@ -540,6 +632,10 @@ export default {
       currentChatTitle,
       dailyUsage,
       isMobile,
+      showMobileHint,
+      modelTemperature,
+      contextLength,
+      showSettingsPanel,
       chatMessagesRef,
       chatInputRef,
       fileUploadInput,
@@ -548,24 +644,22 @@ export default {
       startNewChat,
       selectChat,
       clearAllChats,
+      deleteIndividualChat,
       toggleTool,
       triggerFileUpload,
       handleFileUpload,
       sendSuggestion,
       formatMessage,
       formatTime,
+      isShortMessage,
       sendMessage,
       handleInputKeydown,
       adjustTextareaHeight,
       switchModel,
-      showUserProfile,
-      showSettings,
-      showHelp,
+      toggleSettings,
       goHome,
       goBack,
-      shareChat,
-      exportChat,
-      deleteChat
+      shareChat
     }
   }
 }
@@ -627,8 +721,8 @@ export default {
   color: #333;
 }
 
-/* 豆包容器 */
-.doubao-container {
+/* 聊天容器 */
+.chat-container {
   display: flex;
   width: 100%;
   height: 100%;
@@ -653,8 +747,8 @@ export default {
   visibility: visible;
 }
 
-/* 豆包侧边栏 */
-.doubao-sidebar {
+/* 聊天侧边栏 */
+.chat-sidebar {
   width: 280px;
   background: white;
   border-right: 1px solid #e5e6ea;
@@ -665,7 +759,7 @@ export default {
 }
 
 @media (max-width: 768px) {
-  .doubao-sidebar {
+  .chat-sidebar {
     position: fixed;
     top: 0;
     left: 0;
@@ -673,7 +767,7 @@ export default {
     transform: translateX(-100%);
   }
   
-  .doubao-sidebar.mobile-open {
+  .chat-sidebar.mobile-open {
     transform: translateX(0);
   }
 }
@@ -759,25 +853,11 @@ export default {
 
 .history-header {
   display: flex;
-  justify-content: between;
   align-items: center;
   margin-bottom: 16px;
   font-size: 14px;
   font-weight: 500;
   color: #6b7280;
-}
-
-.clear-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 4px;
-  color: #9ca3af;
-  font-size: 16px;
-}
-
-.clear-btn:hover {
-  color: #ef4444;
 }
 
 .chat-history-list {
@@ -792,6 +872,40 @@ export default {
   cursor: pointer;
   transition: all 0.2s ease;
   border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chat-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.delete-chat-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 4px;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  margin-left: 8px;
+  opacity: 0;
+}
+
+.chat-history-item:hover .delete-chat-btn {
+  opacity: 1;
+}
+
+.delete-chat-btn:hover {
+  background: #fef2f2;
+  color: #ef4444;
 }
 
 .chat-history-item:hover {
@@ -823,48 +937,7 @@ export default {
 .sidebar-footer {
   padding: 20px;
   border-top: 1px solid #e5e6ea;
-}
-
-.user-profile {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s ease;
-  margin-bottom: 16px;
-}
-
-.user-profile:hover {
-  background: #f9fafb;
-}
-
-.user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: #3b82f6;
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-}
-
-.user-info {
-  flex: 1;
-}
-
-.user-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #1f2937;
-}
-
-.user-plan {
-  font-size: 12px;
-  color: #6b7280;
+  position: relative;
 }
 
 .sidebar-actions {
@@ -891,8 +964,103 @@ export default {
   border-color: #d1d5db;
 }
 
+/* 设置面板 */
+.settings-panel {
+  position: absolute;
+  bottom: 100%;
+  left: 20px;
+  right: 20px;
+  background: white;
+  border: 1px solid #e5e6ea;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(100%);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.settings-panel.show {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+}
+
+.settings-content {
+  padding: 20px;
+}
+
+.settings-content h4 {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.setting-item {
+  margin-bottom: 16px;
+}
+
+.setting-item:last-child {
+  margin-bottom: 0;
+}
+
+.setting-item label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.slider-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.slider {
+  flex: 1;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: #e5e6ea;
+  outline: none;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.slider-value {
+  min-width: 40px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #3b82f6;
+  text-align: right;
+}
+
 /* 主聊天区域 */
-.doubao-main {
+.chat-main {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -901,7 +1069,7 @@ export default {
 }
 
 @media (max-width: 768px) {
-  .doubao-main {
+  .chat-main {
     margin-left: 0;
     width: 100%;
   }
@@ -915,6 +1083,12 @@ export default {
   justify-content: space-between;
   align-items: center;
   background: white;
+  position: relative;
+}
+
+.chat-title-section {
+  text-align: center;
+  flex: 1;
 }
 
 .chat-title-section h3 {
@@ -927,6 +1101,7 @@ export default {
 .chat-meta {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   font-size: 12px;
   color: #6b7280;
@@ -947,6 +1122,8 @@ export default {
 .chat-actions {
   display: flex;
   gap: 8px;
+  position: absolute;
+  right: 24px;
 }
 
 /* 聊天消息容器 */
@@ -966,6 +1143,11 @@ export default {
   height: 100%;
   padding: 40px 20px;
   text-align: center;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 .welcome-avatar {
@@ -1028,18 +1210,18 @@ export default {
   min-height: 100%;
 }
 
-.doubao-message {
+.chat-message {
   display: flex;
   gap: 12px;
   margin-bottom: 24px;
   align-items: flex-start;
 }
 
-.doubao-message.user {
+.chat-message.user {
   flex-direction: row-reverse;
 }
 
-.doubao-message-avatar {
+.message-avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -1051,53 +1233,83 @@ export default {
   background: #f3f4f6;
 }
 
-.doubao-message.user .doubao-message-avatar {
+.chat-message.user .message-avatar {
   background: #3b82f6;
   color: white;
 }
 
-.doubao-message.ai .doubao-message-avatar {
+.chat-message.ai .message-avatar {
   background: #10b981;
   color: white;
 }
 
-.doubao-message-content {
+.message-content {
   flex: 1;
   max-width: calc(100% - 44px);
+  display: flex;
+  flex-direction: column;
 }
 
-.doubao-message-bubble {
+.chat-message.user .message-content {
+  align-items: flex-end;
+}
+
+.message-bubble {
   padding: 12px 16px;
   border-radius: 16px;
   line-height: 1.5;
   font-size: 14px;
   word-wrap: break-word;
+  max-width: 100%;
+  display: inline-block;
 }
 
-.doubao-message.user .doubao-message-bubble {
+.message-bubble.short {
+  max-width: fit-content;
+  min-width: 60px;
+}
+
+.chat-message.user .message-bubble {
   background: #3b82f6;
   color: white;
-  margin-left: 20%;
 }
 
-.doubao-message.ai .doubao-message-bubble {
+.chat-message.user .message-bubble.short {
+  margin-left: 0;
+}
+
+.chat-message.ai .message-bubble {
   background: white;
   color: #1f2937;
   border: 1px solid #e5e6ea;
-  margin-right: 20%;
+  margin-right: 10%;
 }
 
-.doubao-message-time {
+.chat-message.ai .message-bubble.short {
+  margin-right: auto;
+  margin-left: 0;
+}
+
+.message-time {
   font-size: 11px;
   color: #9ca3af;
   margin-top: 4px;
   margin-left: 16px;
 }
 
-.doubao-message.user .doubao-message-time {
+.chat-message.user .message-time {
   text-align: right;
   margin-right: 16px;
   margin-left: 0;
+}
+
+/* 模型名称显示 */
+.model-name {
+  font-size: 11px;
+  color: #6b7280;
+  margin-bottom: 4px;
+  margin-left: 16px;
+  font-weight: 500;
 }
 
 /* 打字指示器 */
@@ -1108,7 +1320,7 @@ export default {
   background: white;
   border: 1px solid #e5e6ea;
   border-radius: 16px;
-  margin-right: 20%;
+  margin-right: 10%;
 }
 
 .typing-indicator span {
@@ -1202,25 +1414,6 @@ export default {
   border-color: #3b82f6;
 }
 
-.upload-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  border-radius: 50%;
-  color: #6b7280;
-  transition: all 0.2s ease;
-}
-
-.upload-btn:hover {
-  background: #f3f4f6;
-  color: #374151;
-}
-
 .chat-input {
   flex: 1;
   border: none;
@@ -1295,6 +1488,10 @@ export default {
     padding: 12px 16px;
   }
   
+  .chat-actions {
+    right: 16px;
+  }
+  
   .chat-messages {
     padding: 16px;
   }
@@ -1317,10 +1514,26 @@ export default {
     gap: 12px;
   }
   
-  .doubao-message-bubble {
+  .message-bubble {
     margin-left: 0 !important;
     margin-right: 0 !important;
-    max-width: 85%;
+    max-width: 90%;
+  }
+  
+  .chat-message.user .message-bubble {
+    margin-left: 8px !important;
+  }
+  
+  .chat-message.user .message-bubble.short {
+    margin-left: 8px !important;
+  }
+  
+  .chat-message.ai .message-bubble {
+    margin-right: 5% !important;
+  }
+  
+  .message-bubble.short {
+    max-width: 70% !important;
   }
 }
 
