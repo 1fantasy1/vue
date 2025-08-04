@@ -12,9 +12,9 @@
     "electron": "electron .",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
     "electron:build": "npm run build && electron-builder",
-    "electron:build-win": "npm run build && electron-builder --win",
-    "electron:build-linux": "npm run build && electron-builder --linux",
-    "electron:build-mac": "npm run build && electron-builder --mac",
+    "electron:build-win": "npm run build && electron-builder --win --publish=never",
+    "electron:build-linux": "npm run build && electron-builder --linux --publish=never",
+    "electron:build-mac": "npm run build && electron-builder --mac --publish=never",
     "dist": "npm run build && electron-builder --publish=never"
   },
   "dependencies": {
