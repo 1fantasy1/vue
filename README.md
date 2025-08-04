@@ -179,7 +179,7 @@ npm run preview
 
 ```env
 VITE_API_BASE_URL=http://localhost:3000/api
-VITE_APP_TITLE=创新协作平台
+VITE_APP_TITLE=鸿庆书云
 ```
 
 ## 🤝 贡献指南

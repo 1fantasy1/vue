@@ -1,7 +1,7 @@
 {
   "name": "innovation-collaboration-platform",
   "version": "1.0.0",
-  "description": "创新协作平台 - 一个现代化的Vue.js应用",
+  "description": "鸿庆书云 - 一个现代化的Vue.js应用",
   "author": "Fantasy <fantasy@example.com>",
   "private": true,
   "type": "module",
@@ -39,7 +39,7 @@
   "main": "electron/main.js",
   "build": {
     "appId": "com.fantasy.innovation-collaboration-platform",
-    "productName": "创新协作平台",
+    "productName": "鸿庆书云",
     "directories": {
       "output": "dist-electron"
     },

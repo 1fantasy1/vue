@@ -55,7 +55,7 @@ npm run build
 ```bash
 npm run electron:build-win
 ```
-生成文件: `dist-electron/创新协作平台 Setup 1.0.0.exe`
+生成文件: `dist-electron/鸿庆书云 Setup 1.0.0.exe`
 
 ### 构建 Linux 安装包
 
