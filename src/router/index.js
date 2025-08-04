@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
 import Home from '../views/Home.vue'
 import KnowledgeHub from '../views/KnowledgeHub.vue'
 import KnowledgeBase from '../views/KnowledgeBase.vue'
@@ -16,6 +16,10 @@ const routes = [
     path: '/',
     name: 'Home',
     component: Home
+  },
+  {
+    path: '/home',
+    redirect: '/'
   },
   {
     path: '/knowledge',
@@ -70,7 +74,9 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: window.navigator.userAgent.indexOf('Electron') !== -1 
+    ? createWebHashHistory(import.meta.env.BASE_URL)
+    : createWebHistory(import.meta.env.BASE_URL),
   routes
 })
 

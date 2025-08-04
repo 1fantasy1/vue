@@ -1,186 +1,151 @@
-# 跨平台构建指南
-
-## 概述
-
-这个项目现在支持构建为以下平台的安装包：
-- **Windows**: .exe 安装程序
-- **Linux**: AppImage 和 .deb 包
-- **Android**: APK 文件
+# 🚀 鸿庆书云 - 构建指南
 
 ## 🎯 快速开始
 
-### Windows用户
+### 一键构建测试
 ```bash
-# 运行自动化测试脚本
+# Windows
+npm run build:test
+
+# 或者使用传统脚本
 .\build-test.bat
 ```
 
-### Linux/macOS用户
+### 智能构建系统
 ```bash
-# 运行自动化测试脚本
-chmod +x build-test.sh
-./build-test.sh
+# 构建当前平台
+node scripts/build.cjs
+
+# 构建特定平台
+node scripts/build.cjs web      # Web 应用
+node scripts/build.cjs desktop  # 当前系统桌面应用
+node scripts/build.cjs android  # Android 项目
+node scripts/build.cjs all      # 所有平台
 ```
 
-## 本地开发
+## 📋 构建命令速查表
+
+| 用途 | 命令 | 输出位置 |
+|------|------|----------|
+| Web 开发 | `npm run dev` | http://localhost:5173 |
+| Web 构建 | `npm run build` | `dist/` |
+| Windows 桌面 | `npm run build:win` | `dist-electron/*.exe` |
+| Linux 桌面 | `npm run build:linux` | `dist-electron/*.AppImage` |
+| macOS 桌面 | `npm run build:mac` | `dist-electron/*.dmg` |
+| 所有桌面平台 | `npm run build:all` | `dist-electron/` |
+| Android 同步 | `npm run cap:android` | `android/` |
+| Electron 开发 | `npm run electron:dev` | 开发模式 |
+
+## 🛠️ 开发环境
+
+### 前置要求
+- Node.js 18+ 或 20+
+- npm 或 yarn
+- (可选) Android Studio (用于 Android 开发)
 
 ### 安装依赖
-
 ```bash
 npm install
 ```
 
-### Web 开发模式
-
+### 开发模式
 ```bash
+# Web 开发
 npm run dev
-```
 
-### Electron 开发模式
-
-```bash
+# Electron 开发 (桌面应用)
 npm run electron:dev
 ```
 
-## 本地构建
+## 📦 构建流程
 
-### 构建 Web 应用
-
+### 1. Web 应用构建
 ```bash
 npm run build
 ```
+- 输出: `dist/` 目录
+- 用于: 部署到服务器或作为 Electron/Capacitor 的资源
 
-### 构建 Windows 安装包
-
+### 2. 桌面应用构建
 ```bash
-npm run electron:build-win
+# 当前平台
+npm run build:win     # Windows
+npm run build:linux   # Linux  
+npm run build:mac     # macOS
+
+# 所有平台
+npm run build:all
 ```
-生成文件: `dist-electron/鸿庆书云 Setup 1.0.0.exe`
+- 输出: `dist-electron/` 目录
+- 包含安装包和便携版
 
-### 构建 Linux 安装包
-
+### 3. 移动应用开发
 ```bash
-npm run electron:build-linux
-```
+# 同步到 Android 项目
+npm run cap:android
 
-### 构建所有平台
-
-```bash
-npm run dist
-```
-
-## Android 构建
-
-### 同步Web资源到Android项目
-
-```bash
-npm run build
-npx cap sync android
+# 打开 Android Studio
+npm run cap:open android
 ```
 
-### 使用Android Studio构建
+## 🚀 发布流程
 
-```bash
-# 在Android Studio中打开项目
-npx cap open android
-```
+### 本地发布
+1. 更新版本号 (package.json)
+2. 构建所有平台: `npm run build:all`
+3. 测试安装包
+4. 提交代码
 
-### 使用命令行构建APK
-
-```bash
-cd android
-./gradlew assembleDebug  # Linux/macOS
-gradlew.bat assembleDebug  # Windows
-```
-
-生成文件: `android/app/build/outputs/apk/debug/app-debug.apk`
-
-## 自动构建 (GitHub Actions)
-
-### 🏷️ 触发构建
-
-1. **标签构建**: 推送形如 `v1.0.0` 的标签将触发完整构建并创建 GitHub Release
+### 自动发布 (GitHub Actions)
+1. 创建版本标签:
    ```bash
    git tag v1.0.0
    git push origin v1.0.0
    ```
+2. GitHub Actions 自动构建所有平台
+3. 自动创建 GitHub Release
 
-2. **手动构建**: 在 GitHub Actions 页面手动触发工作流
-
-### 📦 构建产物
-
-构建完成后，你可以在以下位置找到安装包：
-- GitHub Actions 的 Artifacts 部分（保留7天）
-- GitHub Releases（如果是标签构建）
-
-## 📁 项目结构
+## � 项目结构
 
 ```
-project/
-├── electron/           # Electron主进程文件
-│   ├── main.js         # 主进程入口
-│   └── preload.js      # 预加载脚本
-├── android/            # Android项目文件（自动生成）
-├── build/              # 应用图标
-│   ├── icon.png        # 通用图标
-│   ├── icon_backup.ico # Windows图标（备份）
-│   └── icon.icns       # macOS图标
-├── dist/               # Web构建输出
-├── dist-electron/      # Electron构建输出
-└── .github/workflows/  # GitHub Actions配置
+鸿庆书云/
+├── src/                    # Vue 源代码
+├── electron/               # Electron 主进程
+├── scripts/                # 构建脚本
+│   ├── build.js           # 智能构建工具
+│   └── build-test.js      # 构建测试脚本
+├── dist/                   # Web 构建输出
+├── dist-electron/          # 桌面应用构建输出
+├── android/                # Android 项目 (自动生成)
+├── build/                  # 应用图标和资源
+└── .github/workflows/      # CI/CD 配置
 ```
 
-## 🎨 图标设置
+## ❓ 常见问题
 
-将应用图标放置在 `build/` 目录中：
-- `icon.ico` - Windows 图标（需要256x256或更高分辨率）
-- `icon.png` - Linux 图标
-- `icon.icns` - macOS 图标
+### Q: 构建失败怎么办？
+A: 运行 `npm run build:test` 进行诊断，查看具体错误信息。
 
-推荐图标尺寸：512x512 像素
+### Q: 如何只构建 Web 应用？
+A: 使用 `npm run build` 或 `node scripts/build.js web`
 
-**注意**: 当前由于图标分辨率问题，暂时禁用了自定义图标。使用默认图标。
+### Q: 如何添加新的构建平台？
+A: 修改 `scripts/build.cjs` 中的 `buildConfigs` 配置。
 
-## 🚀 发布新版本
+### Q: Android 构建需要什么？
+A: 需要安装 Android Studio 和配置 Java 17 环境。
 
-1. 更新 `package.json` 中的版本号
-2. 提交更改
-3. 创建并推送标签：
-   ```bash
-   git add .
-   git commit -m "发布 v1.0.0"
-   git tag v1.0.0
-   git push origin main
-   git push origin v1.0.0
-   ```
-4. GitHub Actions 将自动构建并创建发布
+## 🎨 自定义配置
 
-## 📊 构建状态检查
+### 修改应用图标
+将图标文件放在 `build/` 目录:
+- `icon.ico` - Windows
+- `icon.png` - Linux  
+- `icon.icns` - macOS
 
-- ✅ Web应用构建: `npm run build`
-- ✅ Windows安装包: `npm run electron:build-win`  
-- ✅ Android项目同步: `npx cap sync android`
-- ⏳ Linux构建: 需要Linux环境
-- ⏳ Android APK: 需要Android SDK
+### 修改构建配置
+编辑 `package.json` 中的 `build` 字段或 `electron-builder` 配置。
 
-## 🔧 故障排除
+---
 
-### Electron 构建问题
-- 确保已安装所有 devDependencies
-- 检查 Node.js 版本兼容性（推荐18.x或20.x）
-- 图标文件分辨率必须>=256x256
-
-### Android 构建问题
-- 确保 Java 版本为 17
-- 检查 Android SDK 配置
-- 查看 Capacitor 文档获取更多帮助
-
-### 网络问题
-- 如果下载缓慢，可以使用国内镜像
-- electron-builder 首次运行会下载较大文件
-
-## 📞 技术支持
-
-- [Electron官方文档](https://www.electronjs.org/docs)
-- [Capacitor官方文档](https://capacitorjs.com/docs)
-- [GitHub Actions文档](https://docs.github.com/actions)
+📞 **需要帮助?** 查看项目 Issues 或联系开发团队

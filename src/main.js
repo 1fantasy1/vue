@@ -25,3 +25,13 @@ app.use(ElementPlus)
 
 // 挂载应用
 app.mount('#app')
+
+// 确保在 Electron 环境中路由正确初始化
+if (window.navigator.userAgent.indexOf('Electron') !== -1) {
+  app.config.globalProperties.$nextTick(() => {
+    // 如果当前不在首页，强制导航到首页
+    if (router.currentRoute.value.path !== '/' || !router.currentRoute.value.name) {
+      router.replace('/')
+    }
+  })
+}

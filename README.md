@@ -1,4 +1,4 @@
-# 🚀 鸿庆书云
+# � 鸿庆书云 - 现代化协作平台
 
 <div align="center">
 
@@ -6,16 +6,21 @@
 ![Vite](https://img.shields.io/badge/Vite-5.0.0-646CFF?style=for-the-badge&logo=vite&logoColor=white)
 ![Element Plus](https://img.shields.io/badge/Element%20Plus-2.4.0-409EFF?style=for-the-badge&logo=element&logoColor=white)
 ![Pinia](https://img.shields.io/badge/Pinia-2.1.0-FFD21E?style=for-the-badge&logo=pinia&logoColor=white)
+![Electron](https://img.shields.io/badge/Electron-28.0.0-47848F?style=for-the-badge&logo=electron&logoColor=white)
+![Capacitor](https://img.shields.io/badge/Capacitor-7.4.2-119EFF?style=for-the-badge&logo=capacitor&logoColor=white)
 
 **云聚书，书载鸿，鸿成庆**
 
-一个现代化的在线协作平台，致力于为用户提供项目管理、课程学习、知识分享和团队协作的一站式解决方案。
+一个现代化的跨平台协作平台，支持 Web、桌面和移动端，致力于为用户提供项目管理、课程学习、知识分享和团队协作的一站式解决方案。
+
+[🚀 快速开始](#快速开始) · [📖 构建指南](./BUILD_GUIDE.md) · [🐛 问题反馈](https://github.com/1fantasy1/vue/issues)
 
 </div>
 
-## ✨ 特性
+## ✨ 核心特性
 
-- 🎯 **项目管理** - 创建、参与和管理各类创新项目
+- � **跨平台支持** - Web、Windows、Linux、macOS、Android 全平台覆盖
+- �🎯 **项目管理** - 创建、参与和管理各类创新项目
 - 📚 **课程学习** - 丰富的在线课程和培训资源
 - 💬 **实时聊天** - 团队成员之间的即时通讯和协作
 - 📝 **笔记系统** - 课程笔记和快速记录功能
@@ -24,55 +29,100 @@
 - ⭐ **收藏夹** - 收藏喜欢的内容和资源
 - 👤 **个人中心** - 个性化的用户体验和设置
 
-## 🏗️ 技术栈
+## 🏗️ 技术架构
 
-### 前端框架
-- **Vue 3** - 渐进式 JavaScript 框架
-- **Vue Router 4** - 官方路由管理器
-- **Pinia** - 现代化的状态管理库
-
-### UI 组件库
-- **Element Plus** - 基于 Vue 3 的组件库
-- **Element Plus Icons** - 丰富的图标集合
-
-### 构建工具
+### 前端技术栈
+- **Vue 3** - 现代化的 JavaScript 框架 (Composition API)
 - **Vite** - 下一代前端构建工具
-- **@vitejs/plugin-vue** - Vue 3 支持插件
+- **Vue Router 4** - 官方路由管理器
+- **Pinia** - 轻量级状态管理库
+- **Element Plus** - 企业级 UI 组件库
+- **Axios** - HTTP 客户端库
 
-### HTTP 客户端
-- **Axios** - 基于 Promise 的 HTTP 库
+### 跨平台技术
+- **Electron** - 桌面应用开发框架 (Windows/Linux/macOS)
+- **Capacitor** - 移动端跨平台框架 (Android/iOS)
+
+### 开发工具
+- **ESLint** - 代码质量检查
+- **GitHub Actions** - 自动化 CI/CD
+- **electron-builder** - Electron 应用打包工具
+
+## 🚀 快速开始
+
+### 环境要求
+- Node.js 18+ 或 20+
+- npm 9+ 或 yarn
+- Git
+
+### 安装依赖
+```bash
+# 克隆项目
+git clone https://github.com/1fantasy1/vue.git
+cd vue
+
+# 安装依赖
+npm install
+```
+
+### 开发模式
+```bash
+# Web 开发服务器
+npm run dev
+# 访问 http://localhost:5173
+
+# 桌面应用开发
+npm run electron:dev
+```
+
+### 构建应用
+```bash
+# 一键构建测试
+npm run build:test
+
+# 智能构建系统
+node scripts/build.cjs web      # Web 应用
+node scripts/build.cjs desktop  # 当前平台桌面应用
+node scripts/build.cjs android  # Android 项目
+node scripts/build.cjs all      # 所有平台
+```
+
+详细构建说明请查看 [📖 BUILD_GUIDE.md](./BUILD_GUIDE.md)
 
 ## 📁 项目结构
 
 ```
-src/
-├── components/          # 通用组件
-│   ├── HelloWorld.vue
-│   ├── TheWelcome.vue
-│   ├── WelcomeItem.vue
-│   └── icons/          # 图标组件
-├── views/              # 页面组件
-│   ├── Home.vue        # 首页
-│   ├── Plaza.vue       # 广场
-│   ├── Profile.vue     # 个人中心
-│   ├── MyProjects.vue  # 我的项目
-│   ├── MyCourses.vue   # 我的课程
-│   ├── ChatRooms.vue   # 聊天室
-│   ├── CourseNotes.vue # 课程笔记
-│   ├── QuickNotes.vue  # 快速笔记
-│   ├── Favorites.vue   # 收藏夹
-│   ├── KnowledgeHub.vue # 知识中心
-│   └── KnowledgeBase.vue # 知识库
-├── router/             # 路由配置
-│   └── index.js
-├── stores/             # 状态管理
-│   └── global.js
-├── services/           # API 服务
-│   └── api.js
-├── config/             # 配置文件
-│   └── index.js
-├── assets/             # 静态资源
-│   ├── base.css
+鸿庆书云/
+├── 🌐 src/                     # Vue 应用源码
+│   ├── components/            # 通用组件库
+│   ├── views/                 # 页面视图组件
+│   │   ├── Home.vue          # 🏠 首页
+│   │   ├── Plaza.vue         # 🌟 广场
+│   │   ├── Profile.vue       # 👤 个人中心
+│   │   ├── MyProjects.vue    # 🎯 我的项目
+│   │   ├── MyCourses.vue     # 📚 我的课程
+│   │   ├── ChatRooms.vue     # 💬 聊天室
+│   │   ├── CourseNotes.vue   # 📝 课程笔记
+│   │   ├── QuickNotes.vue    # ⚡ 快速笔记
+│   │   ├── Favorites.vue     # ⭐ 收藏夹
+│   │   ├── KnowledgeHub.vue  # 🧠 知识中心
+│   │   └── KnowledgeBase.vue # 📖 知识库
+│   ├── stores/                # 🗃️ 状态管理 (Pinia)
+│   ├── router/                # 🛣️ 路由配置
+│   ├── services/              # 🔌 API 服务
+│   ├── config/                # ⚙️ 配置文件
+│   └── assets/                # 🎨 静态资源
+├── 🖥️ electron/                # 桌面应用
+│   ├── main.cjs              # 主进程入口
+│   └── preload.cjs           # 预加载脚本
+├── 📱 android/                 # Android 项目 (自动生成)
+├── 🛠️ scripts/                 # 构建工具
+│   ├── build.js              # 智能构建脚本
+│   └── build-test.js         # 构建测试脚本
+├── 📦 dist/                    # Web 构建输出
+├── 💿 dist-electron/           # 桌面应用构建输出
+├── 🎨 build/                   # 应用图标和资源
+└── 🚀 .github/workflows/       # CI/CD 自动化配置
 │   ├── main.css
 │   └── logo.svg
 ├── App.vue             # 根组件
