@@ -97,7 +97,7 @@ jobs:
       uses: actions/setup-java@v4
       with:
         distribution: 'zulu'
-        java-version: '17'
+        java-version: '21'
         
     - name: 安装依赖
       run: npm ci
