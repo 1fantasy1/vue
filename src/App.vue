@@ -4,7 +4,7 @@
     <div class="header" v-if="$route.path === '/'">
       <div class="container">
         <h1>🚀 鸿庆书云</h1>
-        <p>连接创意，激发创新，共创未来</p>
+        <p>云聚书，书载鸿，鸿成庆</p>
       </div>
     </div>
 
