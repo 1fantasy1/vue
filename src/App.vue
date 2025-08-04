@@ -3,7 +3,7 @@
     <!-- 头部 - 仅在首页显示 -->
     <div class="header" v-if="$route.path === '/'">
       <div class="container">
-        <h1>🚀 创新协作平台</h1>
+        <h1>🚀 鸿庆书云</h1>
         <p>连接创意，激发创新，共创未来</p>
       </div>
     </div>
