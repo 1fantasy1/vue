@@ -1,23 +1,41 @@
 import axios from 'axios'
+import { config } from '@/config'
 
-// 配置基础API URL - 在生产环境中应该从环境变量获取
-const BASE_URL = 'http://localhost:8000'
-
+// 从配置文件获取API URL
 const api = axios.create({
-  baseURL: BASE_URL,
-  timeout: 10000,
+  baseURL: config.api.baseURL,
+  timeout: config.api.timeout,
   headers: {
     'Content-Type': 'application/json'
   }
 })
 
+// 添加认证token支持
+const getAuthToken = () => {
+  return localStorage.getItem('authToken') || sessionStorage.getItem('authToken')
+}
+
 // 请求拦截器
 api.interceptors.request.use(
   config => {
-    // 可以在这里添加认证token等
+    // 添加认证token
+    const token = getAuthToken()
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    
+    // 添加请求时间戳（防止缓存）
+    if (config.method === 'get') {
+      config.params = {
+        ...config.params,
+        _t: Date.now()
+      }
+    }
+    
     return config
   },
   error => {
+    console.error('请求配置错误:', error)
     return Promise.reject(error)
   }
 )

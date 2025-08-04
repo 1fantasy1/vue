@@ -2,8 +2,32 @@
 export const config = {
   // API配置
   api: {
-    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
-    timeout: 10000
+    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
+    timeout: 15000,
+    retryTimes: 3,
+    retryDelay: 1000
+  },
+
+  // WebSocket配置
+  websocket: {
+    url: import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:3000/ws',
+    reconnectInterval: 5000,
+    maxReconnectAttempts: 5
+  },
+
+  // 数据库连接配置（前端不直接连接数据库，这里是API相关配置）
+  database: {
+    // 分页配置
+    pagination: {
+      defaultPageSize: 20,
+      maxPageSize: 100
+    },
+    // 缓存配置
+    cache: {
+      enabled: true,
+      ttl: 5 * 60 * 1000, // 5分钟
+      maxSize: 50
+    }
   },
 
   // 应用信息
