@@ -1,0 +1,136 @@
+name: 跨平台构建
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: 安装依赖
+      run: npm ci
+      
+    - name: 构建 Web 应用
+      run: npm run build
+      
+    - name: 构建 Windows 安装包
+      run: npm run electron:build-win
+      
+    - name: 上传 Windows 安装包
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-installer
+        path: dist-electron/*.exe
+        retention-days: 7
+
+  build-linux:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: 安装系统依赖
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libnss3-dev libatk-bridge2.0-dev libdrm2 libgtk-3-dev libgbm-dev
+        
+    - name: 安装依赖
+      run: npm ci
+      
+    - name: 构建 Web 应用
+      run: npm run build
+      
+    - name: 构建 Linux 安装包
+      run: npm run electron:build-linux
+      
+    - name: 上传 Linux 安装包
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-installer
+        path: |
+          dist-electron/*.AppImage
+          dist-electron/*.deb
+        retention-days: 7
+
+  build-android:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+      
+    - name: 设置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: 设置 Java 环境
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+        
+    - name: 安装依赖
+      run: npm ci
+      
+    - name: 构建 Web 应用
+      run: npm run build
+      
+    - name: 同步 Capacitor 项目
+      run: npx cap sync android
+      
+    - name: 构建 Android APK（调试版本）
+      run: |
+        cd android
+        chmod +x ./gradlew
+        ./gradlew assembleDebug
+        
+    - name: 上传 Android APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-apk
+        path: android/app/build/outputs/apk/debug/*.apk
+        retention-days: 7
+
+  create-release:
+    needs: [build-windows, build-linux, build-android]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: 下载所有构建产物
+      uses: actions/download-artifact@v4
+      
+    - name: 创建发布
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          windows-installer/*
+          linux-installer/*
+          android-apk/*
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

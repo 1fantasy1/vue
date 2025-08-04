@@ -16,5 +16,11 @@ export default defineConfig({
   server: {
     port: 5173,
     open: true
+  },
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    // 确保相对路径用于 Electron
+    base: './'
   }
 })

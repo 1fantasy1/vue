@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">创新协作平台</string>
+    <string name="title_activity_main">创新协作平台</string>
+    <string name="package_name">com.fantasy.innovation.platform</string>
+    <string name="custom_url_scheme">com.fantasy.innovation.platform</string>
+</resources>
