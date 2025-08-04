@@ -11,6 +11,7 @@ node_modules
 .DS_Store
 dist
 dist-ssr
+dist-electron
 coverage
 *.local
 
@@ -28,3 +29,22 @@ coverage
 *.sw?
 
 *.tsbuildinfo
+
+# Test and temporary files
+test-*
+*-test
+*.tmp
+*.temp
+debug-*
+*-debug
+
+# Random number directories (like 28559/)
+[0-9][0-9][0-9][0-9][0-9]/
+
+# Build artifacts
+*.exe
+*.dmg
+*.AppImage
+*.deb
+*.rpm
+*.snap
