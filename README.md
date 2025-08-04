@@ -1,4 +1,4 @@
-# 🚀 创新协作平台
+# 🚀 鸿庆书云
 
 <div align="center">
 
@@ -7,7 +7,7 @@
 ![Element Plus](https://img.shields.io/badge/Element%20Plus-2.4.0-409EFF?style=for-the-badge&logo=element&logoColor=white)
 ![Pinia](https://img.shields.io/badge/Pinia-2.1.0-FFD21E?style=for-the-badge&logo=pinia&logoColor=white)
 
-**连接创意，激发创新，共创未来**
+**云聚书，书载鸿，鸿成庆**
 
 一个现代化的在线协作平台，致力于为用户提供项目管理、课程学习、知识分享和团队协作的一站式解决方案。
 
