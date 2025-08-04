@@ -37,7 +37,7 @@
 - **Vue Router 4** - 官方路由管理器
 - **Pinia** - 轻量级状态管理库
 - **Element Plus** - 企业级 UI 组件库
-- **Axios** - HTTP 客户端库
+- **LocalStorage** - 本地数据存储
 
 ### 跨平台技术
 - **Electron** - 桌面应用开发框架 (Windows/Linux/macOS)
@@ -109,7 +109,7 @@ node scripts/build.cjs all      # 所有平台
 │   │   └── KnowledgeBase.vue # 📖 知识库
 │   ├── stores/                # 🗃️ 状态管理 (Pinia)
 │   ├── router/                # 🛣️ 路由配置
-│   ├── services/              # 🔌 API 服务
+│   ├── services/              # 🔌 本地数据服务
 │   ├── config/                # ⚙️ 配置文件
 │   └── assets/                # 🎨 静态资源
 ├── 🖥️ electron/                # 桌面应用
@@ -228,8 +228,8 @@ npm run preview
 创建 `.env` 文件来配置环境变量：
 
 ```env
-VITE_API_BASE_URL=http://localhost:3000/api
 VITE_APP_TITLE=鸿庆书云
+VITE_LOCAL_STORAGE_PREFIX=hongqing_
 ```
 
 ## 🤝 贡献指南
