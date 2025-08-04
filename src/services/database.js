@@ -104,6 +104,36 @@ export const knowledgeService = {
       question,
       context
     })
+  },
+
+  // 搜索文档
+  async searchDocuments(query, filters = {}) {
+    return await api.get('/knowledge/search', {
+      params: { q: query, ...filters }
+    })
+  },
+
+  // 获取问答历史
+  async getQAHistory(params = {}) {
+    return await api.get('/knowledge/qa/history', { params })
+  },
+
+  // 文档评分
+  async rateAnswer(qaId, rating, feedback = '') {
+    return await api.post(`/knowledge/qa/${qaId}/rate`, {
+      rating,
+      feedback
+    })
+  },
+
+  // 获取文档详情
+  async getDocumentDetail(documentId) {
+    return await api.get(`/knowledge/documents/${documentId}`)
+  },
+
+  // 删除文档
+  async deleteDocument(documentId) {
+    return await api.delete(`/knowledge/documents/${documentId}`)
   }
 }
 

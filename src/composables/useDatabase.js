@@ -215,6 +215,7 @@ export function useNoteData() {
 // 知识库数据管理示例
 export function useKnowledgeData() {
   const documents = ref([])
+  const qaHistory = ref([])
   const loading = ref(false)
   const error = ref(null)
 
@@ -251,7 +252,30 @@ export function useKnowledgeData() {
   const askQuestion = async (question, context = {}) => {
     try {
       loading.value = true
-      return await knowledgeService.askQuestion(question, context)
+      const response = await knowledgeService.askQuestion(question, context)
+      
+      // 保存问答历史
+      qaHistory.value.unshift({
+        question,
+        answer: response.answer,
+        timestamp: new Date(),
+        confidence: response.confidence,
+        sources: response.sources
+      })
+      
+      return response
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const searchDocuments = async (query, filters = {}) => {
+    try {
+      loading.value = true
+      return await knowledgeService.searchDocuments(query, filters)
     } catch (err) {
       error.value = err.message
       throw err
@@ -262,11 +286,13 @@ export function useKnowledgeData() {
 
   return {
     documents,
+    qaHistory,
     loading,
     error,
     fetchDocuments,
     uploadDocument,
-    askQuestion
+    askQuestion,
+    searchDocuments
   }
 }
 
