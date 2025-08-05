@@ -77,70 +77,6 @@
       </div>
     </div>
 
-    <div class="feature-card" :class="{ expanded: expandedCard === 'statistics' }" @click="toggleFeature('statistics')">
-      <div class="feature-header">
-        <div class="feature-title">
-          <div class="feature-icon">📊</div>
-          个人统计
-        </div>
-        <div class="feature-arrow">▼</div>
-      </div>
-      <div class="feature-description">查看您在平台上的活动数据和成就</div>
-      <span class="feature-status-badge status-available">实时更新</span>
-
-      <div class="feature-content">
-        <ul class="feature-list">
-          <li class="feature-item">
-            <span>参与项目数</span>
-            <span class="feature-status status-active">{{ statistics.projects }}</span>
-          </li>
-          <li class="feature-item">
-            <span>完成课程数</span>
-            <span class="feature-status status-active">{{ statistics.courses }}</span>
-          </li>
-          <li class="feature-item">
-            <span>获得推荐数</span>
-            <span class="feature-status status-active">{{ statistics.recommendations }}</span>
-          </li>
-          <li class="feature-item">
-            <span>平台积分</span>
-            <span class="feature-status status-active">{{ statistics.points }}</span>
-          </li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="feature-card" :class="{ expanded: expandedCard === 'achievements' }" @click="toggleFeature('achievements')">
-      <div class="feature-header">
-        <div class="feature-title">
-          <div class="feature-icon">🏆</div>
-          全部成就徽章
-        </div>
-        <div class="feature-arrow">▼</div>
-      </div>
-      <div class="feature-description">查看您获得的所有成就和徽章详情</div>
-      <span class="feature-status-badge status-available">{{ sortedAchievements.length }}个徽章</span>
-
-      <div class="feature-content">
-        <div class="all-achievements">
-          <div
-            v-for="achievement in sortedAchievements"
-            :key="achievement.id"
-            class="achievement-item"
-            :style="{ background: achievement.color }"
-          >
-            <div class="achievement-icon">{{ achievement.icon }}</div>
-            <div class="achievement-name">{{ achievement.name }}</div>
-            <div class="achievement-desc">{{ achievement.description }}</div>
-            <div v-if="achievement.statKey" class="achievement-stat">
-              <span class="stat-label">当前数据：</span>
-              <span class="stat-value">{{ statistics[achievement.statKey] }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <div class="feature-card" :class="{ expanded: expandedCard === 'settings' }" @click="toggleFeature('settings')">
       <div class="feature-header">
         <div class="feature-title">
@@ -433,7 +369,6 @@ export default {
       editProfile,
       originalProfile,
       statistics,
-      achievements,
       sortedAchievements,
       settings,
       themeColors,
@@ -794,63 +729,6 @@ export default {
 .more-badges:hover {
   transform: scale(1.2);
   background: #5a6268;
-}
-
-.all-achievements {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-top: 16px;
-}
-
-.achievement-item {
-  padding: 16px;
-  border-radius: 12px;
-  text-align: center;
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-  transition: transform 0.3s ease;
-}
-
-.achievement-item:hover {
-  transform: translateY(-2px);
-}
-
-.achievement-icon {
-  font-size: 32px;
-  margin-bottom: 8px;
-}
-
-.achievement-name {
-  font-size: 14px;
-  font-weight: bold;
-  margin-bottom: 4px;
-}
-
-.achievement-desc {
-  font-size: 12px;
-  opacity: 0.9;
-  margin-bottom: 8px;
-}
-
-.achievement-stat {
-  border-top: 1px solid rgba(255, 255, 255, 0.3);
-  padding-top: 8px;
-  margin-top: 8px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.stat-label {
-  font-size: 11px;
-  opacity: 0.8;
-}
-
-.stat-value {
-  font-size: 16px;
-  font-weight: bold;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .avatar {
