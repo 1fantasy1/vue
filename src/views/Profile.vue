@@ -47,16 +47,16 @@
           <div class="profile-details">
             <div class="profile-meta">
               <div class="meta-item">
-                <span class="meta-icon">📧</span>
-                <span>{{ userProfile.email }}</span>
+                <span class="meta-icon">🏫</span>
+                <span>{{ userProfile.school }}</span>
               </div>
               <div class="meta-item">
                 <span class="meta-icon">🎓</span>
                 <span>{{ userProfile.major }}</span>
               </div>
               <div class="meta-item">
-                <span class="meta-icon">🏫</span>
-                <span>{{ userProfile.school }}</span>
+                <span class="meta-icon">📧</span>
+                <span>{{ userProfile.email }}</span>
               </div>
             </div>
             <div class="skills-section">
