@@ -1,53 +1,79 @@
 <template>
   <div class="page">
-    <div class="card">
-      <div class="profile-section">
-        <div class="avatar">{{ userInitial }}</div>
-        <div class="profile-info">
-          <h2>{{ userProfile.name }}</h2>
-          <p>📧 {{ userProfile.email }}</p>
-          <p>🎓 {{ userProfile.major }}</p>
-          <p>🏫 {{ userProfile.school }}</p>
-          <div class="tags">
-            <span class="tag" v-for="skill in userProfile.skills" :key="skill">{{ skill }}</span>
+    <div class="card profile-card" :class="{ editing: isEditing }">
+      <div class="profile-header">
+        <div class="profile-section">
+          <div class="avatar">{{ userInitial }}</div>
+          <div class="profile-info">
+            <div v-if="!isEditing">
+              <div class="name-with-badges">
+                <h2>{{ userProfile.name }}</h2>
+                <div class="achievement-badges">
+                  <div
+                    v-for="achievement in sortedAchievements.slice(0, 3)"
+                    :key="achievement.id"
+                    class="mini-badge"
+                    :style="{ background: achievement.color }"
+                    :title="`${achievement.name}${achievement.statKey ? ' - ' + statistics[achievement.statKey] : ''}`"
+                  >
+                    {{ achievement.icon }}
+                  </div>
+                  <div v-if="sortedAchievements.length > 3" class="more-badges" :title="`还有${sortedAchievements.length - 3}个徽章`">
+                    +{{ sortedAchievements.length - 3 }}
+                  </div>
+                </div>
+              </div>
+              <p>📧 {{ userProfile.email }}</p>
+              <p>🎓 {{ userProfile.major }}</p>
+              <p>🏫 {{ userProfile.school }}</p>
+              <div class="tags">
+                <span class="tag" v-for="skill in userProfile.skills" :key="skill">{{ skill }}</span>
+              </div>
+              <p class="interests" v-if="userProfile.interests">
+                <span class="interests-label">💭 兴趣方向：</span>{{ userProfile.interests }}
+              </p>
+            </div>
+            <div v-else class="edit-form">
+              <div class="input-group">
+                <label class="input-label">姓名</label>
+                <input type="text" class="form-input" v-model="editProfile.name">
+              </div>
+              <div class="input-group">
+                <label class="input-label">专业</label>
+                <input type="text" class="form-input" v-model="editProfile.major">
+              </div>
+              <div class="input-group">
+                <label class="input-label">学校</label>
+                <input type="text" class="form-input" v-model="editProfile.school">
+              </div>
+              <div class="input-group">
+                <label class="input-label">技能标签</label>
+                <input type="text" class="form-input" v-model="editProfile.skillsString" placeholder="用逗号分隔多个技能">
+              </div>
+              <div class="input-group">
+                <label class="input-label">兴趣方向</label>
+                <textarea class="form-input" rows="2" v-model="editProfile.interests" placeholder="描述您的兴趣方向"></textarea>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <div class="feature-card" :class="{ expanded: expandedCard === 'profile-edit' }" @click="toggleFeature('profile-edit')">
-      <div class="feature-header">
-        <div class="feature-title">
-          <div class="feature-icon">⚙️</div>
-          个人信息编辑
+        <div class="profile-actions" :class="{ 'editing-mode': isEditing }">
+          <div v-if="!isEditing" class="edit-icon-container">
+            <button class="btn-icon-edit" @click="startEdit" title="编辑资料">
+              <span>✏️</span>
+            </button>
+          </div>
+          <div v-else class="edit-actions">
+            <button class="btn btn-save" @click="saveProfile">
+              <span class="btn-icon">💾</span>
+              保存
+            </button>
+            <button class="btn btn-cancel" @click="cancelEdit">
+              <span class="btn-icon">❌</span>
+              取消
+            </button>
+          </div>
         </div>
-        <div class="feature-arrow">▼</div>
-      </div>
-      <div class="feature-description">编辑和完善您的个人资料信息</div>
-      <span class="feature-status-badge status-available">可编辑</span>
-
-      <div class="feature-content" @click.stop>
-        <div class="input-group">
-          <label class="input-label">姓名</label>
-          <input type="text" class="form-input" v-model="editProfile.name">
-        </div>
-        <div class="input-group">
-          <label class="input-label">专业</label>
-          <input type="text" class="form-input" v-model="editProfile.major">
-        </div>
-        <div class="input-group">
-          <label class="input-label">学校</label>
-          <input type="text" class="form-input" v-model="editProfile.school">
-        </div>
-        <div class="input-group">
-          <label class="input-label">技能标签</label>
-          <input type="text" class="form-input" v-model="editProfile.skillsString">
-        </div>
-        <div class="input-group">
-          <label class="input-label">兴趣方向</label>
-          <textarea class="form-input" rows="3" v-model="editProfile.interests"></textarea>
-        </div>
-        <button class="btn" @click="saveProfile">保存修改</button>
       </div>
     </div>
 
@@ -88,23 +114,28 @@
       <div class="feature-header">
         <div class="feature-title">
           <div class="feature-icon">🏆</div>
-          成就徽章
+          全部成就徽章
         </div>
         <div class="feature-arrow">▼</div>
       </div>
-      <div class="feature-description">展示您获得的各种成就和徽章</div>
-      <span class="feature-status-badge status-available">{{ achievements.length }}个徽章</span>
+      <div class="feature-description">查看您获得的所有成就和徽章详情</div>
+      <span class="feature-status-badge status-available">{{ sortedAchievements.length }}个徽章</span>
 
       <div class="feature-content">
-        <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px;">
+        <div class="all-achievements">
           <div
-            v-for="achievement in achievements"
+            v-for="achievement in sortedAchievements"
             :key="achievement.id"
+            class="achievement-item"
             :style="{ background: achievement.color }"
-            style="padding: 12px; border-radius: 8px; text-align: center; min-width: 80px;"
           >
-            <div style="font-size: 24px;">{{ achievement.icon }}</div>
-            <div style="font-size: 12px; margin-top: 4px;">{{ achievement.name }}</div>
+            <div class="achievement-icon">{{ achievement.icon }}</div>
+            <div class="achievement-name">{{ achievement.name }}</div>
+            <div class="achievement-desc">{{ achievement.description }}</div>
+            <div v-if="achievement.statKey" class="achievement-stat">
+              <span class="stat-label">当前数据：</span>
+              <span class="stat-value">{{ statistics[achievement.statKey] }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -208,6 +239,7 @@ export default {
   name: 'Profile',
   setup() {
     const expandedCard = ref(null)
+    const isEditing = ref(false)
 
     const userProfile = ref({
       name: '张小明',
@@ -226,6 +258,9 @@ export default {
       interests: userProfile.value.interests
     })
 
+    // 保存原始数据用于取消编辑时恢复
+    const originalProfile = ref(null)
+
     const statistics = ref({
       projects: 3,
       courses: 5,
@@ -234,9 +269,54 @@ export default {
     })
 
     const achievements = ref([
-      { id: 1, name: '项目达人', icon: '🏆', color: '#ffd700' },
-      { id: 2, name: '学习之星', icon: '📚', color: '#c0c0c0' },
-      { id: 3, name: '协作专家', icon: '🤝', color: '#cd7f32' }
+      { 
+        id: 1, 
+        name: '项目达人', 
+        icon: '🏆', 
+        color: '#ffd700',
+        statKey: 'projects',
+        description: '参与多个项目并取得优异成果'
+      },
+      { 
+        id: 2, 
+        name: '学习之星', 
+        icon: '⭐', 
+        color: '#ff6b6b',
+        statKey: 'courses',
+        description: '积极学习，完成多门课程'
+      },
+      { 
+        id: 3, 
+        name: '协作专家', 
+        icon: '🤝', 
+        color: '#4ecdc4',
+        statKey: 'recommendations',
+        description: '团队协作能力强，获得众多推荐'
+      },
+      { 
+        id: 4, 
+        name: '创新先锋', 
+        icon: '💡', 
+        color: '#45b7d1',
+        statKey: 'points',
+        description: '在平台上表现活跃，积分丰厚'
+      },
+      { 
+        id: 5, 
+        name: '代码大师', 
+        icon: '💻', 
+        color: '#96ceb4',
+        statKey: null,
+        description: '编程技能精湛，代码质量优秀'
+      },
+      { 
+        id: 6, 
+        name: '分享达人', 
+        icon: '📢', 
+        color: '#feca57',
+        statKey: null,
+        description: '乐于分享知识，帮助他人成长'
+      }
     ])
 
     const settings = ref({
@@ -261,6 +341,15 @@ export default {
       return userProfile.value.name ? userProfile.value.name.charAt(0) : 'U'
     })
 
+    // 排序成就，将有统计数据的成就放在前面
+    const sortedAchievements = computed(() => {
+      return [...achievements.value].sort((a, b) => {
+        if (a.statKey && !b.statKey) return -1
+        if (!a.statKey && b.statKey) return 1
+        return 0
+      })
+    })
+
     const toggleFeature = (cardId) => {
       if (expandedCard.value === cardId) {
         expandedCard.value = null
@@ -273,12 +362,50 @@ export default {
       settings.value.themeColor = color
     }
 
+    const startEdit = () => {
+      // 保存原始数据
+      originalProfile.value = {
+        name: userProfile.value.name,
+        major: userProfile.value.major,
+        school: userProfile.value.school,
+        skills: [...userProfile.value.skills],
+        interests: userProfile.value.interests
+      }
+      
+      // 同步编辑表单数据
+      editProfile.value = {
+        name: userProfile.value.name,
+        major: userProfile.value.major,
+        school: userProfile.value.school,
+        skillsString: userProfile.value.skills.join(', '),
+        interests: userProfile.value.interests
+      }
+      
+      isEditing.value = true
+    }
+
+    const cancelEdit = () => {
+      // 恢复原始数据
+      if (originalProfile.value) {
+        userProfile.value = { ...originalProfile.value }
+        editProfile.value = {
+          name: originalProfile.value.name,
+          major: originalProfile.value.major,
+          school: originalProfile.value.school,
+          skillsString: originalProfile.value.skills.join(', '),
+          interests: originalProfile.value.interests
+        }
+      }
+      isEditing.value = false
+    }
+
     const saveProfile = () => {
       userProfile.value.name = editProfile.value.name
       userProfile.value.major = editProfile.value.major
       userProfile.value.school = editProfile.value.school
-      userProfile.value.skills = editProfile.value.skillsString.split(',').map(s => s.trim())
+      userProfile.value.skills = editProfile.value.skillsString.split(',').map(s => s.trim()).filter(s => s)
       userProfile.value.interests = editProfile.value.interests
+      isEditing.value = false
       ElMessage.success('个人信息保存成功！')
     }
 
@@ -301,15 +428,20 @@ export default {
 
     return {
       expandedCard,
+      isEditing,
       userProfile,
       editProfile,
+      originalProfile,
       statistics,
       achievements,
+      sortedAchievements,
       settings,
       themeColors,
       userInitial,
       toggleFeature,
       selectColor,
+      startEdit,
+      cancelEdit,
       saveProfile,
       saveSettings,
       resetSettings
@@ -319,11 +451,406 @@ export default {
 </script>
 
 <style scoped>
+.page {
+  padding: 24px;
+  background: #f8f9fa;
+  min-height: calc(100vh - 48px);
+}
+
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.feature-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
 .profile-section {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 20px;
-  margin-bottom: 24px;
+  flex: 1;
+}
+
+@media (max-width: 768px) {
+  .profile-section {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 16px;
+  }
+}
+
+.profile-card {
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.profile-card.editing {
+  background: #f8f9ff;
+  border: 1px solid #667eea;
+}
+
+@media (max-width: 768px) {
+  .profile-card {
+    margin: 0;
+    padding: 24px;
+  }
+  
+  .profile-card.editing {
+    padding: 24px;
+  }
+}
+
+.profile-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .profile-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .profile-section {
+    width: 100%;
+  }
+}
+
+.profile-actions {
+  flex-shrink: 0;
+  margin-top: 8px;
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.edit-icon-container {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-icon-edit {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.btn-icon-edit:hover {
+  background: #e9ecef;
+  color: #495057;
+  transform: scale(1.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 768px) {
+  .btn-icon-edit {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    color: #6c757d;
+  }
+  
+  .btn-icon-edit:hover {
+    background: #e9ecef;
+    color: #495057;
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-actions {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: auto;
+    margin: 0;
+  }
+  
+  .profile-actions.editing-mode {
+    position: static;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin-top: 16px;
+  }
+  
+  .edit-icon-container {
+    justify-content: flex-end;
+  }
+}
+
+.edit-form {
+  width: 100%;
+  max-width: 400px;
+}
+
+@media (max-width: 768px) {
+  .edit-form {
+    max-width: 100%;
+  }
+}
+
+.edit-form .input-group {
+  margin-bottom: 12px;
+}
+
+.edit-form .input-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.edit-form .form-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+}
+
+.edit-form .form-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.edit-actions {
+  display: flex;
+  gap: 8px;
+  flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  .edit-actions {
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: wrap;
+    position: static;
+    width: 100%;
+    margin-top: 16px;
+  }
+}
+
+.btn-edit {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+}
+
+.btn-edit:hover {
+  background: #5a6fd8;
+  transform: translateY(-1px);
+}
+
+.btn-save {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+}
+
+.btn-save:hover {
+  background: #218838;
+}
+
+.btn-cancel {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+}
+
+.btn-cancel:hover {
+  background: #5a6268;
+}
+
+.btn-icon {
+  font-size: 12px;
+}
+
+.interests {
+  margin-top: 12px;
+  color: #6c757d;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.interests-label {
+  font-weight: 500;
+  margin-right: 8px;
+}
+
+.name-with-badges {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 768px) {
+  .name-with-badges {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+  
+  .name-with-badges h2 {
+    margin-bottom: 4px;
+  }
+}
+
+.name-with-badges h2 {
+  margin: 0;
+  color: #495057;
+}
+
+.achievement-badges {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mini-badge {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.mini-badge:hover {
+  transform: scale(1.2);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.more-badges {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #6c757d;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.more-badges:hover {
+  transform: scale(1.2);
+  background: #5a6268;
+}
+
+.all-achievements {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.achievement-item {
+  padding: 16px;
+  border-radius: 12px;
+  text-align: center;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease;
+}
+
+.achievement-item:hover {
+  transform: translateY(-2px);
+}
+
+.achievement-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.achievement-name {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+.achievement-desc {
+  font-size: 12px;
+  opacity: 0.9;
+  margin-bottom: 8px;
+}
+
+.achievement-stat {
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  padding-top: 8px;
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stat-label {
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.stat-value {
+  font-size: 16px;
+  font-weight: bold;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .avatar {
@@ -337,6 +864,15 @@ export default {
   color: white;
   font-size: 2rem;
   font-weight: bold;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .avatar {
+    width: 60px;
+    height: 60px;
+    font-size: 1.5rem;
+  }
 }
 
 .profile-info h2 {
@@ -349,11 +885,30 @@ export default {
   margin-bottom: 4px;
 }
 
+@media (max-width: 768px) {
+  .profile-info p {
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+  
+  .profile-info h2 {
+    font-size: 1.5rem;
+  }
+}
+
 .tags {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
+}
+
+@media (max-width: 768px) {
+  .tags {
+    justify-content: center;
+    gap: 6px;
+    margin-top: 8px;
+  }
 }
 
 .tag {
@@ -401,6 +956,7 @@ input[type="range"] {
   border-radius: 3px;
   background: #e9ecef;
   outline: none;
+  appearance: none;
   -webkit-appearance: none;
 }
 
