@@ -13,7 +13,7 @@
     </div>
 
     <!-- 底部导航 -->
-    <div class="bottom-nav" v-if="$route.path !== '/knowledge' && $route.path !== '/profile'">
+    <div class="bottom-nav" v-if="$route.path !== '/knowledge'">
       <router-link to="/" class="nav-item" active-class="active">
         <div class="nav-icon">🏠</div>
         <div class="nav-text">首页</div>
@@ -364,6 +364,7 @@ body:not(.knowledge-page):not(.profile-page) {
   justify-content: space-around;
   padding: 12px 0;
   box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+  z-index: 9998; /* 确保底部导航栏始终在最上层 */
 }
 
 .nav-item {
