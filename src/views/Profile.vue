@@ -11,7 +11,13 @@
             
             <div class="user-info">
               <div class="name-section">
-                <h1 class="profile-name">{{ userProfile.name }}</h1>
+                <div class="name-container">
+                  <h1 class="profile-name">{{ userProfile.name }}</h1>
+                  <button class="edit-btn-inline" @click="startEdit">
+                    <span class="btn-icon">✏️</span>
+                    编辑资料
+                  </button>
+                </div>
                 <div class="username">@{{ userProfile.username }}</div>
               </div>
               
@@ -74,13 +80,6 @@
               <span class="tag" v-for="skill in userProfile.skills" :key="skill">{{ skill }}</span>
             </div>
           </div>
-        </div>
-        
-        <div class="profile-actions">
-          <button class="edit-btn" @click="startEdit">
-            <span class="btn-icon">✏️</span>
-            编辑资料
-          </button>
         </div>
       </div>
     </div>
@@ -703,6 +702,38 @@ export default {
   gap: 4px;
 }
 
+.name-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.edit-btn-inline {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  white-space: nowrap;
+  min-width: fit-content;
+}
+
+.edit-btn-inline:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
 .profile-name {
   font-size: 1.8rem;
   font-weight: 700;
@@ -976,38 +1007,6 @@ export default {
   border-color: rgba(255, 255, 255, 0.6);
   background: rgba(255, 255, 255, 0.2);
   box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1);
-}
-
-/* 操作按钮 */
-.profile-actions {
-  position: absolute;
-  top: 2rem;
-  right: 2rem;
-  z-index: 10;
-}
-
-.edit-btn {
-  background: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(15px);
-  color: white;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  padding: 14px 28px;
-  border-radius: 12px;
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 600;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  letter-spacing: 0.5px;
-}
-
-.edit-btn:hover {
-  background: rgba(255, 255, 255, 0.35);
-  transform: translateY(-3px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
-  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .edit-actions {
@@ -1470,16 +1469,6 @@ export default {
     border-radius: 20px;
   }
   
-  .profile-actions {
-    position: relative;
-    top: auto;
-    right: auto;
-    width: 100%;
-    margin-top: 0;
-    display: flex;
-    justify-content: center;
-  }
-  
   .profile-main {
     flex-direction: column;
     gap: 20px;
@@ -1500,8 +1489,27 @@ export default {
   }
   
   .profile-name {
-    font-size: 1.6rem;
+    font-size: 1.4rem;
     margin-bottom: 4px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .name-container {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  
+  .edit-btn-inline {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    min-width: fit-content;
+    flex-shrink: 0;
   }
   
   .username {
@@ -1530,13 +1538,13 @@ export default {
   }
   
   .profile-meta {
-    align-items: center;
+    align-items: flex-start;
     gap: 14px;
   }
   
   .meta-item {
     font-size: 0.95rem;
-    justify-content: center;
+    justify-content: flex-start;
   }
   
   .skills-section {
