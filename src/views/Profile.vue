@@ -22,24 +22,7 @@
               </div>
               
               <div class="status-section">
-                <div v-if="!isQuickEditing" class="status-text">{{ userProfile.status }}</div>
-                <div v-if="isQuickEditing" class="quick-edit-form">
-                  <input 
-                    type="text" 
-                    v-model="quickEditStatus" 
-                    class="quick-edit-input"
-                    placeholder="编辑你的状态..."
-                    @keyup.enter="saveQuickEdit"
-                    @keyup.esc="cancelQuickEdit"
-                  >
-                  <div class="quick-edit-actions">
-                    <button class="quick-save-btn" @click="saveQuickEdit">✓</button>
-                    <button class="quick-cancel-btn" @click="cancelQuickEdit">✕</button>
-                  </div>
-                </div>
-                <button v-if="!isQuickEditing" class="quick-edit-btn" @click="startQuickEdit" title="编辑状态">
-                  <span>✏️</span>
-                </button>
+                <div class="status-text">{{ userProfile.status }}</div>
               </div>
             </div>
           </div>
@@ -293,8 +276,6 @@ export default {
   setup() {
     const expandedCard = ref(null)
     const isEditing = ref(false)
-    const isQuickEditing = ref(false)
-    const quickEditStatus = ref('')
 
     const userProfile = ref({
       name: '张小明',
@@ -447,22 +428,6 @@ export default {
       isEditing.value = true
     }
 
-    const startQuickEdit = () => {
-      quickEditStatus.value = userProfile.value.status
-      isQuickEditing.value = true
-    }
-
-    const saveQuickEdit = () => {
-      userProfile.value.status = quickEditStatus.value
-      isQuickEditing.value = false
-      ElMessage.success('状态更新成功！')
-    }
-
-    const cancelQuickEdit = () => {
-      quickEditStatus.value = ''
-      isQuickEditing.value = false
-    }
-
     const cancelEdit = () => {
       // 恢复原始数据
       if (originalProfile.value) {
@@ -512,8 +477,6 @@ export default {
     return {
       expandedCard,
       isEditing,
-      isQuickEditing,
-      quickEditStatus,
       userProfile,
       editProfile,
       originalProfile,
@@ -525,9 +488,6 @@ export default {
       toggleFeature,
       selectColor,
       startEdit,
-      startQuickEdit,
-      saveQuickEdit,
-      cancelQuickEdit,
       cancelEdit,
       saveProfile,
       saveSettings,
@@ -764,90 +724,6 @@ export default {
   font-size: 0.95rem;
   line-height: 1.4;
   word-break: break-word;
-}
-
-.quick-edit-btn {
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.8);
-  padding: 6px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-}
-
-.quick-edit-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.4);
-  transform: scale(1.05);
-}
-
-.quick-edit-form {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-}
-
-.quick-edit-input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  color: white;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.quick-edit-input:focus {
-  outline: none;
-  border-color: rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.2);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
-}
-
-.quick-edit-input::placeholder {
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.quick-edit-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.quick-save-btn, .quick-cancel-btn {
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  padding: 6px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-}
-
-.quick-save-btn:hover {
-  background: rgba(76, 175, 80, 0.3);
-  border-color: rgba(76, 175, 80, 0.5);
-}
-
-.quick-cancel-btn:hover {
-  background: rgba(244, 67, 54, 0.3);
-  border-color: rgba(244, 67, 54, 0.5);
 }
 
 /* 成就徽章区域 */
