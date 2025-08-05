@@ -2,7 +2,6 @@
   <div class="profile-page">
     <!-- 顶部个人信息区域 -->
     <div class="profile-hero" :class="{ editing: isEditing }">
-      <div class="hero-background"></div>
       <div class="profile-container">
         <div class="profile-main">
           <div class="avatar-section">
@@ -466,35 +465,103 @@ export default {
 </script>
 
 <style scoped>
-/* 主容器 */
+/* 全局重置样式 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* 主容器 - 使用柔和过渡的统一背景 */
 .profile-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  width: 100vw;
+  background: linear-gradient(180deg, 
+    #667eea 0%, 
+    #6b7fd6 25%,
+    #8a93e0 50%,
+    #b8bfe8 75%,
+    #f5f7fa 100%
+  );
   padding: 0;
   margin: 0;
-}
-
-/* 个人信息英雄区域 */
-.profile-hero {
   position: relative;
-  padding: 40px 20px;
-  color: white;
-  transition: all 0.3s ease;
+  overflow-x: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  line-height: 1.6;
+  /* 确保完全覆盖屏幕 */
+  left: 0;
+  top: 0;
 }
 
-.profile-hero.editing {
-  background: rgba(0, 0, 0, 0.1);
-}
-
-.hero-background {
+/* 微妙的背景装饰图案 */
+.profile-page::before {
+  content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
+  background-image: 
+    /* 非常微妙的几何线条 */
+    linear-gradient(45deg, transparent 95%, rgba(255, 255, 255, 0.02) 95.5%, rgba(255, 255, 255, 0.02) 96%, transparent 96.5%),
+    linear-gradient(-45deg, transparent 95%, rgba(255, 255, 255, 0.02) 95.5%, rgba(255, 255, 255, 0.02) 96%, transparent 96.5%),
+    /* 微妙的圆点装饰 */
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 
+    300px 300px,
+    300px 300px,
+    100px 100px,
+    120px 120px;
+  background-position:
+    0 0,
+    0 0,
+    0 0,
+    50px 50px;
   z-index: 0;
+  pointer-events: none;
+}
+
+/* 添加动态效果 */
+.profile-page::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: 
+    radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.02) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
+  animation: backgroundFloat 20s ease-in-out infinite;
+  z-index: 0;
+  pointer-events: none;
+}
+
+@keyframes backgroundFloat {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  33% {
+    transform: translate(-20px, -10px) rotate(1deg);
+  }
+  66% {
+    transform: translate(20px, 10px) rotate(-1deg);
+  }
+}
+
+/* 个人信息英雄区域 - 卡片化设计 */
+.profile-hero {
+  position: relative;
+  padding: 40px 20px 60px;
+  color: white;
+  transition: all 0.3s ease;
+  z-index: 1;
+}
+
+.profile-hero.editing {
+  background: rgba(0, 0, 0, 0.1);
 }
 
 .profile-container {
@@ -502,8 +569,14 @@ export default {
   z-index: 1;
   max-width: 1200px;
   margin: 0 auto;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
   display: flex;
-  gap: 30px;
+  gap: 40px;
   align-items: flex-start;
 }
 
@@ -596,22 +669,24 @@ export default {
   font-weight: 700;
   margin: 0 0 20px 0;
   color: white;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  letter-spacing: -0.02em;
 }
 
 .profile-meta {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 16px;
+  margin-bottom: 28px;
 }
 
 .meta-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 1.1rem;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 400;
 }
 
 .meta-icon {
@@ -623,25 +698,27 @@ export default {
 .skills-section {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 24px;
 }
 
 .tag {
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(15px);
   color: white;
-  padding: 8px 16px;
-  border-radius: 20px;
+  padding: 10px 18px;
+  border-radius: 25px;
   font-size: 14px;
   font-weight: 500;
   border: 1px solid rgba(255, 255, 255, 0.3);
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
 }
 
 .tag:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
 }
 
 .interests-text {
@@ -716,25 +793,27 @@ export default {
 }
 
 .edit-btn {
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(15px);
   color: white;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  padding: 12px 24px;
-  border-radius: 8px;
+  padding: 14px 28px;
+  border-radius: 12px;
   cursor: pointer;
-  font-size: 16px;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  font-size: 15px;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   gap: 8px;
+  letter-spacing: 0.5px;
 }
 
 .edit-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.35);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .edit-actions {
@@ -785,75 +864,91 @@ export default {
   transform: translateY(-2px);
 }
 
-/* 统计数据区域 */
+/* 统计数据区域 - 卡片化设计 */
 .stats-section {
-  background: white;
-  padding: 40px 20px;
+  background: transparent;
+  padding: 0 20px 40px;
   margin: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .stats-grid {
   max-width: 1200px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 30px;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 24px;
+  position: relative;
+  z-index: 1;
+  margin-top: -30px; /* 向上延伸，打破硬分割线 */
 }
 
 .stat-item {
   text-align: center;
-  padding: 30px 20px;
-  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-  border-radius: 16px;
-  transition: all 0.3s ease;
-  border: 1px solid #e9ecef;
+  padding: 32px 24px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
 .stat-item:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-  background: linear-gradient(135deg, #ffffff, #f8f9fa);
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  background: rgba(255, 255, 255, 1);
 }
 
 .stat-number {
-  font-size: 2.5rem;
-  font-weight: 700;
-  color: #495057;
-  margin-bottom: 8px;
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: #2d3748;
+  margin-bottom: 12px;
   background: linear-gradient(135deg, #667eea, #764ba2);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  letter-spacing: -0.02em;
 }
 
 .stat-label {
   font-size: 1rem;
-  color: #6c757d;
-  font-weight: 500;
+  color: #718096;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
-/* 设置区域 */
+/* 设置区域 - 卡片化设计 */
 .settings-wrapper {
-  background: white;
+  background: transparent;
   margin: 0;
-  padding: 0;
+  padding: 0 20px 40px;
+  position: relative;
+  z-index: 1;
 }
 
 .settings-header {
-  padding: 30px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 40px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  border-bottom: 1px solid #e9ecef;
-  background: #f8f9fa;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px 20px 20px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  max-width: 1200px;
-  margin: 0 auto;
 }
 
 .settings-header:hover {
-  background: #e9ecef;
+  background: rgba(255, 255, 255, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
 }
 
 .settings-title {
@@ -861,8 +956,9 @@ export default {
   align-items: center;
   gap: 16px;
   font-size: 1.5rem;
-  font-weight: 600;
-  color: #495057;
+  font-weight: 700;
+  color: #2d3748;
+  letter-spacing: -0.01em;
 }
 
 .settings-icon {
@@ -870,12 +966,14 @@ export default {
 }
 
 .status-badge {
-  background: linear-gradient(135deg, #28a745, #20c997);
+  background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
-  padding: 6px 12px;
-  border-radius: 12px;
+  padding: 8px 16px;
+  border-radius: 16px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
 .toggle-arrow {
@@ -891,44 +989,53 @@ export default {
 .settings-content {
   max-height: 0;
   overflow: hidden;
-  transition: all 0.4s ease;
-  background: white;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  max-width: 1200px;
+  margin: 0 auto;
+  border-radius: 0 0 20px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-top: none;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
 .settings-content.expanded {
   max-height: 2000px;
-  padding: 40px 20px;
+  padding: 40px;
 }
 
 .settings-grid {
-  max-width: 1200px;
-  margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 30px;
+  gap: 32px;
   margin-bottom: 40px;
 }
 
 .settings-panel {
-  background: #f8f9fa;
+  background: rgba(248, 250, 252, 0.8);
+  backdrop-filter: blur(10px);
   border-radius: 16px;
-  padding: 24px;
-  border: 1px solid #e9ecef;
-  transition: all 0.3s ease;
+  padding: 28px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .settings-panel:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-2px);
 }
 
 .panel-title {
   font-size: 1.2rem;
-  font-weight: 600;
-  color: #495057;
-  margin: 0 0 20px 0;
+  font-weight: 700;
+  color: #2d3748;
+  margin: 0 0 24px 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  letter-spacing: -0.01em;
 }
 
 .settings-items {
@@ -950,24 +1057,27 @@ export default {
 
 .setting-label {
   font-size: 14px;
-  font-weight: 500;
-  color: #495057;
+  font-weight: 600;
+  color: #4a5568;
+  letter-spacing: 0.3px;
 }
 
 .setting-input {
-  padding: 12px 16px;
-  border: 2px solid #e9ecef;
-  border-radius: 8px;
-  background: white;
-  color: #495057;
+  padding: 14px 18px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #2d3748;
   font-size: 14px;
-  transition: all 0.3s ease;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .setting-input:focus {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  background: rgba(255, 255, 255, 1);
 }
 
 .range-input {
@@ -1101,23 +1211,26 @@ export default {
 .action-btn.primary {
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: white;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+  font-weight: 600;
 }
 
 .action-btn.primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px rgba(102, 126, 234, 0.5);
 }
 
 .action-btn.secondary {
-  background: #f8f9fa;
-  color: #495057;
-  border: 2px solid #e9ecef;
+  background: rgba(248, 250, 252, 0.9);
+  color: #4a5568;
+  border: 2px solid rgba(226, 232, 240, 0.8);
+  font-weight: 600;
 }
 
 .action-btn.secondary:hover {
-  background: #e9ecef;
-  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
 }
 
 .btn-icon {
@@ -1126,13 +1239,23 @@ export default {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+  .profile-page::before {
+    background-size: 
+      200px 200px,
+      200px 200px,
+      80px 80px,
+      90px 90px;
+  }
+  
   .profile-hero {
-    padding: 30px 16px;
+    padding: 30px 16px 50px;
   }
   
   .profile-container {
     flex-direction: column;
-    gap: 20px;
+    gap: 24px;
+    padding: 32px 24px;
+    border-radius: 20px;
   }
   
   .profile-main {
@@ -1158,9 +1281,14 @@ export default {
   }
   
   .profile-actions {
+    position: relative;
+    top: auto;
+    right: auto;
     order: 3;
     width: 100%;
     margin-top: 0;
+    display: flex;
+    justify-content: center;
   }
   
   .avatar {
@@ -1202,7 +1330,7 @@ export default {
   }
   
   .meta-item {
-    font-size: 1rem;
+    font-size: 0.95rem;
     justify-content: center;
   }
   
@@ -1211,46 +1339,32 @@ export default {
     gap: 10px;
   }
   
-  .form-row {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-  
-  .edit-actions {
-    justify-content: center;
-    flex-direction: row;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  
-  .edit-btn, .save-btn, .cancel-btn {
-    padding: 10px 20px;
-    font-size: 14px;
-    min-width: 100px;
-    flex: 1;
-    max-width: 140px;
-  }
-  
   .stats-section {
-    padding: 30px 16px;
+    padding: 0 16px 32px;
   }
   
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 16px;
+    margin-top: -20px;
   }
   
   .stat-item {
-    padding: 20px 16px;
+    padding: 24px 16px;
+    border-radius: 16px;
   }
   
   .stat-number {
-    font-size: 2rem;
+    font-size: 2.2rem;
+  }
+  
+  .settings-wrapper {
+    padding: 0 16px 32px;
   }
   
   .settings-header {
-    padding: 20px 16px;
+    padding: 24px 24px;
+    border-radius: 16px;
   }
   
   .settings-title {
@@ -1258,29 +1372,45 @@ export default {
   }
   
   .settings-content.expanded {
-    padding: 30px 16px;
+    padding: 32px 24px;
+    border-radius: 0 0 16px 16px;
   }
   
   .settings-grid {
     grid-template-columns: 1fr;
-    gap: 20px;
+    gap: 24px;
   }
   
   .settings-actions {
     justify-content: center;
     gap: 12px;
+    flex-wrap: wrap;
   }
   
   .action-btn {
     flex: 1;
     justify-content: center;
-    min-width: 120px;
+    min-width: 140px;
   }
 }
 
 @media (max-width: 480px) {
+  .profile-page::before {
+    background-size: 
+      150px 150px,
+      150px 150px,
+      60px 60px,
+      70px 70px;
+  }
+  
   .profile-hero {
-    padding: 20px 12px;
+    padding: 24px 12px 40px;
+  }
+  
+  .profile-container {
+    padding: 24px 16px;
+    border-radius: 16px;
+    gap: 20px;
   }
   
   .profile-main {
@@ -1324,50 +1454,47 @@ export default {
   }
   
   .meta-item {
-    font-size: 0.95rem;
-  }
-  
-  .edit-actions {
-    flex-direction: column;
-    width: 100%;
-    gap: 10px;
-  }
-  
-  .edit-btn, .save-btn, .cancel-btn {
-    width: 100%;
-    padding: 12px 16px;
-    max-width: none;
+    font-size: 0.9rem;
   }
   
   .stats-grid {
     grid-template-columns: 1fr;
     gap: 12px;
+    margin-top: -15px;
   }
   
   .stat-item {
-    padding: 16px 12px;
+    padding: 20px 16px;
+    border-radius: 14px;
   }
   
   .stat-number {
-    font-size: 1.8rem;
+    font-size: 2rem;
+  }
+  
+  .settings-header {
+    padding: 20px 16px;
+    border-radius: 14px;
+  }
+  
+  .settings-content.expanded {
+    padding: 24px 16px;
+    border-radius: 0 0 14px 14px;
   }
   
   .settings-actions {
     flex-direction: column;
+    gap: 10px;
   }
   
   .action-btn {
     width: 100%;
+    min-width: auto;
   }
   
   .tag {
     font-size: 12px;
-    padding: 6px 12px;
-  }
-  
-  .form-input {
-    padding: 10px 14px;
-    font-size: 14px;
+    padding: 8px 14px;
   }
   
   .settings-title {
@@ -1377,6 +1504,11 @@ export default {
   
   .settings-icon {
     font-size: 1.5rem;
+  }
+  
+  .edit-btn {
+    padding: 12px 20px;
+    font-size: 14px;
   }
 }
 
@@ -1388,7 +1520,7 @@ export default {
   width: 100%;
   height: 100%;
   background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(12px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1397,22 +1529,22 @@ export default {
 }
 
 .edit-modal-content {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(30px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
   width: 100%;
   max-width: 600px;
   max-height: 90vh;
   overflow: hidden;
-  animation: modalSlideIn 0.3s ease-out;
+  animation: modalSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes modalSlideIn {
   from {
     opacity: 0;
-    transform: translateY(-50px) scale(0.9);
+    transform: translateY(-50px) scale(0.95);
   }
   to {
     opacity: 1;
@@ -1425,17 +1557,18 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 2rem 2rem 1rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .edit-modal-title {
   margin: 0;
   font-size: 1.5rem;
-  font-weight: 600;
-  color: #333;
+  font-weight: 700;
+  color: #2d3748;
   display: flex;
   align-items: center;
   gap: 12px;
+  letter-spacing: -0.01em;
 }
 
 .edit-icon {
@@ -1446,11 +1579,11 @@ export default {
   background: transparent;
   border: none;
   font-size: 1.5rem;
-  color: #666;
+  color: #718096;
   cursor: pointer;
   padding: 8px;
   border-radius: 50%;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   width: 40px;
   height: 40px;
   display: flex;
@@ -1459,8 +1592,9 @@ export default {
 }
 
 .close-btn:hover {
-  background: rgba(0, 0, 0, 0.1);
-  color: #333;
+  background: rgba(0, 0, 0, 0.05);
+  color: #2d3748;
+  transform: scale(1.1);
 }
 
 .edit-modal-body {
@@ -1493,29 +1627,32 @@ export default {
 
 .input-label {
   font-weight: 600;
-  color: #555;
+  color: #4a5568;
   font-size: 14px;
+  letter-spacing: 0.3px;
 }
 
 .form-input {
-  padding: 12px 16px;
-  border: 2px solid #e1e5e9;
+  padding: 14px 18px;
+  border: 2px solid #e2e8f0;
   border-radius: 12px;
   font-size: 16px;
-  transition: all 0.3s ease;
-  background: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(10px);
+  color: #2d3748;
 }
 
 .form-input:focus {
   outline: none;
   border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+  background: rgba(255, 255, 255, 1);
 }
 
 .form-input::placeholder {
-  color: #999;
+  color: #a0aec0;
 }
 
 textarea.form-input {
@@ -1528,22 +1665,23 @@ textarea.form-input {
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .modal-btn {
-  padding: 12px 24px;
+  padding: 14px 28px;
   border: none;
   border-radius: 12px;
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 120px;
   justify-content: center;
+  letter-spacing: 0.3px;
 }
 
 .btn-icon {
@@ -1551,25 +1689,27 @@ textarea.form-input {
 }
 
 .cancel-btn {
-  background: rgba(108, 117, 125, 0.1);
-  color: #6c757d;
-  border: 2px solid rgba(108, 117, 125, 0.2);
+  background: rgba(248, 250, 252, 0.9);
+  color: #718096;
+  border: 2px solid rgba(226, 232, 240, 0.8);
 }
 
 .cancel-btn:hover {
-  background: rgba(108, 117, 125, 0.2);
-  color: #495057;
+  background: rgba(255, 255, 255, 1);
+  color: #4a5568;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .save-btn {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
 }
 
 .save-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px rgba(102, 126, 234, 0.5);
 }
 
 /* 移动端弹窗适配 */
@@ -1580,7 +1720,7 @@ textarea.form-input {
   
   .edit-modal-content {
     max-width: 100%;
-    border-radius: 16px;
+    border-radius: 20px;
   }
   
   .edit-modal-header {
@@ -1613,6 +1753,10 @@ textarea.form-input {
 @media (max-width: 480px) {
   .edit-modal {
     padding: 0.5rem;
+  }
+  
+  .edit-modal-content {
+    border-radius: 16px;
   }
   
   .edit-modal-header {

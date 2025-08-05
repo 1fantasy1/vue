@@ -1,5 +1,5 @@
 <template>
-  <div id="app" :class="{ 'knowledge-page': $route.path === '/knowledge' }">
+  <div id="app" :class="{ 'knowledge-page': $route.path === '/knowledge', 'profile-page': $route.path === '/profile' }">
     <!-- 头部 - 仅在首页显示 -->
     <div class="header" v-if="$route.path === '/'">
       <div class="container">
@@ -8,12 +8,12 @@
       </div>
     </div>
 
-    <div class="container" :class="{ 'knowledge-container': $route.path === '/knowledge' }">
+    <div class="container" :class="{ 'knowledge-container': $route.path === '/knowledge', 'profile-container': $route.path === '/profile' }">
       <router-view />
     </div>
 
     <!-- 底部导航 -->
-    <div class="bottom-nav" v-if="$route.path !== '/knowledge'">
+    <div class="bottom-nav" v-if="$route.path !== '/knowledge' && $route.path !== '/profile'">
       <router-link to="/" class="nav-item" active-class="active">
         <div class="nav-icon">🏠</div>
         <div class="nav-text">首页</div>
@@ -66,14 +66,29 @@ export default {
   box-sizing: border-box;
 }
 
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+}
+
+#app {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: #f8f9fa;
   color: #333;
 }
 
-/* 为非智库页面添加底部间距 */
-body:not(.knowledge-page) {
+/* 为非智库和个人页面添加底部间距 */
+body:not(.knowledge-page):not(.profile-page) {
   padding-bottom: 80px;
 }
 
@@ -82,8 +97,8 @@ body:not(.knowledge-page) {
   margin: 0 auto;
 }
 
-/* 为非智库页面添加padding */
-.container:not(.knowledge-container) {
+/* 为非智库和个人页面添加padding */
+.container:not(.knowledge-container):not(.profile-container) {
   padding: 20px;
 }
 
@@ -94,6 +109,15 @@ body:not(.knowledge-page) {
   padding: 0;
   height: 100vh;
   overflow: hidden;
+}
+
+/* 个人页面的容器样式 */
+.container.profile-container {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  min-height: 100vh;
 }
 
 .header {
