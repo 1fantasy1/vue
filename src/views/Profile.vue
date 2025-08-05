@@ -4,11 +4,44 @@
     <div class="profile-hero" :class="{ editing: isEditing }">
       <div class="profile-container">
         <div class="profile-main">
-          <div class="avatar-section">
-            <div class="avatar">{{ userInitial }}</div>
+          <div class="user-header">
+            <div class="avatar-container">
+              <div class="avatar">{{ userInitial }}</div>
+            </div>
+            
+            <div class="user-info">
+              <div class="name-section">
+                <h1 class="profile-name">{{ userProfile.name }}</h1>
+                <div class="username">@{{ userProfile.username }}</div>
+              </div>
+              
+              <div class="status-section">
+                <div v-if="!isQuickEditing" class="status-text">{{ userProfile.status }}</div>
+                <div v-if="isQuickEditing" class="quick-edit-form">
+                  <input 
+                    type="text" 
+                    v-model="quickEditStatus" 
+                    class="quick-edit-input"
+                    placeholder="编辑你的状态..."
+                    @keyup.enter="saveQuickEdit"
+                    @keyup.esc="cancelQuickEdit"
+                  >
+                  <div class="quick-edit-actions">
+                    <button class="quick-save-btn" @click="saveQuickEdit">✓</button>
+                    <button class="quick-cancel-btn" @click="cancelQuickEdit">✕</button>
+                  </div>
+                </div>
+                <button v-if="!isQuickEditing" class="quick-edit-btn" @click="startQuickEdit" title="编辑状态">
+                  <span>✏️</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="achievement-badges-section">
             <div class="achievement-badges">
               <div
-                v-for="achievement in sortedAchievements.slice(0, 4)"
+                v-for="achievement in sortedAchievements.slice(0, 6)"
                 :key="achievement.id"
                 class="mini-badge"
                 :style="{ background: achievement.color }"
@@ -16,35 +49,29 @@
               >
                 {{ achievement.icon }}
               </div>
-              <div v-if="sortedAchievements.length > 4" class="more-badges" :title="`还有${sortedAchievements.length - 4}个徽章`">
-                +{{ sortedAchievements.length - 4 }}
+              <div v-if="sortedAchievements.length > 6" class="more-badges" :title="`还有${sortedAchievements.length - 6}个徽章`">
+                +{{ sortedAchievements.length - 6 }}
               </div>
             </div>
           </div>
           
           <div class="profile-details">
-            <div class="view-mode">
-              <h1 class="profile-name">{{ userProfile.name }}</h1>
-              <div class="profile-meta">
-                <div class="meta-item">
-                  <span class="meta-icon">📧</span>
-                  <span>{{ userProfile.email }}</span>
-                </div>
-                <div class="meta-item">
-                  <span class="meta-icon">🎓</span>
-                  <span>{{ userProfile.major }}</span>
-                </div>
-                <div class="meta-item">
-                  <span class="meta-icon">🏫</span>
-                  <span>{{ userProfile.school }}</span>
-                </div>
+            <div class="profile-meta">
+              <div class="meta-item">
+                <span class="meta-icon">📧</span>
+                <span>{{ userProfile.email }}</span>
               </div>
-              <div class="skills-section">
-                <span class="tag" v-for="skill in userProfile.skills" :key="skill">{{ skill }}</span>
+              <div class="meta-item">
+                <span class="meta-icon">🎓</span>
+                <span>{{ userProfile.major }}</span>
               </div>
-              <p class="interests-text" v-if="userProfile.interests">
-                <span class="interests-label">💭 兴趣方向：</span>{{ userProfile.interests }}
-              </p>
+              <div class="meta-item">
+                <span class="meta-icon">🏫</span>
+                <span>{{ userProfile.school }}</span>
+              </div>
+            </div>
+            <div class="skills-section">
+              <span class="tag" v-for="skill in userProfile.skills" :key="skill">{{ skill }}</span>
             </div>
           </div>
         </div>
@@ -82,7 +109,9 @@
 
     <!-- 设置区域 -->
     <div class="settings-wrapper">
-      <div class="settings-header" @click="toggleFeature('settings')">
+      <div class="settings-header" 
+           :class="{ 'expanded-header': expandedCard === 'settings' }"
+           @click="toggleFeature('settings')">
         <div class="settings-title">
           <span class="settings-icon">⚙️</span>
           <span>系统设置</span>
@@ -211,23 +240,33 @@
               <input type="text" class="form-input" v-model="editProfile.name" placeholder="请输入姓名">
             </div>
             <div class="input-group">
-              <label class="input-label">专业</label>
-              <input type="text" class="form-input" v-model="editProfile.major" placeholder="请输入专业">
+              <label class="input-label">用户名</label>
+              <input type="text" class="form-input" v-model="editProfile.username" placeholder="请输入用户名">
             </div>
           </div>
           <div class="form-row">
             <div class="input-group">
+              <label class="input-label">专业</label>
+              <input type="text" class="form-input" v-model="editProfile.major" placeholder="请输入专业">
+            </div>
+            <div class="input-group">
               <label class="input-label">学校</label>
               <input type="text" class="form-input" v-model="editProfile.school" placeholder="请输入学校名称">
             </div>
+          </div>
+          <div class="form-row">
             <div class="input-group">
               <label class="input-label">技能标签</label>
               <input type="text" class="form-input" v-model="editProfile.skillsString" placeholder="用逗号分隔多个技能">
             </div>
           </div>
           <div class="input-group full-width">
+            <label class="input-label">个人状态</label>
+            <input type="text" class="form-input" v-model="editProfile.status" placeholder="描述您的当前状态">
+          </div>
+          <div class="input-group full-width">
             <label class="input-label">兴趣方向</label>
-            <textarea class="form-input" rows="4" v-model="editProfile.interests" placeholder="描述您的兴趣方向和特长"></textarea>
+            <textarea class="form-input" rows="3" v-model="editProfile.interests" placeholder="描述您的兴趣方向和特长"></textarea>
           </div>
         </div>
       </div>
@@ -255,22 +294,28 @@ export default {
   setup() {
     const expandedCard = ref(null)
     const isEditing = ref(false)
+    const isQuickEditing = ref(false)
+    const quickEditStatus = ref('')
 
     const userProfile = ref({
       name: '张小明',
+      username: '1fantasy1',
       email: 'zhang.xiaoming@example.com',
       major: '计算机科学与技术专业',
       school: '清华大学',
       skills: ['Python', '机器学习', '数据分析', '深度学习'],
-      interests: '人工智能、大数据分析、区块链技术、创新创业'
+      interests: '人工智能、大数据分析、区块链技术、创新创业',
+      status: '专注于AI技术研究，热爱开源项目 🚀'
     })
 
     const editProfile = ref({
       name: userProfile.value.name,
+      username: userProfile.value.username,
       major: userProfile.value.major,
       school: userProfile.value.school,
       skillsString: userProfile.value.skills.join(', '),
-      interests: userProfile.value.interests
+      interests: userProfile.value.interests,
+      status: userProfile.value.status
     })
 
     // 保存原始数据用于取消编辑时恢复
@@ -381,22 +426,42 @@ export default {
       // 保存原始数据
       originalProfile.value = {
         name: userProfile.value.name,
+        username: userProfile.value.username,
         major: userProfile.value.major,
         school: userProfile.value.school,
         skills: [...userProfile.value.skills],
-        interests: userProfile.value.interests
+        interests: userProfile.value.interests,
+        status: userProfile.value.status
       }
       
       // 同步编辑表单数据
       editProfile.value = {
         name: userProfile.value.name,
+        username: userProfile.value.username,
         major: userProfile.value.major,
         school: userProfile.value.school,
         skillsString: userProfile.value.skills.join(', '),
-        interests: userProfile.value.interests
+        interests: userProfile.value.interests,
+        status: userProfile.value.status
       }
       
       isEditing.value = true
+    }
+
+    const startQuickEdit = () => {
+      quickEditStatus.value = userProfile.value.status
+      isQuickEditing.value = true
+    }
+
+    const saveQuickEdit = () => {
+      userProfile.value.status = quickEditStatus.value
+      isQuickEditing.value = false
+      ElMessage.success('状态更新成功！')
+    }
+
+    const cancelQuickEdit = () => {
+      quickEditStatus.value = ''
+      isQuickEditing.value = false
     }
 
     const cancelEdit = () => {
@@ -405,10 +470,12 @@ export default {
         userProfile.value = { ...originalProfile.value }
         editProfile.value = {
           name: originalProfile.value.name,
+          username: originalProfile.value.username,
           major: originalProfile.value.major,
           school: originalProfile.value.school,
           skillsString: originalProfile.value.skills.join(', '),
-          interests: originalProfile.value.interests
+          interests: originalProfile.value.interests,
+          status: originalProfile.value.status
         }
       }
       isEditing.value = false
@@ -416,10 +483,12 @@ export default {
 
     const saveProfile = () => {
       userProfile.value.name = editProfile.value.name
+      userProfile.value.username = editProfile.value.username
       userProfile.value.major = editProfile.value.major
       userProfile.value.school = editProfile.value.school
       userProfile.value.skills = editProfile.value.skillsString.split(',').map(s => s.trim()).filter(s => s)
       userProfile.value.interests = editProfile.value.interests
+      userProfile.value.status = editProfile.value.status
       isEditing.value = false
       ElMessage.success('个人信息保存成功！')
     }
@@ -444,6 +513,8 @@ export default {
     return {
       expandedCard,
       isEditing,
+      isQuickEditing,
+      quickEditStatus,
       userProfile,
       editProfile,
       originalProfile,
@@ -455,6 +526,9 @@ export default {
       toggleFeature,
       selectColor,
       startEdit,
+      startQuickEdit,
+      saveQuickEdit,
+      cancelQuickEdit,
       cancelEdit,
       saveProfile,
       saveSettings,
@@ -483,7 +557,7 @@ export default {
     #b8bfe8 75%,
     #f5f7fa 100%
   );
-  padding: 0;
+  padding: 0 0 120px 0; /* 只在底部添加padding为底部导航栏留空间 */
   margin: 0;
   position: relative;
   overflow-x: hidden;
@@ -583,64 +657,203 @@ export default {
 .profile-main {
   flex: 1;
   display: flex;
-  gap: 30px;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 24px;
 }
 
-.avatar-section {
+/* 新的用户头部布局 */
+.user-header {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
+  gap: 20px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.avatar-container {
+  flex-shrink: 0;
 }
 
 .avatar {
-  width: 120px;
-  height: 120px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(20px);
-  border: 4px solid rgba(255, 255, 255, 0.3);
+  border: 3px solid rgba(255, 255, 255, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 3rem;
+  font-size: 2.2rem;
   font-weight: bold;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+}
+
+.user-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0; /* 防止flex子元素溢出 */
+}
+
+.name-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-name {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0;
+  color: white;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.username {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+.status-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.status-text {
+  flex: 1;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.95rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.quick-edit-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.quick-edit-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: scale(1.05);
+}
+
+.quick-edit-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.quick-edit-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  color: white;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.quick-edit-input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+}
+
+.quick-edit-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.quick-edit-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.quick-save-btn, .quick-cancel-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+.quick-save-btn:hover {
+  background: rgba(76, 175, 80, 0.3);
+  border-color: rgba(76, 175, 80, 0.5);
+}
+
+.quick-cancel-btn:hover {
+  background: rgba(244, 67, 54, 0.3);
+  border-color: rgba(244, 67, 54, 0.5);
+}
+
+/* 成就徽章区域 */
+.achievement-badges-section {
+  margin-top: -8px;
 }
 
 .achievement-badges {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  justify-content: center;
 }
 
 .mini-badge {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 14px;
   color: white;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
   border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .mini-badge:hover {
   transform: scale(1.1) translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
 }
 
 .more-badges {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10px);
@@ -648,7 +861,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: bold;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -660,24 +873,18 @@ export default {
   background: rgba(255, 255, 255, 0.3);
 }
 
+/* 详细信息区域 */
 .profile-details {
-  flex: 1;
-}
-
-.profile-name {
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin: 0 0 20px 0;
-  color: white;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  letter-spacing: -0.02em;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .profile-meta {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-bottom: 28px;
+  gap: 12px;
+  margin-bottom: 20px;
 }
 
 .meta-item {
@@ -698,8 +905,7 @@ export default {
 .skills-section {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 10px;
 }
 
 .tag {
@@ -719,18 +925,6 @@ export default {
   background: rgba(255, 255, 255, 0.35);
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-}
-
-.interests-text {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 1rem;
-  line-height: 1.6;
-  margin: 0;
-}
-
-.interests-label {
-  font-weight: 600;
-  margin-right: 8px;
 }
 
 /* 编辑模式 */
@@ -924,7 +1118,7 @@ export default {
 .settings-wrapper {
   background: transparent;
   margin: 0;
-  padding: 0 20px 40px;
+  padding: 0 20px 40px; /* 恢复原来的padding，因为主容器已经有底部padding */
   position: relative;
   z-index: 1;
 }
@@ -937,7 +1131,7 @@ export default {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
-  border-radius: 20px 20px 20px 20px;
+  border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.8);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
   display: flex;
@@ -945,10 +1139,24 @@ export default {
   align-items: center;
 }
 
+/* 当设置区域展开时，调整头部样式 */
+.settings-header.expanded-header {
+  border-radius: 20px 20px 0 0;
+  border-bottom: none;
+  box-shadow: none;
+}
+
 .settings-header:hover {
   background: rgba(255, 255, 255, 1);
   transform: translateY(-2px);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+}
+
+/* 当展开时，hover效果需要调整 */
+.settings-header.expanded-header:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: translateY(-2px);
+  box-shadow: none; /* 展开状态下hover时不显示阴影 */
 }
 
 .settings-title {
@@ -995,14 +1203,18 @@ export default {
   max-width: 1200px;
   margin: 0 auto;
   border-radius: 0 0 20px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  border: 0px solid rgba(255, 255, 255, 0.8); /* 默认无边框 */
   border-top: none;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  box-shadow: none; /* 默认无阴影 */
+  margin-top: -1px; /* 确保与头部完全贴合 */
 }
 
 .settings-content.expanded {
   max-height: 2000px;
   padding: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.8); /* 展开时显示边框 */
+  border-top: none;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08); /* 展开时显示阴影 */
 }
 
 .settings-grid {
@@ -1258,70 +1470,63 @@ export default {
     border-radius: 20px;
   }
   
-  .profile-main {
-    flex-direction: column;
-    gap: 24px;
-    text-align: center;
-    align-items: center;
-  }
-  
-  .avatar-section {
-    order: 1;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-  }
-  
-  .profile-details {
-    order: 2;
-    width: 100%;
-    text-align: center;
-  }
-  
   .profile-actions {
     position: relative;
     top: auto;
     right: auto;
-    order: 3;
     width: 100%;
     margin-top: 0;
     display: flex;
     justify-content: center;
   }
   
+  .profile-main {
+    flex-direction: column;
+    gap: 20px;
+    text-align: left;
+    align-items: stretch;
+  }
+  
+  .user-header {
+    flex-direction: row;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  
   .avatar {
-    width: 100px;
-    height: 100px;
-    font-size: 2.5rem;
-    margin: 0 auto;
-  }
-  
-  .achievement-badges {
-    justify-content: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    max-width: 280px;
-    margin: 0 auto;
-  }
-  
-  .mini-badge {
-    width: 36px;
-    height: 36px;
-    font-size: 14px;
-  }
-  
-  .more-badges {
-    width: 36px;
-    height: 36px;
-    font-size: 10px;
+    width: 70px;
+    height: 70px;
+    font-size: 1.8rem;
   }
   
   .profile-name {
-    font-size: 2rem;
-    margin-bottom: 16px;
-    text-align: center;
+    font-size: 1.6rem;
+    margin-bottom: 4px;
+  }
+  
+  .username {
+    font-size: 0.9rem;
+  }
+  
+  .status-text {
+    font-size: 0.9rem;
+  }
+  
+  .achievement-badges {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  
+  .mini-badge {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+  
+  .more-badges {
+    width: 32px;
+    height: 32px;
+    font-size: 9px;
   }
   
   .profile-meta {
@@ -1359,7 +1564,7 @@ export default {
   }
   
   .settings-wrapper {
-    padding: 0 16px 32px;
+    padding: 0 16px 32px; /* 恢复移动端的原始padding */
   }
   
   .settings-header {
@@ -1367,13 +1572,28 @@ export default {
     border-radius: 16px;
   }
   
-  .settings-title {
-    font-size: 1.3rem;
+  .settings-header.expanded-header {
+    border-radius: 16px 16px 0 0;
+    border-bottom: none;
+    box-shadow: none;
+  }
+  
+  .settings-header.expanded-header {
+    border-radius: 16px 16px 0 0;
+    border-bottom: none;
+    box-shadow: none;
   }
   
   .settings-content.expanded {
     padding: 32px 24px;
     border-radius: 0 0 16px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.8); /* 移动端展开时显示边框 */
+    border-top: none;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08); /* 移动端展开时显示阴影 */
+  }
+  
+  .settings-title {
+    font-size: 1.3rem;
   }
   
   .settings-grid {
@@ -1413,40 +1633,43 @@ export default {
     gap: 20px;
   }
   
-  .profile-main {
-    gap: 20px;
-  }
-  
-  .avatar-section {
-    gap: 16px;
+  .user-header {
+    gap: 12px;
   }
   
   .avatar {
-    width: 90px;
-    height: 90px;
-    font-size: 2.2rem;
-  }
-  
-  .achievement-badges {
-    gap: 8px;
-    max-width: 240px;
-  }
-  
-  .mini-badge {
-    width: 32px;
-    height: 32px;
-    font-size: 12px;
-  }
-  
-  .more-badges {
-    width: 32px;
-    height: 32px;
-    font-size: 9px;
+    width: 60px;
+    height: 60px;
+    font-size: 1.5rem;
   }
   
   .profile-name {
-    font-size: 1.8rem;
-    margin-bottom: 12px;
+    font-size: 1.4rem;
+    margin-bottom: 2px;
+  }
+  
+  .username {
+    font-size: 0.85rem;
+  }
+  
+  .status-text {
+    font-size: 0.85rem;
+  }
+  
+  .achievement-badges {
+    gap: 4px;
+  }
+  
+  .mini-badge {
+    width: 28px;
+    height: 28px;
+    font-size: 10px;
+  }
+  
+  .more-badges {
+    width: 28px;
+    height: 28px;
+    font-size: 8px;
   }
   
   .profile-meta {
@@ -1477,9 +1700,18 @@ export default {
     border-radius: 14px;
   }
   
+  .settings-header.expanded-header {
+    border-radius: 14px 14px 0 0;
+    border-bottom: none;
+    box-shadow: none;
+  }
+  
   .settings-content.expanded {
     padding: 24px 16px;
     border-radius: 0 0 14px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.8); /* 小屏幕展开时显示边框 */
+    border-top: none;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08); /* 小屏幕展开时显示阴影 */
   }
   
   .settings-actions {
@@ -1524,7 +1756,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 9999;
   padding: 2rem;
 }
 
