@@ -1,15 +1,14 @@
 @import './base.css';
 
-/* 全局基础样式 */
+/* 全局基础样式 - 修复版本 */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
-html, body {
+/* 只重置根元素的边距，保留内部元素的正常间距 */
+html {
   margin: 0;
   padding: 0;
   width: 100%;
@@ -18,6 +17,11 @@ html, body {
 }
 
 body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
     'Microsoft YaHei', '微软雅黑', Helvetica, Arial, sans-serif;
   font-weight: 400;
@@ -26,10 +30,16 @@ body {
   background-color: #f5f7fa;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
 }
 
 #app {
+  margin: 0;
+  padding: 0;
+  width: 100%;
   min-height: 100vh;
+  position: relative;
 }
 
 /* 滚动条样式 */
