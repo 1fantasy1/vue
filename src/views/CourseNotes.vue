@@ -1,13 +1,19 @@
 <template>
   <div class="page">
     <div class="header">
-      <button class="back-btn" @click="goBack">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"/>
-        </svg>
-        返回首页
-      </button>
-      <h1 class="page-title">课程笔记</h1>
+      <div class="title-section">
+        <h1 class="page-title">课程笔记</h1>
+        <div class="title-decoration">
+          <div class="decoration-line"></div>
+          <div class="decoration-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+            </svg>
+          </div>
+          <div class="decoration-line"></div>
+        </div>
+        <p class="page-subtitle">记录学习历程，沉淀知识精华</p>
+      </div>
     </div>
 
     <div class="controls-bar">
@@ -510,10 +516,6 @@ module.exports = router
       return filtered
     })
 
-    const goBack = () => {
-      router.push('/')
-    }
-
     const createNote = () => {
       alert('创建新笔记功能开发中...')
     }
@@ -551,7 +553,6 @@ module.exports = router
       courses,
       notes,
       filteredNotes,
-      goBack,
       createNote,
       openNote,
       closeNote,
@@ -571,10 +572,54 @@ module.exports = router
 }
 
 .header {
+  text-align: center;
+  margin-bottom: 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 24px 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15);
+  margin: -24px -24px 24px -24px;
+}
+
+.title-section {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.page-title {
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.title-decoration {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.decoration-line {
+  width: 50px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+}
+
+.decoration-icon {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  padding: 6px;
+  backdrop-filter: blur(10px);
+}
+
+.page-subtitle {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+  font-weight: 300;
 }
 
 .back-btn {
@@ -593,13 +638,6 @@ module.exports = router
 .back-btn:hover {
   border-color: #667eea;
   color: #667eea;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #2c3e50;
-  margin: 0;
 }
 
 .controls-bar {
@@ -961,13 +999,20 @@ module.exports = router
   }
 
   .header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+    margin: -16px -16px 16px -16px;
+    padding: 20px 16px;
   }
 
   .page-title {
     font-size: 1.5rem;
+  }
+
+  .page-subtitle {
+    font-size: 0.85rem;
+  }
+
+  .decoration-line {
+    width: 40px;
   }
 
   .controls-bar {

@@ -1,13 +1,19 @@
 <template>
   <div class="page">
     <div class="header">
-      <button class="back-btn" @click="goBack">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"/>
-        </svg>
-        返回首页
-      </button>
-      <h1 class="page-title">随手记录</h1>
+      <div class="title-section">
+        <h1 class="page-title">随手记录</h1>
+        <div class="title-decoration">
+          <div class="decoration-line"></div>
+          <div class="decoration-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.13,5.12L18.88,8.87M21,12V19A2,2 0 0,1 19,21H5A2,2 0 0,1 3,19V5A2,2 0 0,1 5,3H12"/>
+            </svg>
+          </div>
+          <div class="decoration-line"></div>
+        </div>
+        <p class="page-subtitle">记录灵感瞬间，捕捉思维火花</p>
+      </div>
     </div>
 
     <div class="quick-add">
@@ -295,10 +301,6 @@ export default {
       ).length
     })
 
-    const goBack = () => {
-      router.push('/')
-    }
-
     const getMoodEmoji = (mood) => {
       const moodObj = moods.value.find(m => m.value === mood)
       return moodObj ? moodObj.emoji : '😐'
@@ -382,7 +384,6 @@ export default {
       filteredNotes,
       todayNotes,
       weekNotes,
-      goBack,
       getMoodEmoji,
       addQuickNote,
       editNote,
@@ -403,10 +404,54 @@ export default {
 }
 
 .header {
+  text-align: center;
+  margin-bottom: 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 24px 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15);
+  margin: -24px -24px 24px -24px;
+}
+
+.title-section {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.page-title {
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.title-decoration {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.decoration-line {
+  width: 50px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+}
+
+.decoration-icon {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  padding: 6px;
+  backdrop-filter: blur(10px);
+}
+
+.page-subtitle {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+  font-weight: 300;
 }
 
 .back-btn {
@@ -425,13 +470,6 @@ export default {
 .back-btn:hover {
   border-color: #667eea;
   color: #667eea;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #2c3e50;
-  margin: 0;
 }
 
 .quick-add {
@@ -919,13 +957,20 @@ export default {
   }
 
   .header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+    margin: -16px -16px 16px -16px;
+    padding: 20px 16px;
   }
 
   .page-title {
     font-size: 1.5rem;
+  }
+
+  .page-subtitle {
+    font-size: 0.85rem;
+  }
+
+  .decoration-line {
+    width: 40px;
   }
 
   .controls {
