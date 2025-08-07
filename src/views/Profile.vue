@@ -91,34 +91,21 @@
 
     <!-- 设置区域 -->
     <div class="settings-wrapper">
-      <div class="settings-header" @click="openSettingsModal">
+      <div class="settings-header" @click="toggleSettings">
         <div class="settings-title">
           <span class="settings-icon">⚙️</span>
           <span>系统设置</span>
           <span class="status-badge">全功能</span>
         </div>
         <div class="settings-action-hint">
-          <span>点击打开</span>
-          <span class="arrow-icon">→</span>
+          <span class="desktop-hint">点击{{ isSettingsOpen ? '收起' : '展开' }}</span>
+          <span class="mobile-hint">点击打开</span>
+          <span class="arrow-icon" :class="{ 'rotated': isSettingsOpen }">→</span>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- 系统设置弹窗 -->
-  <div v-if="isSettingsOpen" class="settings-modal" @click.self="closeSettingsModal">
-    <div class="settings-modal-content">
-      <div class="settings-modal-header">
-        <button class="back-btn" @click="closeSettingsModal">
-          <span>←</span>
-        </button>
-        <h3 class="settings-modal-title">
-          <span>设置</span>
-        </h3>
-        <div class="header-spacer"></div>
-      </div>
       
-      <div class="settings-modal-body">
+      <!-- 桌面端内联设置面板 -->
+      <div v-if="isSettingsOpen" class="desktop-settings-panel">
         <!-- 统一使用分组列表布局 -->
         <div v-if="currentView === 'main'" class="settings-list-container">
           <!-- 模型与服务分组 -->
@@ -199,6 +186,7 @@
 
         <!-- 设置详情页面 -->
         <div v-if="currentView === 'detail'" class="setting-detail-page">
+          <!-- 在桌面端，详情页面有独立的头部，不需要显示主页面的头部 -->
           <div class="detail-header">
             <button class="back-btn" @click="backToMain">
               <span>←</span>
@@ -207,28 +195,33 @@
           </div>
           
           <div class="detail-content">
+            <!-- 这里是所有的设置详情内容 - 保持原有的详情内容不变 -->
             <!-- 主题设置详情 -->
             <div v-if="currentSettingDetail === 'theme'" class="settings-panel">
               <div class="settings-items">
                 <div class="setting-item">
                   <label class="setting-label">主题模式</label>
-                  <select class="setting-input" v-model="settings.theme">
-                    <option value="light">浅色模式</option>
-                    <option value="dark">深色模式</option>
-                    <option value="auto">自动切换</option>
-                  </select>
+                  <div class="setting-input-container">
+                    <select class="setting-input" v-model="settings.theme">
+                      <option value="light">浅色模式</option>
+                      <option value="dark">深色模式</option>
+                      <option value="auto">自动切换</option>
+                    </select>
+                  </div>
                 </div>
                 <div class="setting-item">
                   <label class="setting-label">主题色彩</label>
-                  <div class="color-palette">
-                    <div
-                      v-for="color in themeColors"
-                      :key="color.name"
-                      class="color-swatch"
-                      :class="{ active: settings.themeColor === color.value }"
-                      :style="{ background: color.value }"
-                      @click="selectColor(color.value)"
-                    ></div>
+                  <div class="setting-input-container">
+                    <div class="color-palette">
+                      <div
+                        v-for="color in themeColors"
+                        :key="color.name"
+                        class="color-swatch"
+                        :class="{ active: settings.themeColor === color.value }"
+                        :style="{ background: color.value }"
+                        @click="selectColor(color.value)"
+                      ></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -239,20 +232,26 @@
               <div class="settings-items">
                 <div class="setting-item">
                   <label class="setting-label">默认AI模型</label>
-                  <select class="setting-input" v-model="settings.defaultModel">
-                    <option value="gpt-4">GPT-4</option>
-                    <option value="claude">Claude-3</option>
-                    <option value="gemini">Gemini Pro</option>
-                    <option value="local">本地模型</option>
-                  </select>
+                  <div class="setting-input-container">
+                    <select class="setting-input" v-model="settings.defaultModel">
+                      <option value="gpt-4">GPT-4</option>
+                      <option value="claude">Claude-3</option>
+                      <option value="gemini">Gemini Pro</option>
+                      <option value="local">本地模型</option>
+                    </select>
+                  </div>
                 </div>
                 <div class="setting-item">
                   <label class="setting-label">API密钥</label>
-                  <input type="password" class="setting-input" placeholder="输入您的API密钥" v-model="settings.apiKey">
+                  <div class="setting-input-container">
+                    <input type="password" class="setting-input" placeholder="输入您的API密钥" v-model="settings.apiKey">
+                  </div>
                 </div>
                 <div class="setting-item">
                   <label class="setting-label">温度参数: {{ settings.temperature }}</label>
-                  <input type="range" min="0" max="1" step="0.1" v-model="settings.temperature" class="range-input">
+                  <div class="setting-input-container">
+                    <input type="range" min="0" max="1" step="0.1" v-model="settings.temperature" class="range-input">
+                  </div>
                 </div>
               </div>
             </div>
@@ -262,12 +261,14 @@
               <div class="settings-items">
                 <div class="setting-item">
                   <label class="setting-label">搜索引擎</label>
-                  <select class="setting-input" v-model="settings.searchEngine">
-                    <option value="google">Google</option>
-                    <option value="bing">Bing</option>
-                    <option value="baidu">百度</option>
-                    <option value="duckduckgo">DuckDuckGo</option>
-                  </select>
+                  <div class="setting-input-container">
+                    <select class="setting-input" v-model="settings.searchEngine">
+                      <option value="google">Google</option>
+                      <option value="bing">Bing</option>
+                      <option value="baidu">百度</option>
+                      <option value="duckduckgo">DuckDuckGo</option>
+                    </select>
+                  </div>
                 </div>
                 <div class="setting-item checkbox-item">
                   <label class="checkbox-label">
@@ -284,27 +285,33 @@
               <div class="settings-items">
                 <div class="setting-item">
                   <label class="setting-label">TTS服务提供商</label>
-                  <select class="setting-input" v-model="settings.ttsProvider">
-                    <option value="azure">Azure Cognitive Services</option>
-                    <option value="google">Google Text-to-Speech</option>
-                    <option value="amazon">Amazon Polly</option>
-                    <option value="iflytek">科大讯飞</option>
-                    <option value="baidu">百度语音</option>
-                    <option value="local">本地合成引擎</option>
-                  </select>
+                  <div class="setting-input-container">
+                    <select class="setting-input" v-model="settings.ttsProvider">
+                      <option value="azure">Azure Cognitive Services</option>
+                      <option value="google">Google Text-to-Speech</option>
+                      <option value="amazon">Amazon Polly</option>
+                      <option value="iflytek">科大讯飞</option>
+                      <option value="baidu">百度语音</option>
+                      <option value="local">本地合成引擎</option>
+                    </select>
+                  </div>
                 </div>
                 <div class="setting-item">
                   <label class="setting-label">默认语音</label>
-                  <select class="setting-input" v-model="settings.defaultVoice">
-                    <option value="zh-CN-XiaoxiaoNeural">晓晓 (女声)</option>
-                    <option value="zh-CN-YunxiNeural">云希 (男声)</option>
-                    <option value="zh-CN-YunyangNeural">云扬 (男声)</option>
-                    <option value="en-US-JennyNeural">Jenny (English)</option>
-                  </select>
+                  <div class="setting-input-container">
+                    <select class="setting-input" v-model="settings.defaultVoice">
+                      <option value="zh-CN-XiaoxiaoNeural">晓晓 (女声)</option>
+                      <option value="zh-CN-YunxiNeural">云希 (男声)</option>
+                      <option value="zh-CN-YunyangNeural">云扬 (男声)</option>
+                      <option value="en-US-JennyNeural">Jenny (English)</option>
+                    </select>
+                  </div>
                 </div>
                 <div class="setting-item">
                   <label class="setting-label">语速: {{ settings.speechRate }}</label>
-                  <input type="range" min="0.5" max="2" step="0.1" v-model="settings.speechRate" class="range-input">
+                  <div class="setting-input-container">
+                    <input type="range" min="0.5" max="2" step="0.1" v-model="settings.speechRate" class="range-input">
+                  </div>
                 </div>
                 <div class="setting-item checkbox-item">
                   <label class="checkbox-label">
@@ -321,23 +328,31 @@
               <div class="settings-items">
                 <div class="setting-item">
                   <label class="setting-label">MCP服务器地址</label>
-                  <input type="text" class="setting-input" placeholder="ws://localhost:3001" v-model="settings.mcpServerUrl">
+                  <div class="setting-input-container">
+                    <input type="text" class="setting-input" placeholder="ws://localhost:3001" v-model="settings.mcpServerUrl">
+                  </div>
                 </div>
                 <div class="setting-item">
                   <label class="setting-label">连接协议</label>
-                  <select class="setting-input" v-model="settings.mcpProtocol">
-                    <option value="websocket">WebSocket</option>
-                    <option value="stdio">Standard I/O</option>
-                    <option value="sse">Server-Sent Events</option>
-                  </select>
+                  <div class="setting-input-container">
+                    <select class="setting-input" v-model="settings.mcpProtocol">
+                      <option value="websocket">WebSocket</option>
+                      <option value="stdio">Standard I/O</option>
+                      <option value="sse">Server-Sent Events</option>
+                    </select>
+                  </div>
                 </div>
                 <div class="setting-item">
                   <label class="setting-label">认证令牌</label>
-                  <input type="password" class="setting-input" placeholder="输入MCP认证令牌" v-model="settings.mcpAuthToken">
+                  <div class="setting-input-container">
+                    <input type="password" class="setting-input" placeholder="输入MCP认证令牌" v-model="settings.mcpAuthToken">
+                  </div>
                 </div>
                 <div class="setting-item">
                   <label class="setting-label">连接超时 (秒): {{ settings.mcpTimeout }}</label>
-                  <input type="range" min="5" max="60" step="5" v-model="settings.mcpTimeout" class="range-input">
+                  <div class="setting-input-container">
+                    <input type="range" min="5" max="60" step="5" v-model="settings.mcpTimeout" class="range-input">
+                  </div>
                 </div>
                 <div class="setting-item checkbox-item">
                   <label class="checkbox-label">
@@ -348,29 +363,455 @@
                 </div>
                 <div class="setting-item checkbox-item">
                   <label class="checkbox-label">
-                    <input type="checkbox" v-model="settings.mcpDebugMode">
+                    <input type="checkbox" v-model="settings.mcpVerboseLogging">
                     <span class="checkmark"></span>
-                    <span>调试模式</span>
+                    <span>详细日志记录</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- 数据备份详情 -->
+            <div v-if="currentSettingDetail === 'backup'" class="settings-panel">
+              <div class="settings-items">
+                <div class="setting-item">
+                  <label class="setting-label">自动备份</label>
+                  <div class="setting-input-container">
+                    <select class="setting-input" v-model="settings.autoBackup">
+                      <option value="disabled">关闭</option>
+                      <option value="daily">每日备份</option>
+                      <option value="weekly">每周备份</option>
+                      <option value="monthly">每月备份</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">备份位置</label>
+                  <div class="setting-input-container">
+                    <input type="text" class="setting-input" placeholder="选择备份文件夹" v-model="settings.backupPath" readonly>
+                  </div>
+                </div>
+                <div class="setting-item checkbox-item">
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="settings.includeSettings">
+                    <span class="checkmark"></span>
+                    <span>包含设置配置</span>
+                  </label>
+                </div>
+                <div class="setting-item checkbox-item">
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="settings.includeHistory">
+                    <span class="checkmark"></span>
+                    <span>包含聊天历史</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- 聊天记录存储详情 -->
+            <div v-if="currentSettingDetail === 'storage'" class="settings-panel">
+              <div class="settings-items">
+                <div class="setting-item">
+                  <label class="setting-label">存储位置</label>
+                  <div class="setting-input-container">
+                    <select class="setting-input" v-model="settings.storageLocation">
+                      <option value="local">本地存储</option>
+                      <option value="cloud">云端存储</option>
+                      <option value="both">本地+云端</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">保留时间</label>
+                  <div class="setting-input-container">
+                    <select class="setting-input" v-model="settings.retentionPeriod">
+                      <option value="forever">永久保留</option>
+                      <option value="1year">1年</option>
+                      <option value="6months">6个月</option>
+                      <option value="3months">3个月</option>
+                      <option value="1month">1个月</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">最大存储大小: {{ settings.maxStorageSize }}GB</label>
+                  <div class="setting-input-container">
+                    <input type="range" min="1" max="100" step="1" v-model="settings.maxStorageSize" class="range-input">
+                  </div>
+                </div>
+                <div class="setting-item checkbox-item">
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="settings.compressOldChats">
+                    <span class="checkmark"></span>
+                    <span>压缩旧聊天记录</span>
                   </label>
                 </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 移动端系统设置弹窗 -->
+  <div v-if="isSettingsOpen && isMobile" class="settings-modal" @click.self="closeSettingsModal">
+    <div class="settings-modal-content">
+      <!-- 只在主页面时显示头部 -->
+      <div v-if="currentView === 'main'" class="settings-modal-header">
+        <button class="back-btn" @click="closeSettingsModal">
+          <span>←</span>
+        </button>
+        <h3 class="settings-modal-title">
+          <span>设置</span>
+        </h3>
+        <div class="header-spacer"></div>
+      </div>
       
-      <div class="settings-modal-footer">
-        <button class="modal-btn cancel-btn" @click="closeSettingsModal">
-          <span class="btn-icon">❌</span>
-          取消
-        </button>
-        <button class="modal-btn secondary-btn" @click="resetSettings">
-          <span class="btn-icon">🔄</span>
-          重置默认
-        </button>
-        <button class="modal-btn save-btn" @click="saveSettings">
-          <span class="btn-icon">💾</span>
-          保存设置
-        </button>
+      <div class="settings-modal-body" :class="{ 'detail-mode': currentView === 'detail' }">
+        <!-- 统一使用分组列表布局 -->
+        <div v-if="currentView === 'main'" class="settings-list-container">
+          <!-- 模型与服务分组 -->
+          <div class="settings-group">
+            <h3 class="group-title">模型与服务</h3>
+            <div class="settings-list">
+              <div class="settings-item" @click="openSettingDetail('defaultModel')">
+                <div class="item-icon">♥</div>
+                <div class="item-content">
+                  <div class="item-title">默认模型</div>
+                  <div class="item-subtitle">设置各个功能的默认模型</div>
+                </div>
+                <div class="item-arrow">›</div>
+              </div>
+              
+              <div class="settings-item" @click="openSettingDetail('theme')">
+                <div class="item-icon">🎨</div>
+                <div class="item-content">
+                  <div class="item-title">主题设置</div>
+                  <div class="item-subtitle">主题模式和色彩配置</div>
+                </div>
+                <div class="item-arrow">›</div>
+              </div>
+              
+              <div class="settings-item" @click="openSettingDetail('search')">
+                <div class="item-icon">🌐</div>
+                <div class="item-content">
+                  <div class="item-title">搜索服务</div>
+                  <div class="item-subtitle">设置搜索服务</div>
+                </div>
+                <div class="item-arrow">›</div>
+              </div>
+              
+              <div class="settings-item" @click="openSettingDetail('voice')">
+                <div class="item-icon">🔊</div>
+                <div class="item-content">
+                  <div class="item-title">语音服务</div>
+                  <div class="item-subtitle">配置语音合成服务提供商</div>
+                </div>
+                <div class="item-arrow">›</div>
+              </div>
+              
+              <div class="settings-item" @click="openSettingDetail('mcp')">
+                <div class="item-icon">>_</div>
+                <div class="item-content">
+                  <div class="item-title">MCP</div>
+                  <div class="item-subtitle">配置MCP服务器</div>
+                </div>
+                <div class="item-arrow">›</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 数据设置分组 -->
+          <div class="settings-group">
+            <h3 class="group-title">数据设置</h3>
+            <div class="settings-list">
+              <div class="settings-item" @click="openSettingDetail('backup')">
+                <div class="item-icon">🗃️</div>
+                <div class="item-content">
+                  <div class="item-title">数据备份</div>
+                  <div class="item-subtitle">备份和恢复应用数据</div>
+                </div>
+                <div class="item-arrow">›</div>
+              </div>
+              
+              <div class="settings-item" @click="openSettingDetail('storage')">
+                <div class="item-icon">💾</div>
+                <div class="item-content">
+                  <div class="item-title">聊天记录存储</div>
+                  <div class="item-subtitle">0 个文件, 0.00 MB</div>
+                </div>
+                <div class="item-arrow">›</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 设置详情页面 -->
+        <div v-if="currentView === 'detail'" class="setting-detail-page">
+          <!-- 在桌面端，详情页面有独立的头部，不需要显示主页面的头部 -->
+          <div class="detail-header">
+            <button class="back-btn" @click="backToMain">
+              <span>←</span>
+            </button>
+            <h3 class="detail-title">{{ getDetailTitle() }}</h3>
+          </div>
+          
+          <div class="detail-content">
+            <!-- 主题设置详情 -->
+            <div v-if="currentSettingDetail === 'theme'" class="settings-panel">
+              <div class="settings-items">
+                <div class="setting-item">
+                  <label class="setting-label">主题模式</label>
+                  <div class="setting-input-container">
+                    <select class="setting-input" v-model="settings.theme">
+                      <option value="light">浅色模式</option>
+                      <option value="dark">深色模式</option>
+                      <option value="auto">自动切换</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">主题色彩</label>
+                  <div class="setting-input-container">
+                    <div class="color-palette">
+                      <div
+                        v-for="color in themeColors"
+                        :key="color.name"
+                        class="color-swatch"
+                        :class="{ active: settings.themeColor === color.value }"
+                        :style="{ background: color.value }"
+                        @click="selectColor(color.value)"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 默认模型详情 -->
+            <div v-if="currentSettingDetail === 'defaultModel'" class="settings-panel">
+              <div class="settings-items">
+                <div class="setting-item">
+                  <label class="setting-label">默认AI模型</label>
+                  <div class="setting-input-container">
+                    <select class="setting-input" v-model="settings.defaultModel">
+                      <option value="gpt-4">GPT-4</option>
+                      <option value="claude">Claude-3</option>
+                      <option value="gemini">Gemini Pro</option>
+                      <option value="local">本地模型</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">API密钥</label>
+                  <div class="setting-input-container">
+                    <input type="password" class="setting-input" placeholder="输入您的API密钥" v-model="settings.apiKey">
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">温度参数: {{ settings.temperature }}</label>
+                  <div class="setting-input-container">
+                    <input type="range" min="0" max="1" step="0.1" v-model="settings.temperature" class="range-input">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 搜索服务详情 -->
+            <div v-if="currentSettingDetail === 'search'" class="settings-panel">
+              <div class="settings-items">
+                <div class="setting-item">
+                  <label class="setting-label">搜索引擎</label>
+                  <div class="setting-input-container">
+                    <select class="setting-input" v-model="settings.searchEngine">
+                      <option value="google">Google</option>
+                      <option value="bing">Bing</option>
+                      <option value="baidu">百度</option>
+                      <option value="duckduckgo">DuckDuckGo</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="setting-item checkbox-item">
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="settings.realtimeSearch">
+                    <span class="checkmark"></span>
+                    <span>启用实时搜索</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- 语音服务详情 -->
+            <div v-if="currentSettingDetail === 'voice'" class="settings-panel">
+              <div class="settings-items">
+                <div class="setting-item">
+                  <label class="setting-label">TTS服务提供商</label>
+                  <div class="setting-input-container">
+                    <select class="setting-input" v-model="settings.ttsProvider">
+                      <option value="azure">Azure Cognitive Services</option>
+                      <option value="google">Google Text-to-Speech</option>
+                      <option value="amazon">Amazon Polly</option>
+                      <option value="iflytek">科大讯飞</option>
+                      <option value="baidu">百度语音</option>
+                      <option value="local">本地合成引擎</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">默认语音</label>
+                  <div class="setting-input-container">
+                    <select class="setting-input" v-model="settings.defaultVoice">
+                      <option value="zh-CN-XiaoxiaoNeural">晓晓 (女声)</option>
+                      <option value="zh-CN-YunxiNeural">云希 (男声)</option>
+                      <option value="zh-CN-YunyangNeural">云扬 (男声)</option>
+                      <option value="en-US-JennyNeural">Jenny (English)</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">语速: {{ settings.speechRate }}</label>
+                  <div class="setting-input-container">
+                    <input type="range" min="0.5" max="2" step="0.1" v-model="settings.speechRate" class="range-input">
+                  </div>
+                </div>
+                <div class="setting-item checkbox-item">
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="settings.autoPlay">
+                    <span class="checkmark"></span>
+                    <span>自动播放生成的语音</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- MCP服务详情 -->
+            <div v-if="currentSettingDetail === 'mcp'" class="settings-panel">
+              <div class="settings-items">
+                <div class="setting-item">
+                  <label class="setting-label">MCP服务器地址</label>
+                  <div class="setting-input-container">
+                    <input type="text" class="setting-input" placeholder="ws://localhost:3001" v-model="settings.mcpServerUrl">
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">连接协议</label>
+                  <div class="setting-input-container">
+                    <select class="setting-input" v-model="settings.mcpProtocol">
+                      <option value="websocket">WebSocket</option>
+                      <option value="stdio">Standard I/O</option>
+                      <option value="sse">Server-Sent Events</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">认证令牌</label>
+                  <div class="setting-input-container">
+                    <input type="password" class="setting-input" placeholder="输入MCP认证令牌" v-model="settings.mcpAuthToken">
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">连接超时 (秒): {{ settings.mcpTimeout }}</label>
+                  <div class="setting-input-container">
+                    <input type="range" min="5" max="60" step="5" v-model="settings.mcpTimeout" class="range-input">
+                  </div>
+                </div>
+                <div class="setting-item checkbox-item">
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="settings.mcpAutoReconnect">
+                    <span class="checkmark"></span>
+                    <span>自动重连</span>
+                  </label>
+                </div>
+                <div class="setting-item checkbox-item">
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="settings.mcpVerboseLogging">
+                    <span class="checkmark"></span>
+                    <span>详细日志记录</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- 数据备份详情 -->
+            <div v-if="currentSettingDetail === 'backup'" class="settings-panel">
+              <div class="settings-items">
+                <div class="setting-item">
+                  <label class="setting-label">自动备份</label>
+                  <div class="setting-input-container">
+                    <select class="setting-input" v-model="settings.autoBackup">
+                      <option value="disabled">关闭</option>
+                      <option value="daily">每日备份</option>
+                      <option value="weekly">每周备份</option>
+                      <option value="monthly">每月备份</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">备份位置</label>
+                  <div class="setting-input-container">
+                    <input type="text" class="setting-input" placeholder="选择备份文件夹" v-model="settings.backupPath" readonly>
+                  </div>
+                </div>
+                <div class="setting-item checkbox-item">
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="settings.includeSettings">
+                    <span class="checkmark"></span>
+                    <span>包含设置配置</span>
+                  </label>
+                </div>
+                <div class="setting-item checkbox-item">
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="settings.includeHistory">
+                    <span class="checkmark"></span>
+                    <span>包含聊天历史</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- 聊天记录存储详情 -->
+            <div v-if="currentSettingDetail === 'storage'" class="settings-panel">
+              <div class="settings-items">
+                <div class="setting-item">
+                  <label class="setting-label">存储位置</label>
+                  <div class="setting-input-container">
+                    <select class="setting-input" v-model="settings.storageLocation">
+                      <option value="local">本地存储</option>
+                      <option value="cloud">云端存储</option>
+                      <option value="both">本地+云端</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">保留时间</label>
+                  <div class="setting-input-container">
+                    <select class="setting-input" v-model="settings.retentionPeriod">
+                      <option value="forever">永久保留</option>
+                      <option value="1year">1年</option>
+                      <option value="6months">6个月</option>
+                      <option value="3months">3个月</option>
+                      <option value="1month">1个月</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">最大存储大小: {{ settings.maxStorageSize }}GB</label>
+                  <div class="setting-input-container">
+                    <input type="range" min="1" max="100" step="1" v-model="settings.maxStorageSize" class="range-input">
+                  </div>
+                </div>
+                <div class="setting-item checkbox-item">
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="settings.compressOldChats">
+                    <span class="checkmark"></span>
+                    <span>压缩旧聊天记录</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -439,11 +880,11 @@
       </div>
     </div>
   </div>
-</div>
+
 </template>
 
 <script>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 
 export default {
@@ -454,6 +895,17 @@ export default {
     const isSettingsOpen = ref(false)
     const currentView = ref('main') // 'main' | 'detail'
     const currentSettingDetail = ref('')
+    const isMobile = ref(false)
+
+    // 检测设备类型
+    const checkMobile = () => {
+      isMobile.value = window.innerWidth <= 768
+    }
+
+    onMounted(() => {
+      checkMobile()
+      window.addEventListener('resize', checkMobile)
+    })
 
     const userProfile = ref({
       name: '张小明',
@@ -556,7 +1008,17 @@ export default {
       mcpAuthToken: '',
       mcpTimeout: 30,
       mcpAutoReconnect: true,
-      mcpDebugMode: false
+      mcpVerboseLogging: false,
+      // 数据备份设置
+      autoBackup: 'weekly',
+      backupPath: '/Users/用户名/Documents/App备份',
+      includeSettings: true,
+      includeHistory: true,
+      // 存储设置
+      storageLocation: 'local',
+      retentionPeriod: 'forever',
+      maxStorageSize: 10,
+      compressOldChats: true
     })
 
     const themeColors = ref([
@@ -591,6 +1053,41 @@ export default {
     const selectColor = (color) => {
       settings.value.themeColor = color
     }
+
+    // 自动保存设置
+    let isInitialLoad = true
+    const autoSaveSettings = () => {
+      // 避免初始加载时的保存提示
+      if (isInitialLoad) {
+        isInitialLoad = false
+        return
+      }
+      
+      // 这里可以添加实际的保存逻辑，比如保存到localStorage或发送到服务器
+      localStorage.setItem('userSettings', JSON.stringify(settings.value))
+      ElMessage.success('设置已自动保存')
+    }
+
+    // 监听设置变化，自动保存
+    watch(settings, () => {
+      autoSaveSettings()
+    }, { deep: true })
+
+    // 从localStorage加载设置
+    const loadSettings = () => {
+      const savedSettings = localStorage.getItem('userSettings')
+      if (savedSettings) {
+        try {
+          const parsed = JSON.parse(savedSettings)
+          Object.assign(settings.value, parsed)
+        } catch (error) {
+          console.error('加载设置失败:', error)
+        }
+      }
+    }
+
+    // 组件挂载时加载设置
+    loadSettings()
 
     const startEdit = () => {
       // 保存原始数据
@@ -647,34 +1144,18 @@ export default {
       ElMessage.success('个人信息保存成功！')
     }
 
-    const saveSettings = () => {
-      isSettingsOpen.value = false
-      ElMessage.success('设置保存成功！')
-    }
-
-    const resetSettings = () => {
-      settings.value = {
-        theme: 'light',
-        themeColor: '#667eea',
-        defaultModel: 'gpt-4',
-        apiKey: '',
-        temperature: 0.7,
-        searchEngine: 'google',
-        realtimeSearch: true,
-        // TTS 语言合成设置
-        ttsProvider: 'azure',
-        defaultVoice: 'zh-CN-XiaoxiaoNeural',
-        speechRate: 1.0,
-        autoPlay: false,
-        // MCP 服务配置
-        mcpServerUrl: 'ws://localhost:3001',
-        mcpProtocol: 'websocket',
-        mcpAuthToken: '',
-        mcpTimeout: 30,
-        mcpAutoReconnect: true,
-        mcpDebugMode: false
+    const toggleSettings = () => {
+      if (isMobile.value) {
+        // 移动端使用模态框
+        openSettingsModal()
+      } else {
+        // 桌面端切换内联面板
+        isSettingsOpen.value = !isSettingsOpen.value
+        if (!isSettingsOpen.value) {
+          currentView.value = 'main'
+          currentSettingDetail.value = ''
+        }
       }
-      ElMessage.success('已重置为默认设置！')
     }
 
     const openSettingsModal = () => {
@@ -718,6 +1199,7 @@ export default {
       isSettingsOpen,
       currentView,
       currentSettingDetail,
+      isMobile,
       userProfile,
       editProfile,
       originalProfile,
@@ -731,8 +1213,7 @@ export default {
       startEdit,
       cancelEdit,
       saveProfile,
-      saveSettings,
-      resetSettings,
+      toggleSettings,
       openSettingsModal,
       closeSettingsModal,
       openSettingDetail,
@@ -1309,66 +1790,757 @@ export default {
   transform: translateX(4px);
 }
 
+.arrow-icon.rotated {
+  transform: rotate(90deg);
+}
+
+.settings-header:hover .arrow-icon.rotated {
+  transform: rotate(90deg) translateY(-4px);
+}
+
+/* 桌面端内联设置面板 */
+.desktop-settings-panel {
+  max-width: 1200px;
+  margin: 24px auto 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 40px;
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  box-shadow: 
+    0 20px 40px rgba(0, 0, 0, 0.08),
+    0 8px 16px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  position: relative;
+  overflow: hidden;
+  animation: settingsPanelSlideDown 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes settingsPanelSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+    max-height: 0;
+    padding: 0 40px;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 1000px;
+    padding: 40px;
+  }
+}
+
+.desktop-settings-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 20%, rgba(102, 126, 234, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.03) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 桌面端设置详情页面在内联面板中的样式 */
+.desktop-settings-panel .setting-detail-page {
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  border: none;
+  overflow: visible;
+  position: static;
+  z-index: auto;
+  animation: settingsDetailSlideIn 0.3s ease-out;
+}
+
+@keyframes settingsDetailSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.desktop-settings-panel .detail-header {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08));
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.4);
+  padding: 24px 0 20px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px 16px 0 0;
+  margin: -40px -40px 32px -40px;
+}
+
+.desktop-settings-panel .detail-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 20%, rgba(102, 126, 234, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.03) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.desktop-settings-panel .detail-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  letter-spacing: -0.02em;
+}
+
+.desktop-settings-panel .back-btn {
+  position: absolute;
+  left: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: #4a5568;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 2;
+}
+
+.desktop-settings-panel .back-btn:hover {
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(102, 126, 234, 0.3);
+  color: #667eea;
+  transform: translateY(-50%) translateX(-4px);
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+}
+
+.desktop-settings-panel .detail-content {
+  padding: 0;
+  overflow: visible;
+  background: transparent;
+  position: relative;
+}
+
+/* 响应式控制：桌面端和移动端显示不同的提示文字 */
+.desktop-hint {
+  display: none;
+}
+
+.mobile-hint {
+  display: inline;
+}
+
+@media (min-width: 769px) {
+  .desktop-hint {
+    display: inline;
+  }
+  
+  .mobile-hint {
+    display: none;
+  }
+  
+  /* 在桌面端隐藏模态框 */
+  .settings-modal {
+    display: none;
+  }
+}
+
 /* 系统设置弹窗样式 */
 
-/* 设置详情页面样式 */
+/* 桌面端设置详情页面样式 - 现代化重新设计 */
 .setting-detail-page {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: white;
-  z-index: 20;
+  background: #ffffff;
+  z-index: 30;
   display: flex;
   flex-direction: column;
   animation: slideInRight 0.3s ease-out;
   border-radius: 16px;
   overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
-.detail-header {
-  display: flex;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid #f0f0f0;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
-  position: sticky;
-  top: 0;
-  z-index: 10;
+/* 桌面端设置详情页面优化 */
+@media (min-width: 769px) {
+  .setting-detail-page {
+    background: linear-gradient(135deg, #f8fafc 0%, #ffffff 50%, #f1f5f9 100%);
+    border-radius: 20px;
+    box-shadow: 
+      0 20px 40px rgba(0, 0, 0, 0.08),
+      0 8px 16px rgba(0, 0, 0, 0.04),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    overflow: hidden;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 100;
+  }
+  
+  .detail-header {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08));
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.4);
+    padding: 32px 40px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .detail-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 20% 20%, rgba(102, 126, 234, 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.03) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  
+  .detail-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a202c;
+    margin: 0;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+    letter-spacing: -0.02em;
+  }
+  
+  .back-btn {
+    position: absolute;
+    left: 40px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: #4a5568;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    z-index: 2;
+  }
+  
+  .back-btn:hover {
+    background: rgba(255, 255, 255, 1);
+    border-color: rgba(102, 126, 234, 0.3);
+    color: #667eea;
+    transform: translateY(-50%) translateX(-4px);
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+  }
+  
+  .detail-content {
+    flex: 1;
+    padding: 40px;
+    overflow-y: auto;
+    background: transparent;
+    position: relative;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(102, 126, 234, 0.2) transparent;
+  }
+  
+  .detail-content::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .detail-content::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .detail-content::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.2);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  
+  .detail-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.4);
+    background-clip: content-box;
+  }
+  
+  /* 桌面端设置面板重新设计 */
+  .settings-panel {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    padding: 40px;
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    box-shadow: 
+      0 20px 40px rgba(0, 0, 0, 0.08),
+      0 8px 16px rgba(0, 0, 0, 0.04),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .settings-panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 10% 10%, rgba(102, 126, 234, 0.02) 0%, transparent 50%),
+      radial-gradient(circle at 90% 90%, rgba(118, 75, 162, 0.02) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  .settings-panel:hover {
+    transform: translateY(-8px);
+    box-shadow: 
+      0 32px 64px rgba(0, 0, 0, 0.12),
+      0 16px 32px rgba(0, 0, 0, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    border-color: rgba(102, 126, 234, 0.2);
+  }
+  
+  .settings-items {
+    display: grid;
+    gap: 32px;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .setting-item {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 24px;
+    align-items: start;
+    padding: 20px 0;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.4);
+  }
+  
+  .setting-item:last-child {
+    border-bottom: none;
+  }
+  
+  .setting-item.checkbox-item {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .setting-label {
+    font-size: 16px;
+    font-weight: 600;
+    color: #2d3748;
+    letter-spacing: -0.01em;
+    line-height: 1.5;
+    margin: 0;
+    align-self: center;
+  }
+  
+  .setting-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .setting-input {
+    padding: 16px 20px;
+    border: 2px solid rgba(226, 232, 240, 0.6);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    color: #2d3748;
+    font-size: 15px;
+    font-weight: 500;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.04),
+      inset 0 1px 2px rgba(0, 0, 0, 0.02);
+  }
+  
+  .setting-input:hover {
+    border-color: rgba(102, 126, 234, 0.3);
+    box-shadow: 
+      0 8px 24px rgba(0, 0, 0, 0.08),
+      inset 0 1px 2px rgba(0, 0, 0, 0.02);
+    background: rgba(255, 255, 255, 1);
+  }
+  
+  .setting-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 
+      0 0 0 4px rgba(102, 126, 234, 0.15),
+      0 8px 24px rgba(102, 126, 234, 0.2);
+    background: rgba(255, 255, 255, 1);
+    transform: translateY(-2px);
+  }
+  
+  .range-input {
+    height: 12px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 100%);
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    border: none;
+    padding: 0;
+  }
+  
+  .range-input:hover {
+    background: linear-gradient(90deg, #e2e8f0 0%, #cbd5e0 100%);
+  }
+  
+  .range-input::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    cursor: pointer;
+    box-shadow: 
+      0 4px 12px rgba(102, 126, 234, 0.4),
+      0 2px 4px rgba(0, 0, 0, 0.1);
+    border: 4px solid white;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .range-input::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 
+      0 8px 24px rgba(102, 126, 234, 0.5),
+      0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  .range-input::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    cursor: pointer;
+    border: 4px solid white;
+    box-shadow: 
+      0 4px 12px rgba(102, 126, 234, 0.4),
+      0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .range-input::-moz-range-thumb:hover {
+    transform: scale(1.15);
+    box-shadow: 
+      0 8px 24px rgba(102, 126, 234, 0.5),
+      0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  .color-palette {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    padding: 24px;
+    background: rgba(248, 250, 252, 0.8);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.04);
+  }
+  
+  .color-swatch {
+    width: 56px;
+    height: 56px;
+    border-radius: 18px;
+    cursor: pointer;
+    border: 4px solid rgba(255, 255, 255, 0.9);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    box-shadow: 
+      0 8px 24px rgba(0, 0, 0, 0.12),
+      0 4px 8px rgba(0, 0, 0, 0.08);
+    backdrop-filter: blur(10px);
+  }
+  
+  .color-swatch:hover {
+    transform: translateY(-4px) scale(1.1);
+    box-shadow: 
+      0 16px 40px rgba(0, 0, 0, 0.2),
+      0 8px 16px rgba(0, 0, 0, 0.12);
+    border-color: rgba(255, 255, 255, 1);
+  }
+  
+  .color-swatch.active {
+    border-color: #2d3748;
+    transform: translateY(-4px) scale(1.15);
+    box-shadow: 
+      0 20px 48px rgba(0, 0, 0, 0.25),
+      0 12px 24px rgba(0, 0, 0, 0.15);
+  }
+  
+  .color-swatch.active::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-weight: bold;
+    font-size: 20px;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+  }
+  
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    cursor: pointer;
+    font-size: 16px;
+    color: #2d3748;
+    font-weight: 500;
+    padding: 16px 20px;
+    border-radius: 16px;
+    transition: all 0.3s ease;
+    background: rgba(248, 250, 252, 0.5);
+    border: 1px solid rgba(226, 232, 240, 0.4);
+  }
+  
+  .checkbox-label:hover {
+    background: rgba(102, 126, 234, 0.04);
+    border-color: rgba(102, 126, 234, 0.2);
+    transform: translateX(4px);
+  }
+  
+  .checkmark {
+    width: 24px;
+    height: 24px;
+    border: 3px solid #cbd5e0;
+    border-radius: 8px;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    box-shadow: 
+      0 2px 8px rgba(0, 0, 0, 0.08),
+      inset 0 1px 2px rgba(0, 0, 0, 0.04);
+  }
+  
+  .checkbox-label input[type="checkbox"]:checked + .checkmark {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: #667eea;
+    box-shadow: 
+      0 4px 16px rgba(102, 126, 234, 0.4),
+      0 2px 8px rgba(0, 0, 0, 0.12);
+    transform: scale(1.1);
+  }
+  
+  .checkbox-label input[type="checkbox"]:checked + .checkmark::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
 }
 
-.detail-title {
-  flex: 1;
-  text-align: center;
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: #2d3748;
-}
-
-.detail-content {
-  flex: 1;
-  padding: 24px;
-  overflow-y: auto;
-}
-
-/* 移动端详情页面样式调整 */
+/* 移动端设置详情页面样式调整 */
 @media (max-width: 768px) {
   .setting-detail-page {
     border-radius: 0;
+    background: white;
   }
   
   .detail-header {
     padding: env(safe-area-inset-top, 20px) 1rem 1rem;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+    display: flex;
+    align-items: center;
   }
   
   .detail-title {
     font-size: 18px;
+    flex: 1;
+    text-align: center;
+    margin: 0;
+    font-weight: 600;
+    color: #2d3748;
   }
   
   .detail-content {
     padding: 20px 16px;
+  }
+  
+  .back-btn {
+    position: static;
+    display: block;
+    transform: none;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #007AFF;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+  }
+  
+  .back-btn:hover {
+    background-color: #f0f0f0;
+  }
+  
+  /* 移动端设置面板样式 */
+  .settings-panel {
+    background: rgba(248, 250, 252, 0.95);
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  }
+  
+  .settings-items {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .setting-item {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .setting-item.checkbox-item {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+  }
+  
+  .setting-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: #2d3748;
+  }
+  
+  .setting-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .setting-input, .range-input {
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 2px solid #e2e8f0;
+    font-size: 16px;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    color: #1f2937;
+    font-weight: 500;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .setting-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1), 0 2px 8px rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 1);
+    transform: translateY(-1px);
+  }
+  
+  .range-input {
+    height: 10px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 100%);
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    border: none;
+    padding: 0;
+  }
+  
+  .color-palette {
+    gap: 10px;
+    justify-content: center;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    border: 2px solid rgba(226, 232, 240, 0.8);
+  }
+  
+  .color-swatch {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .checkmark {
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+    border: 2px solid #d1d5db;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #374151;
+    font-weight: 500;
+    padding: 8px 12px;
+    border-radius: 10px;
+    transition: all 0.3s ease;
   }
 }
 
@@ -1483,7 +2655,7 @@ export default {
   transform: translateX(2px);
 }
 
-/* 移动端样式调整 */
+/* 移动端样式保持完美不变 */
 @media (max-width: 768px) {
   .settings-list-container {
     padding: 0;
@@ -1493,15 +2665,32 @@ export default {
     font-size: 16px;
     margin: 0 0 16px 0;
     padding: 0 16px;
+    font-weight: 600;
+    color: #333;
   }
   
   .settings-list {
     border-radius: 12px;
     margin: 0 16px;
+    background: white;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(0, 0, 0, 0.06);
   }
   
   .settings-item {
     padding: 16px;
+    border-bottom: 1px solid #f5f5f5;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    background: transparent;
+    transform: none;
+  }
+  
+  .settings-item:hover {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.04), rgba(118, 75, 162, 0.04));
+    transform: translateX(2px);
+    padding-left: 16px;
   }
   
   .item-icon {
@@ -1510,18 +2699,34 @@ export default {
     height: 40px;
     margin-right: 12px;
     border-radius: 10px;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+    transition: all 0.2s ease;
+  }
+  
+  .settings-item:hover .item-icon {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+    transform: scale(1.05);
   }
   
   .item-title {
     font-size: 15px;
+    font-weight: 600;
+    color: #2d3748;
   }
   
   .item-subtitle {
     font-size: 13px;
+    color: #718096;
   }
   
   .item-arrow {
     font-size: 18px;
+    color: #cbd5e0;
+  }
+  
+  .settings-item:hover .item-arrow {
+    color: #667eea;
+    transform: translateX(2px);
   }
 }
 
@@ -1542,6 +2747,7 @@ export default {
   background-color: #f0f0f0;
 }
 
+/* 系统设置弹窗样式 - 桌面端现代化重新设计 */
 .settings-modal {
   position: fixed;
   top: 0;
@@ -1568,6 +2774,302 @@ export default {
   max-height: 90vh;
   overflow: hidden;
   animation: modalSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 桌面端设置模态框优化 */
+@media (min-width: 769px) {
+  .settings-modal {
+    padding: 3rem;
+  }
+  
+  .settings-modal-content {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(40px);
+    border-radius: 32px;
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    box-shadow: 
+      0 40px 80px rgba(0, 0, 0, 0.25),
+      0 20px 40px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    max-width: 1100px;
+    max-height: 85vh;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .settings-modal-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 20% 20%, rgba(102, 126, 234, 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.03) 0%, transparent 50%),
+      linear-gradient(135deg, rgba(248, 250, 252, 0.4) 0%, rgba(255, 255, 255, 0.1) 50%, rgba(241, 245, 249, 0.4) 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  .settings-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3rem 3rem 2rem;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.4);
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.06), rgba(118, 75, 162, 0.06));
+    backdrop-filter: blur(20px);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    position: relative;
+  }
+  
+  .settings-modal-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 30% 30%, rgba(102, 126, 234, 0.04) 0%, transparent 50%),
+      radial-gradient(circle at 70% 70%, rgba(118, 75, 162, 0.04) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  
+  .settings-modal-title {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1a202c;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    letter-spacing: -0.02em;
+    flex: 1;
+    text-align: center;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1;
+  }
+  
+  .back-btn {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    font-size: 24px;
+    color: #4a5568;
+    cursor: pointer;
+    padding: 12px;
+    border-radius: 16px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+    position: relative;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .back-btn:hover {
+    background: rgba(255, 255, 255, 1);
+    border-color: rgba(102, 126, 234, 0.3);
+    color: #667eea;
+    transform: translateX(-4px);
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
+  }
+  
+  .header-spacer {
+    width: 56px;
+  }
+  
+  .settings-modal-body {
+    padding: 3rem;
+    max-height: 60vh;
+    overflow-y: auto;
+    position: relative;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(102, 126, 234, 0.3) transparent;
+    z-index: 1;
+  }
+  
+  .settings-modal-body.detail-mode {
+    padding: 0;
+    max-height: none;
+    height: 100%;
+  }
+  
+  .settings-modal-body::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .settings-modal-body::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .settings-modal-body::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.2);
+    border-radius: 4px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  
+  .settings-modal-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.4);
+    background-clip: content-box;
+  }
+  
+  /* 桌面端分组列表样式优化 */
+  .settings-list-container {
+    padding: 0;
+    max-width: 100%;
+  }
+  
+  .settings-group {
+    margin-bottom: 48px;
+  }
+  
+  .group-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1a202c;
+    margin: 0 0 32px 0;
+    padding: 0 8px;
+    letter-spacing: -0.02em;
+    position: relative;
+  }
+  
+  .group-title::before {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 8px;
+    width: 60px;
+    height: 4px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 2px;
+  }
+  
+  .settings-list {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 
+      0 20px 40px rgba(0, 0, 0, 0.08),
+      0 8px 16px rgba(0, 0, 0, 0.04),
+      inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(226, 232, 240, 0.6);
+    position: relative;
+  }
+  
+  .settings-list::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 10% 10%, rgba(102, 126, 234, 0.02) 0%, transparent 50%),
+      radial-gradient(circle at 90% 90%, rgba(118, 75, 162, 0.02) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  .settings-item {
+    display: flex;
+    align-items: center;
+    padding: 28px 32px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.4);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 1;
+    background: transparent;
+  }
+  
+  .settings-item:last-child {
+    border-bottom: none;
+  }
+  
+  .settings-item:hover {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.06), rgba(118, 75, 162, 0.06));
+    transform: translateX(8px);
+    padding-left: 40px;
+  }
+  
+  .settings-item:active {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+    transform: translateX(4px);
+  }
+  
+  .item-icon {
+    font-size: 28px;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 24px;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(226, 232, 240, 0.4);
+    box-shadow: 
+      0 8px 16px rgba(0, 0, 0, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  }
+  
+  .settings-item:hover .item-icon {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 
+      0 16px 32px rgba(0, 0, 0, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    border-color: rgba(102, 126, 234, 0.3);
+  }
+  
+  .item-content {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .item-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a202c;
+    margin-bottom: 8px;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+  
+  .item-subtitle {
+    font-size: 16px;
+    color: #4a5568;
+    line-height: 1.4;
+    font-weight: 500;
+  }
+  
+  .item-arrow {
+    font-size: 24px;
+    color: #cbd5e0;
+    margin-left: 16px;
+    flex-shrink: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .settings-item:hover .item-arrow {
+    color: #667eea;
+    transform: translateX(8px) scale(1.2);
+  }
 }
 
 .settings-modal-header {
@@ -1623,6 +3125,7 @@ export default {
   padding: 2rem;
   max-height: 60vh;
   overflow-y: auto;
+  position: relative;
   scrollbar-width: thin;
   scrollbar-color: rgba(102, 126, 234, 0.3) transparent;
 }
@@ -1652,20 +3155,19 @@ export default {
 }
 
 .settings-panel {
-  background: linear-gradient(135deg, rgba(248, 250, 252, 0.9), rgba(255, 255, 255, 0.8));
-  backdrop-filter: blur(10px);
+  background: #ffffff;
   border-radius: 20px;
   padding: 28px;
-  border: 1px solid rgba(226, 232, 240, 0.6);
+  border: 1px solid rgba(226, 232, 240, 0.8);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
 
 .settings-panel:hover {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9));
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  background: #f8fafc;
   transform: translateY(-2px);
-  border-color: rgba(102, 126, 234, 0.2);
+  border-color: rgba(102, 126, 234, 0.3);
 }
 
 .panel-title {
@@ -1876,73 +3378,6 @@ export default {
   font-weight: bold;
 }
 
-.settings-modal-footer {
-  padding: 1.5rem 2rem 2rem;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
-  background: linear-gradient(135deg, rgba(248, 250, 252, 0.8), rgba(255, 255, 255, 0.9));
-  backdrop-filter: blur(10px);
-}
-
-.modal-btn {
-  padding: 14px 28px;
-  border: none;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 120px;
-  justify-content: center;
-  letter-spacing: 0.3px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.modal-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-}
-
-.secondary-btn {
-  background: linear-gradient(135deg, rgba(248, 250, 252, 0.9), rgba(255, 255, 255, 0.8));
-  color: #6b7280;
-  border: 2px solid rgba(209, 213, 219, 0.8);
-}
-
-.secondary-btn:hover {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(248, 250, 252, 0.95));
-  color: #374151;
-  border-color: rgba(156, 163, 175, 0.8);
-}
-
-.cancel-btn {
-  background: linear-gradient(135deg, rgba(248, 250, 252, 0.9), rgba(255, 255, 255, 0.8));
-  color: #6b7280;
-  border: 2px solid rgba(209, 213, 219, 0.8);
-}
-
-.cancel-btn:hover {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(248, 250, 252, 0.95));
-  color: #374151;
-  border-color: rgba(156, 163, 175, 0.8);
-}
-
-.save-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-}
-
-.save-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 35px rgba(102, 126, 234, 0.5);
-}
-
 /* 响应式设计 */
 @media (max-width: 768px) {
   .profile-page::before {
@@ -2079,7 +3514,7 @@ export default {
     font-size: 1.3rem;
   }
   
-  /* 移动端系统设置弹窗适配 */
+  /* 移动端系统设置弹窗完美适配 */
   .settings-modal {
     padding: 0;
     align-items: stretch;
@@ -2095,6 +3530,8 @@ export default {
     margin: 0;
     display: flex;
     flex-direction: column;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(30px);
   }
   
   @keyframes modalSlideLeft {
@@ -2123,6 +3560,18 @@ export default {
     display: block;
     position: static;
     order: 1;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #007AFF;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+  }
+  
+  .back-btn:hover {
+    background-color: #f0f0f0;
   }
   
   .settings-modal-title {
@@ -2134,6 +3583,13 @@ export default {
     position: static;
     transform: none;
     left: auto;
+    font-weight: 700;
+    color: #2d3748;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    letter-spacing: -0.01em;
   }
   
   .header-spacer {
@@ -2149,29 +3605,27 @@ export default {
     display: none;
   }
   
-  .close-btn {
-    position: absolute;
-    right: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 36px;
-    height: 36px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .close-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-  }
-  
   .settings-modal-body {
     padding: 1.5rem;
     flex: 1;
     overflow-y: auto;
     max-height: none;
+    background: #ffffff;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(102, 126, 234, 0.3) transparent;
+  }
+  
+  .settings-modal-body::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .settings-modal-body::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .settings-modal-body::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.3);
+    border-radius: 3px;
   }
   
   .settings-grid {
@@ -2186,12 +3640,16 @@ export default {
     background: rgba(248, 250, 252, 0.95);
     border: 1px solid rgba(226, 232, 240, 0.8);
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
   .panel-title {
     font-size: 1.1rem;
     margin-bottom: 16px;
     padding-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 2px solid rgba(102, 126, 234, 0.1);
   }
   
   .setting-item {
@@ -2232,25 +3690,6 @@ export default {
     width: 20px;
     height: 20px;
     border-radius: 5px;
-  }
-  
-  .settings-modal-footer {
-    padding: 1rem 1.5rem calc(env(safe-area-inset-bottom, 20px) + 1rem);
-    background: rgba(248, 250, 252, 0.95);
-    border-top: 1px solid rgba(226, 232, 240, 0.8);
-    border-radius: 0;
-    flex-direction: row;
-    gap: 12px;
-    flex-shrink: 0;
-  }
-  
-  .modal-btn {
-    flex: 1;
-    padding: 16px 20px;
-    font-size: 16px;
-    font-weight: 600;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 }
 
@@ -2447,23 +3886,6 @@ export default {
     width: 18px;
     height: 18px;
     border-radius: 4px;
-  }
-  
-  .settings-modal-footer {
-    padding: 0.75rem 1rem calc(env(safe-area-inset-bottom, 16px) + 0.75rem);
-    border-radius: 0;
-    gap: 8px;
-  }
-  
-  .modal-btn {
-    padding: 14px 16px;
-    font-size: 15px;
-    border-radius: 10px;
-  }
-  
-  .edit-btn {
-    padding: 12px 20px;
-    font-size: 14px;
   }
 }
 
