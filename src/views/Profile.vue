@@ -109,167 +109,329 @@
   <div v-if="isSettingsOpen" class="settings-modal" @click.self="closeSettingsModal">
     <div class="settings-modal-content">
       <div class="settings-modal-header">
-        <h3 class="settings-modal-title">
-          <span class="settings-icon">⚙️</span>
-          系统设置
-        </h3>
-        <button class="close-btn" @click="closeSettingsModal">
-          <span>✕</span>
+        <button class="back-btn" @click="closeSettingsModal">
+          <span>←</span>
         </button>
+        <h3 class="settings-modal-title">
+          <span>设置</span>
+        </h3>
+        <div class="header-spacer"></div>
       </div>
       
       <div class="settings-modal-body">
-        <div class="settings-grid">
-          <div class="settings-panel">
-            <h4 class="panel-title">🎨 主题设置</h4>
-            <div class="settings-items">
-              <div class="setting-item">
-                <label class="setting-label">主题模式</label>
-                <select class="setting-input" v-model="settings.theme">
-                  <option value="light">浅色模式</option>
-                  <option value="dark">深色模式</option>
-                  <option value="auto">自动切换</option>
-                </select>
-              </div>
-              <div class="setting-item">
-                <label class="setting-label">主题色彩</label>
-                <div class="color-palette">
-                  <div
-                    v-for="color in themeColors"
-                    :key="color.name"
-                    class="color-swatch"
-                    :class="{ active: settings.themeColor === color.value }"
-                    :style="{ background: color.value }"
-                    @click="selectColor(color.value)"
-                  ></div>
+        <!-- 统一使用分组列表布局 -->
+        <div v-if="currentView === 'main'" class="settings-list-container">
+          <!-- 模型与服务分组 -->
+          <div class="settings-group">
+            <h3 class="group-title">模型与服务</h3>
+            <div class="settings-list">
+              <div class="settings-item" @click="openSettingDetail('defaultModel')">
+                <div class="item-icon">♥</div>
+                <div class="item-content">
+                  <div class="item-title">默认模型</div>
+                  <div class="item-subtitle">设置各个功能的默认模型</div>
                 </div>
+                <div class="item-arrow">›</div>
+              </div>
+              
+              <div class="settings-item" @click="openSettingDetail('theme')">
+                <div class="item-icon">🎨</div>
+                <div class="item-content">
+                  <div class="item-title">主题设置</div>
+                  <div class="item-subtitle">主题模式和色彩配置</div>
+                </div>
+                <div class="item-arrow">›</div>
+              </div>
+              
+              <div class="settings-item" @click="openSettingDetail('search')">
+                <div class="item-icon">🌐</div>
+                <div class="item-content">
+                  <div class="item-title">搜索服务</div>
+                  <div class="item-subtitle">设置搜索服务</div>
+                </div>
+                <div class="item-arrow">›</div>
+              </div>
+              
+              <div class="settings-item" @click="openSettingDetail('voice')">
+                <div class="item-icon">🔊</div>
+                <div class="item-content">
+                  <div class="item-title">语音服务</div>
+                  <div class="item-subtitle">配置语音合成服务提供商</div>
+                </div>
+                <div class="item-arrow">›</div>
+              </div>
+              
+              <div class="settings-item" @click="openSettingDetail('mcp')">
+                <div class="item-icon">>_</div>
+                <div class="item-content">
+                  <div class="item-title">MCP</div>
+                  <div class="item-subtitle">配置MCP服务器</div>
+                </div>
+                <div class="item-arrow">›</div>
               </div>
             </div>
           </div>
 
-          <div class="settings-panel">
-            <h4 class="panel-title">🤖 模型配置</h4>
-            <div class="settings-items">
-              <div class="setting-item">
-                <label class="setting-label">默认AI模型</label>
-                <select class="setting-input" v-model="settings.defaultModel">
-                  <option value="gpt-4">GPT-4</option>
-                  <option value="claude">Claude-3</option>
-                  <option value="gemini">Gemini Pro</option>
-                  <option value="local">本地模型</option>
-                </select>
+          <!-- 数据设置分组 -->
+          <div class="settings-group">
+            <h3 class="group-title">数据设置</h3>
+            <div class="settings-list">
+              <div class="settings-item" @click="openSettingDetail('backup')">
+                <div class="item-icon">🗃️</div>
+                <div class="item-content">
+                  <div class="item-title">数据备份</div>
+                  <div class="item-subtitle">备份和恢复应用数据</div>
+                </div>
+                <div class="item-arrow">›</div>
               </div>
-              <div class="setting-item">
-                <label class="setting-label">API密钥</label>
-                <input type="password" class="setting-input" placeholder="输入您的API密钥" v-model="settings.apiKey">
-              </div>
-              <div class="setting-item">
-                <label class="setting-label">温度参数: {{ settings.temperature }}</label>
-                <input type="range" min="0" max="1" step="0.1" v-model="settings.temperature" class="range-input">
-              </div>
-            </div>
-          </div>
-
-          <div class="settings-panel">
-            <h4 class="panel-title">🔍 搜索服务</h4>
-            <div class="settings-items">
-              <div class="setting-item">
-                <label class="setting-label">搜索引擎</label>
-                <select class="setting-input" v-model="settings.searchEngine">
-                  <option value="google">Google</option>
-                  <option value="bing">Bing</option>
-                  <option value="baidu">百度</option>
-                  <option value="duckduckgo">DuckDuckGo</option>
-                </select>
-              </div>
-              <div class="setting-item checkbox-item">
-                <label class="checkbox-label">
-                  <input type="checkbox" v-model="settings.realtimeSearch">
-                  <span class="checkmark"></span>
-                  <span>启用实时搜索</span>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <div class="settings-panel">
-            <h4 class="panel-title">🎙️ 语言合成服务商</h4>
-            <div class="settings-items">
-              <div class="setting-item">
-                <label class="setting-label">TTS服务提供商</label>
-                <select class="setting-input" v-model="settings.ttsProvider">
-                  <option value="azure">Azure Cognitive Services</option>
-                  <option value="google">Google Text-to-Speech</option>
-                  <option value="amazon">Amazon Polly</option>
-                  <option value="iflytek">科大讯飞</option>
-                  <option value="baidu">百度语音</option>
-                  <option value="local">本地合成引擎</option>
-                </select>
-              </div>
-              <div class="setting-item">
-                <label class="setting-label">默认语音</label>
-                <select class="setting-input" v-model="settings.defaultVoice">
-                  <option value="zh-CN-XiaoxiaoNeural">晓晓 (女声)</option>
-                  <option value="zh-CN-YunxiNeural">云希 (男声)</option>
-                  <option value="zh-CN-YunyangNeural">云扬 (男声)</option>
-                  <option value="en-US-JennyNeural">Jenny (English)</option>
-                </select>
-              </div>
-              <div class="setting-item">
-                <label class="setting-label">语速: {{ settings.speechRate }}</label>
-                <input type="range" min="0.5" max="2" step="0.1" v-model="settings.speechRate" class="range-input">
-              </div>
-              <div class="setting-item checkbox-item">
-                <label class="checkbox-label">
-                  <input type="checkbox" v-model="settings.autoPlay">
-                  <span class="checkmark"></span>
-                  <span>自动播放生成的语音</span>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <div class="settings-panel">
-            <h4 class="panel-title">🔗 MCP服务配置</h4>
-            <div class="settings-items">
-              <div class="setting-item">
-                <label class="setting-label">MCP服务器地址</label>
-                <input type="text" class="setting-input" placeholder="ws://localhost:3001" v-model="settings.mcpServerUrl">
-              </div>
-              <div class="setting-item">
-                <label class="setting-label">连接协议</label>
-                <select class="setting-input" v-model="settings.mcpProtocol">
-                  <option value="websocket">WebSocket</option>
-                  <option value="stdio">Standard I/O</option>
-                  <option value="sse">Server-Sent Events</option>
-                </select>
-              </div>
-              <div class="setting-item">
-                <label class="setting-label">认证令牌</label>
-                <input type="password" class="setting-input" placeholder="输入MCP认证令牌" v-model="settings.mcpAuthToken">
-              </div>
-              <div class="setting-item">
-                <label class="setting-label">连接超时 (秒): {{ settings.mcpTimeout }}</label>
-                <input type="range" min="5" max="60" step="5" v-model="settings.mcpTimeout" class="range-input">
-              </div>
-              <div class="setting-item checkbox-item">
-                <label class="checkbox-label">
-                  <input type="checkbox" v-model="settings.mcpAutoReconnect">
-                  <span class="checkmark"></span>
-                  <span>自动重连</span>
-                </label>
-              </div>
-              <div class="setting-item checkbox-item">
-                <label class="checkbox-label">
-                  <input type="checkbox" v-model="settings.mcpDebugMode">
-                  <span class="checkmark"></span>
-                  <span>调试模式</span>
-                </label>
+              
+              <div class="settings-item" @click="openSettingDetail('storage')">
+                <div class="item-icon">💾</div>
+                <div class="item-content">
+                  <div class="item-title">聊天记录存储</div>
+                  <div class="item-subtitle">0 个文件, 0.00 MB</div>
+                </div>
+                <div class="item-arrow">›</div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+          <!-- 模型与服务分组 -->
+          <div class="settings-group">
+            <h3 class="group-title">模型与服务</h3>
+            <div class="settings-list">
+              <div class="settings-item" @click="openSettingDetail('defaultModel')">
+                <div class="item-icon">♥</div>
+                <div class="item-content">
+                  <div class="item-title">默认模型</div>
+                  <div class="item-subtitle">设置各个功能的默认模型</div>
+                </div>
+                <div class="item-arrow">›</div>
+              </div>
+              
+              <div class="settings-item" @click="openSettingDetail('theme')">
+                <div class="item-icon">🎨</div>
+                <div class="item-content">
+                  <div class="item-title">主题设置</div>
+                  <div class="item-subtitle">主题模式和色彩配置</div>
+                </div>
+                <div class="item-arrow">›</div>
+              </div>
+              
+              <div class="settings-item" @click="openSettingDetail('search')">
+                <div class="item-icon">🌐</div>
+                <div class="item-content">
+                  <div class="item-title">搜索服务</div>
+                  <div class="item-subtitle">设置搜索服务</div>
+                </div>
+                <div class="item-arrow">›</div>
+              </div>
+              
+              <div class="settings-item" @click="openSettingDetail('voice')">
+                <div class="item-icon">🔊</div>
+                <div class="item-content">
+                  <div class="item-title">语音服务</div>
+                  <div class="item-subtitle">配置语音合成服务提供商</div>
+                </div>
+                <div class="item-arrow">›</div>
+              </div>
+              
+              <div class="settings-item" @click="openSettingDetail('mcp')">
+                <div class="item-icon">>_</div>
+                <div class="item-content">
+                  <div class="item-title">MCP</div>
+                  <div class="item-subtitle">配置MCP服务器</div>
+                </div>
+                <div class="item-arrow">›</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 数据设置分组 -->
+          <div class="settings-group">
+            <h3 class="group-title">数据设置</h3>
+            <div class="settings-list">
+              <div class="settings-item" @click="openSettingDetail('backup')">
+                <div class="item-icon">🗃️</div>
+                <div class="item-content">
+                  <div class="item-title">数据备份</div>
+                  <div class="item-subtitle">备份和恢复应用数据</div>
+                </div>
+                <div class="item-arrow">›</div>
+              </div>
+              
+              <div class="settings-item" @click="openSettingDetail('storage')">
+                <div class="item-icon">💾</div>
+                <div class="item-content">
+                  <div class="item-title">聊天记录存储</div>
+                  <div class="item-subtitle">0 个文件, 0.00 MB</div>
+                </div>
+                <div class="item-arrow">›</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 设置详情页面 -->
+        <div v-if="currentView === 'detail'" class="setting-detail-page">
+          <div class="detail-header">
+            <button class="back-btn" @click="backToMain">
+              <span>←</span>
+            </button>
+            <h3 class="detail-title">{{ getDetailTitle() }}</h3>
+          </div>
+          
+          <div class="detail-content">
+            <!-- 主题设置详情 -->
+            <div v-if="currentSettingDetail === 'theme'" class="settings-panel">
+              <div class="settings-items">
+                <div class="setting-item">
+                  <label class="setting-label">主题模式</label>
+                  <select class="setting-input" v-model="settings.theme">
+                    <option value="light">浅色模式</option>
+                    <option value="dark">深色模式</option>
+                    <option value="auto">自动切换</option>
+                  </select>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">主题色彩</label>
+                  <div class="color-palette">
+                    <div
+                      v-for="color in themeColors"
+                      :key="color.name"
+                      class="color-swatch"
+                      :class="{ active: settings.themeColor === color.value }"
+                      :style="{ background: color.value }"
+                      @click="selectColor(color.value)"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 默认模型详情 -->
+            <div v-if="currentSettingDetail === 'defaultModel'" class="settings-panel">
+              <div class="settings-items">
+                <div class="setting-item">
+                  <label class="setting-label">默认AI模型</label>
+                  <select class="setting-input" v-model="settings.defaultModel">
+                    <option value="gpt-4">GPT-4</option>
+                    <option value="claude">Claude-3</option>
+                    <option value="gemini">Gemini Pro</option>
+                    <option value="local">本地模型</option>
+                  </select>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">API密钥</label>
+                  <input type="password" class="setting-input" placeholder="输入您的API密钥" v-model="settings.apiKey">
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">温度参数: {{ settings.temperature }}</label>
+                  <input type="range" min="0" max="1" step="0.1" v-model="settings.temperature" class="range-input">
+                </div>
+              </div>
+            </div>
+
+            <!-- 搜索服务详情 -->
+            <div v-if="currentSettingDetail === 'search'" class="settings-panel">
+              <div class="settings-items">
+                <div class="setting-item">
+                  <label class="setting-label">搜索引擎</label>
+                  <select class="setting-input" v-model="settings.searchEngine">
+                    <option value="google">Google</option>
+                    <option value="bing">Bing</option>
+                    <option value="baidu">百度</option>
+                    <option value="duckduckgo">DuckDuckGo</option>
+                  </select>
+                </div>
+                <div class="setting-item checkbox-item">
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="settings.realtimeSearch">
+                    <span class="checkmark"></span>
+                    <span>启用实时搜索</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- 语音服务详情 -->
+            <div v-if="currentSettingDetail === 'voice'" class="settings-panel">
+              <div class="settings-items">
+                <div class="setting-item">
+                  <label class="setting-label">TTS服务提供商</label>
+                  <select class="setting-input" v-model="settings.ttsProvider">
+                    <option value="azure">Azure Cognitive Services</option>
+                    <option value="google">Google Text-to-Speech</option>
+                    <option value="amazon">Amazon Polly</option>
+                    <option value="iflytek">科大讯飞</option>
+                    <option value="baidu">百度语音</option>
+                    <option value="local">本地合成引擎</option>
+                  </select>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">默认语音</label>
+                  <select class="setting-input" v-model="settings.defaultVoice">
+                    <option value="zh-CN-XiaoxiaoNeural">晓晓 (女声)</option>
+                    <option value="zh-CN-YunxiNeural">云希 (男声)</option>
+                    <option value="zh-CN-YunyangNeural">云扬 (男声)</option>
+                    <option value="en-US-JennyNeural">Jenny (English)</option>
+                  </select>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">语速: {{ settings.speechRate }}</label>
+                  <input type="range" min="0.5" max="2" step="0.1" v-model="settings.speechRate" class="range-input">
+                </div>
+                <div class="setting-item checkbox-item">
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="settings.autoPlay">
+                    <span class="checkmark"></span>
+                    <span>自动播放生成的语音</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- MCP服务详情 -->
+            <div v-if="currentSettingDetail === 'mcp'" class="settings-panel">
+              <div class="settings-items">
+                <div class="setting-item">
+                  <label class="setting-label">MCP服务器地址</label>
+                  <input type="text" class="setting-input" placeholder="ws://localhost:3001" v-model="settings.mcpServerUrl">
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">连接协议</label>
+                  <select class="setting-input" v-model="settings.mcpProtocol">
+                    <option value="websocket">WebSocket</option>
+                    <option value="stdio">Standard I/O</option>
+                    <option value="sse">Server-Sent Events</option>
+                  </select>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">认证令牌</label>
+                  <input type="password" class="setting-input" placeholder="输入MCP认证令牌" v-model="settings.mcpAuthToken">
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">连接超时 (秒): {{ settings.mcpTimeout }}</label>
+                  <input type="range" min="5" max="60" step="5" v-model="settings.mcpTimeout" class="range-input">
+                </div>
+                <div class="setting-item checkbox-item">
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="settings.mcpAutoReconnect">
+                    <span class="checkmark"></span>
+                    <span>自动重连</span>
+                  </label>
+                </div>
+                <div class="setting-item checkbox-item">
+                  <label class="checkbox-label">
+                    <input type="checkbox" v-model="settings.mcpDebugMode">
+                    <span class="checkmark"></span>
+                    <span>调试模式</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       
       <div class="settings-modal-footer">
         <button class="modal-btn cancel-btn" @click="closeSettingsModal">
@@ -364,6 +526,8 @@ export default {
     const expandedCard = ref(null)
     const isEditing = ref(false)
     const isSettingsOpen = ref(false)
+    const currentView = ref('main') // 'main' | 'detail'
+    const currentSettingDetail = ref('')
 
     const userProfile = ref({
       name: '张小明',
@@ -593,12 +757,41 @@ export default {
 
     const closeSettingsModal = () => {
       isSettingsOpen.value = false
+      currentView.value = 'main'
+      currentSettingDetail.value = ''
+    }
+
+    const openSettingDetail = (settingType) => {
+      currentView.value = 'detail'
+      currentSettingDetail.value = settingType
+      // 这里可以根据 settingType 导航到具体的设置页面
+      console.log('打开设置详情:', settingType)
+    }
+
+    const backToMain = () => {
+      currentView.value = 'main'
+      currentSettingDetail.value = ''
+    }
+
+    const getDetailTitle = () => {
+      const titles = {
+        'theme': '主题设置',
+        'defaultModel': '默认模型',
+        'search': '搜索服务',
+        'voice': '语音服务',
+        'mcp': 'MCP配置',
+        'backup': '数据备份',
+        'storage': '聊天记录存储'
+      }
+      return titles[currentSettingDetail.value] || '设置'
     }
 
     return {
       expandedCard,
       isEditing,
       isSettingsOpen,
+      currentView,
+      currentSettingDetail,
       userProfile,
       editProfile,
       originalProfile,
@@ -615,7 +808,10 @@ export default {
       saveSettings,
       resetSettings,
       openSettingsModal,
-      closeSettingsModal
+      closeSettingsModal,
+      openSettingDetail,
+      backToMain,
+      getDetailTitle
     }
   }
 }
@@ -1188,6 +1384,238 @@ export default {
 }
 
 /* 系统设置弹窗样式 */
+
+/* 设置详情页面样式 */
+.setting-detail-page {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: white;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  animation: slideInRight 0.3s ease-out;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f0f0f0;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.detail-title {
+  flex: 1;
+  text-align: center;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.detail-content {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+/* 移动端详情页面样式调整 */
+@media (max-width: 768px) {
+  .setting-detail-page {
+    border-radius: 0;
+  }
+  
+  .detail-header {
+    padding: env(safe-area-inset-top, 20px) 1rem 1rem;
+  }
+  
+  .detail-title {
+    font-size: 18px;
+  }
+  
+  .detail-content {
+    padding: 20px 16px;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* 设置列表容器样式 */
+.settings-list-container {
+  padding: 0;
+  max-width: 100%;
+}
+
+/* 桌面端分组列表样式优化 */
+.settings-group {
+  margin-bottom: 32px;
+}
+
+.group-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 20px 0;
+  padding: 0 4px;
+}
+
+.settings-list {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.settings-item {
+  display: flex;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f5f5f5;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.settings-item:last-child {
+  border-bottom: none;
+}
+
+.settings-item:hover {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.04), rgba(118, 75, 162, 0.04));
+  transform: translateX(2px);
+}
+
+.settings-item:active {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08));
+  transform: translateX(1px);
+}
+
+.item-icon {
+  font-size: 24px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.settings-item:hover .item-icon {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+  transform: scale(1.05);
+}
+
+.item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.item-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.item-subtitle {
+  font-size: 14px;
+  color: #718096;
+  line-height: 1.4;
+}
+
+.item-arrow {
+  font-size: 20px;
+  color: #cbd5e0;
+  margin-left: 12px;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.settings-item:hover .item-arrow {
+  color: #667eea;
+  transform: translateX(2px);
+}
+
+/* 移动端样式调整 */
+@media (max-width: 768px) {
+  .settings-list-container {
+    padding: 0;
+  }
+  
+  .group-title {
+    font-size: 16px;
+    margin: 0 0 16px 0;
+    padding: 0 16px;
+  }
+  
+  .settings-list {
+    border-radius: 12px;
+    margin: 0 16px;
+  }
+  
+  .settings-item {
+    padding: 16px;
+  }
+  
+  .item-icon {
+    font-size: 20px;
+    width: 40px;
+    height: 40px;
+    margin-right: 12px;
+    border-radius: 10px;
+  }
+  
+  .item-title {
+    font-size: 15px;
+  }
+  
+  .item-subtitle {
+    font-size: 13px;
+  }
+  
+  .item-arrow {
+    font-size: 18px;
+  }
+}
+
+/* 返回按钮样式 */
+.back-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #007AFF;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+  display: none;
+}
+
+.back-btn:hover {
+  background-color: #f0f0f0;
+}
+
 .settings-modal {
   position: fixed;
   top: 0;
@@ -1218,11 +1646,14 @@ export default {
 
 .settings-modal-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   padding: 2rem 2rem 1rem;
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .settings-modal-title {
@@ -1234,6 +1665,32 @@ export default {
   align-items: center;
   gap: 12px;
   letter-spacing: -0.01em;
+  flex: 1;
+  text-align: center;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.back-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #007AFF;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+  z-index: 10;
+  position: relative;
+}
+
+.back-btn:hover {
+  background-color: #f0f0f0;
+}
+
+.header-spacer {
+  width: 40px; /* 与返回按钮同宽，用于平衡布局 */
 }
 
 .settings-modal-body {
@@ -1698,55 +2155,97 @@ export default {
   
   /* 移动端系统设置弹窗适配 */
   .settings-modal {
-    padding: 0.5rem;
-    align-items: flex-end;
+    padding: 0;
+    align-items: stretch;
   }
   
   .settings-modal-content {
     max-width: 100%;
     width: 100%;
-    max-height: 85vh;
-    border-radius: 24px 24px 0 0;
-    animation: modalSlideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    margin-bottom: 0;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+    animation: modalSlideLeft 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin: 0;
+    display: flex;
+    flex-direction: column;
   }
   
-  @keyframes modalSlideUp {
+  @keyframes modalSlideLeft {
     from {
       opacity: 0;
-      transform: translateY(100px);
+      transform: translateX(100%);
     }
     to {
       opacity: 1;
-      transform: translateY(0);
+      transform: translateX(0);
     }
   }
   
   .settings-modal-header {
-    padding: 1.5rem 1.5rem 1rem;
+    padding: env(safe-area-inset-top, 20px) 1.5rem 1rem;
     position: relative;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08));
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
   
-  .settings-modal-header::before {
-    content: '';
-    position: absolute;
-    top: 12px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 36px;
-    height: 4px;
-    background: #e2e8f0;
-    border-radius: 2px;
+  .back-btn {
+    display: block;
+    position: static;
+    order: 1;
   }
   
   .settings-modal-title {
+    text-align: center;
+    flex: 1;
+    margin: 0;
     font-size: 1.4rem;
-    margin-top: 8px;
+    order: 2;
+    position: static;
+    transform: none;
+    left: auto;
+  }
+  
+  .header-spacer {
+    width: 40px;
+    order: 3;
+  }
+  
+  .close-btn {
+    display: none;
+  }
+
+  .settings-modal-header::before {
+    display: none;
+  }
+  
+  .close-btn {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .close-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
   }
   
   .settings-modal-body {
-    padding: 0 1.5rem 1.5rem;
-    max-height: 50vh;
+    padding: 1.5rem;
+    flex: 1;
+    overflow-y: auto;
+    max-height: none;
   }
   
   .settings-grid {
@@ -1810,12 +2309,13 @@ export default {
   }
   
   .settings-modal-footer {
-    padding: 1rem 1.5rem;
+    padding: 1rem 1.5rem calc(env(safe-area-inset-bottom, 20px) + 1rem);
     background: rgba(248, 250, 252, 0.95);
     border-top: 1px solid rgba(226, 232, 240, 0.8);
-    border-radius: 0 0 24px 24px;
+    border-radius: 0;
     flex-direction: row;
     gap: 12px;
+    flex-shrink: 0;
   }
   
   .modal-btn {
@@ -1931,34 +2431,45 @@ export default {
   /* 小屏幕系统设置弹窗适配 */
   .settings-modal {
     padding: 0;
-    align-items: flex-end;
+    align-items: stretch;
   }
   
   .settings-modal-content {
-    border-radius: 20px 20px 0 0;
-    max-height: 80vh;
+    border-radius: 0;
+    height: 100vh;
+    max-height: 100vh;
     width: 100%;
   }
   
   .settings-modal-header {
-    padding: 1rem 1rem 0.5rem;
+    padding: env(safe-area-inset-top, 16px) 1rem 0.75rem;
     text-align: center;
   }
   
   .settings-modal-header::before {
-    width: 32px;
-    height: 3px;
-    top: 8px;
+    display: none;
   }
   
   .settings-modal-title {
     font-size: 1.2rem;
-    margin-top: 6px;
+    margin: 0;
+  }
+  
+  .close-btn {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
+    font-size: 1.2rem;
   }
   
   .settings-modal-body {
-    padding: 0 1rem 1rem;
-    max-height: 45vh;
+    padding: 1rem;
+    flex: 1;
+    overflow-y: auto;
+    max-height: none;
   }
   
   .settings-grid {
@@ -2013,8 +2524,8 @@ export default {
   }
   
   .settings-modal-footer {
-    padding: 0.75rem 1rem;
-    border-radius: 0 0 20px 20px;
+    padding: 0.75rem 1rem calc(env(safe-area-inset-bottom, 16px) + 0.75rem);
+    border-radius: 0;
     gap: 8px;
   }
   
