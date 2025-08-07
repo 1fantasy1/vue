@@ -1,8 +1,54 @@
 <template>
   <div class="page">
 
+    <!-- 快速操作区域 -->
+    <div class="quick-actions-section">
+      <h3 class="section-title">快速操作</h3>
+      <div class="quick-actions-grid">
+        <button class="quick-action-btn" @click="createProject">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+          </svg>
+          创建项目
+        </button>
+        <button class="quick-action-btn" @click="addNote">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+          </svg>
+          新建笔记
+        </button>
+        <button class="quick-action-btn" @click="joinGroup">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16,4C18.11,4 19.99,5.89 19.99,8C19.99,10.11 18.11,12 16,12C13.89,12 12,10.11 12,8C12,5.89 13.89,4 16,4M16,14C20.42,14 24,15.79 24,18V20H8V18C8,15.79 11.58,14 16,14Z"/>
+          </svg>
+          加入群组
+        </button>
+        <button class="quick-action-btn" @click="searchResources">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
+          </svg>
+          搜索资源
+        </button>
+      </div>
+    </div>
+
     <!-- 主要功能卡片区域 -->
     <div class="cards-container">
+      <!-- 智库卡片 -->
+      <div class="nav-card" @click="navigateTo('/knowledge')">
+        <div class="card-icon wisdom-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z"/>
+          </svg>
+        </div>
+        <h3 class="card-title">智库</h3>
+        <p class="card-description">AI智能助手和知识问答</p>
+        <div class="card-stats">
+          <span class="stat-item">对话: 24</span>
+          <span class="stat-item">在线助手: 1</span>
+        </div>
+      </div>
+
       <!-- 参与的项目卡片 -->
       <div class="nav-card" @click="navigateTo('/my-projects')">
         <div class="card-icon projects-icon">
@@ -107,52 +153,6 @@
           <span class="stat-item">分类: 12</span>
         </div>
       </div>
-
-      <!-- 智库卡片 -->
-      <div class="nav-card" @click="navigateTo('/knowledge')">
-        <div class="card-icon wisdom-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z"/>
-          </svg>
-        </div>
-        <h3 class="card-title">智库</h3>
-        <p class="card-description">AI智能助手和知识问答</p>
-        <div class="card-stats">
-          <span class="stat-item">对话: 24</span>
-          <span class="stat-item">在线助手: 1</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- 快速操作区域 -->
-    <div class="quick-actions-section">
-      <h3 class="section-title">快速操作</h3>
-      <div class="quick-actions-grid">
-        <button class="quick-action-btn" @click="createProject">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
-          </svg>
-          创建项目
-        </button>
-        <button class="quick-action-btn" @click="addNote">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
-          </svg>
-          新建笔记
-        </button>
-        <button class="quick-action-btn" @click="joinGroup">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M16,4C18.11,4 19.99,5.89 19.99,8C19.99,10.11 18.11,12 16,12C13.89,12 12,10.11 12,8C12,5.89 13.89,4 16,4M16,14C20.42,14 24,15.79 24,18V20H8V18C8,15.79 11.58,14 16,14Z"/>
-          </svg>
-          加入群组
-        </button>
-        <button class="quick-action-btn" @click="searchResources">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
-          </svg>
-          搜索资源
-        </button>
-      </div>
     </div>
   </div>
 </template>
@@ -198,7 +198,7 @@ export default {
 
 <style scoped>
 .page {
-  padding: 24px;
+  padding: 16px 24px 24px 24px;
   background: #f8f9fa;
   min-height: calc(100vh - 48px);
 }
@@ -225,7 +225,7 @@ export default {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: 24px;
-  margin-bottom: 40px;
+  margin-top: 40px;
 }
 
 .nav-card {
@@ -324,7 +324,8 @@ export default {
 }
 
 .quick-actions-section {
-  margin-top: 32px;
+  margin-bottom: 32px;
+  margin-top: 8px;
 }
 
 .section-title {
