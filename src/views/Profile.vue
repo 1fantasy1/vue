@@ -91,20 +91,34 @@
 
     <!-- 设置区域 -->
     <div class="settings-wrapper">
-      <div class="settings-header" 
-           :class="{ 'expanded-header': expandedCard === 'settings' }"
-           @click="toggleFeature('settings')">
+      <div class="settings-header" @click="openSettingsModal">
         <div class="settings-title">
           <span class="settings-icon">⚙️</span>
           <span>系统设置</span>
           <span class="status-badge">全功能</span>
         </div>
-        <div class="toggle-arrow" :class="{ expanded: expandedCard === 'settings' }">
-          <span>▼</span>
+        <div class="settings-action-hint">
+          <span>点击打开</span>
+          <span class="arrow-icon">→</span>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- 系统设置弹窗 -->
+  <div v-if="isSettingsOpen" class="settings-modal" @click.self="closeSettingsModal">
+    <div class="settings-modal-content">
+      <div class="settings-modal-header">
+        <h3 class="settings-modal-title">
+          <span class="settings-icon">⚙️</span>
+          系统设置
+        </h3>
+        <button class="close-btn" @click="closeSettingsModal">
+          <span>✕</span>
+        </button>
+      </div>
       
-      <div class="settings-content" :class="{ expanded: expandedCard === 'settings' }" @click.stop>
+      <div class="settings-modal-body">
         <div class="settings-grid">
           <div class="settings-panel">
             <h4 class="panel-title">🎨 主题设置</h4>
@@ -178,25 +192,21 @@
             </div>
           </div>
         </div>
-
-        <div class="settings-actions">
-          <button class="action-btn primary" @click="saveSettings">
-            <span class="btn-icon">💾</span>
-            保存设置
-          </button>
-          <button class="action-btn secondary" @click="resetSettings">
-            <span class="btn-icon">🔄</span>
-            重置默认
-          </button>
-          <button class="action-btn secondary">
-            <span class="btn-icon">📤</span>
-            导出配置
-          </button>
-          <button class="action-btn secondary">
-            <span class="btn-icon">📥</span>
-            导入配置
-          </button>
-        </div>
+      </div>
+      
+      <div class="settings-modal-footer">
+        <button class="modal-btn cancel-btn" @click="closeSettingsModal">
+          <span class="btn-icon">❌</span>
+          取消
+        </button>
+        <button class="modal-btn secondary-btn" @click="resetSettings">
+          <span class="btn-icon">🔄</span>
+          重置默认
+        </button>
+        <button class="modal-btn save-btn" @click="saveSettings">
+          <span class="btn-icon">💾</span>
+          保存设置
+        </button>
       </div>
     </div>
   </div>
@@ -276,6 +286,7 @@ export default {
   setup() {
     const expandedCard = ref(null)
     const isEditing = ref(false)
+    const isSettingsOpen = ref(false)
 
     const userProfile = ref({
       name: '张小明',
@@ -458,6 +469,7 @@ export default {
     }
 
     const saveSettings = () => {
+      isSettingsOpen.value = false
       ElMessage.success('设置保存成功！')
     }
 
@@ -474,9 +486,18 @@ export default {
       ElMessage.success('已重置为默认设置！')
     }
 
+    const openSettingsModal = () => {
+      isSettingsOpen.value = true
+    }
+
+    const closeSettingsModal = () => {
+      isSettingsOpen.value = false
+    }
+
     return {
       expandedCard,
       isEditing,
+      isSettingsOpen,
       userProfile,
       editProfile,
       originalProfile,
@@ -491,7 +512,9 @@ export default {
       cancelEdit,
       saveProfile,
       saveSettings,
-      resetSettings
+      resetSettings,
+      openSettingsModal,
+      closeSettingsModal
     }
   }
 }
@@ -1014,24 +1037,10 @@ export default {
   align-items: center;
 }
 
-/* 当设置区域展开时，调整头部样式 */
-.settings-header.expanded-header {
-  border-radius: 20px 20px 0 0;
-  border-bottom: none;
-  box-shadow: none;
-}
-
 .settings-header:hover {
   background: rgba(255, 255, 255, 1);
   transform: translateY(-2px);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
-}
-
-/* 当展开时，hover效果需要调整 */
-.settings-header.expanded-header:hover {
-  background: rgba(255, 255, 255, 1);
-  transform: translateY(-2px);
-  box-shadow: none; /* 展开状态下hover时不显示阴影 */
 }
 
 .settings-title {
@@ -1059,59 +1068,120 @@ export default {
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
 }
 
-.toggle-arrow {
-  transition: transform 0.3s ease;
+.settings-action-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #718096;
+  font-weight: 500;
+}
+
+.arrow-icon {
   font-size: 1.2rem;
-  color: #6c757d;
+  transition: transform 0.3s ease;
 }
 
-.toggle-arrow.expanded {
-  transform: rotate(180deg);
+.settings-header:hover .arrow-icon {
+  transform: translateX(4px);
 }
 
-.settings-content {
-  max-height: 0;
+/* 系统设置弹窗样式 */
+.settings-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 2rem;
+}
+
+.settings-modal-content {
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(30px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
   overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  max-width: 1200px;
-  margin: 0 auto;
-  border-radius: 0 0 20px 20px;
-  border: 0px solid rgba(255, 255, 255, 0.8); /* 默认无边框 */
-  border-top: none;
-  box-shadow: none; /* 默认无阴影 */
-  margin-top: -1px; /* 确保与头部完全贴合 */
+  animation: modalSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.settings-content.expanded {
-  max-height: 2000px;
-  padding: 40px;
-  border: 1px solid rgba(255, 255, 255, 0.8); /* 展开时显示边框 */
-  border-top: none;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08); /* 展开时显示阴影 */
+.settings-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2rem 2rem 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+}
+
+.settings-modal-title {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #2d3748;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  letter-spacing: -0.01em;
+}
+
+.settings-modal-body {
+  padding: 2rem;
+  max-height: 60vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(102, 126, 234, 0.3) transparent;
+}
+
+.settings-modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.settings-modal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.settings-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(102, 126, 234, 0.3);
+  border-radius: 3px;
+}
+
+.settings-modal-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(102, 126, 234, 0.5);
 }
 
 .settings-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-  gap: 32px;
-  margin-bottom: 40px;
+  gap: 24px;
+  margin-bottom: 32px;
 }
 
 .settings-panel {
-  background: rgba(248, 250, 252, 0.8);
+  background: linear-gradient(135deg, rgba(248, 250, 252, 0.9), rgba(255, 255, 255, 0.8));
   backdrop-filter: blur(10px);
-  border-radius: 16px;
+  border-radius: 20px;
   padding: 28px;
-  border: 1px solid rgba(226, 232, 240, 0.8);
+  border: 1px solid rgba(226, 232, 240, 0.6);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
 }
 
 .settings-panel:hover {
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.9));
   transform: translateY(-2px);
+  border-color: rgba(102, 126, 234, 0.2);
 }
 
 .panel-title {
@@ -1121,106 +1191,144 @@ export default {
   margin: 0 0 24px 0;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   letter-spacing: -0.01em;
+  padding-bottom: 12px;
+  border-bottom: 2px solid rgba(102, 126, 234, 0.1);
 }
 
 .settings-items {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
 }
 
 .setting-item {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .setting-item.checkbox-item {
   flex-direction: row;
   align-items: center;
+  gap: 12px;
 }
 
 .setting-label {
   font-size: 14px;
   font-weight: 600;
-  color: #4a5568;
+  color: #374151;
   letter-spacing: 0.3px;
+  margin-bottom: 2px;
 }
 
 .setting-input {
   padding: 14px 18px;
-  border: 2px solid #e2e8f0;
+  border: 2px solid #e5e7eb;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.9);
-  color: #2d3748;
+  color: #1f2937;
   font-size: 14px;
   font-weight: 500;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .setting-input:focus {
   outline: none;
   border-color: #667eea;
-  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1), 0 2px 8px rgba(0, 0, 0, 0.1);
   background: rgba(255, 255, 255, 1);
+  transform: translateY(-1px);
+}
+
+.setting-input:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .range-input {
-  height: 8px;
-  border-radius: 4px;
-  background: #e9ecef;
+  height: 10px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #e5e7eb 0%, #f3f4f6 100%);
   outline: none;
   appearance: none;
   -webkit-appearance: none;
   cursor: pointer;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.range-input:hover {
+  background: linear-gradient(90deg, #d1d5db 0%, #e5e7eb 100%);
 }
 
 .range-input::-webkit-slider-thumb {
   appearance: none;
   -webkit-appearance: none;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  background: #667eea;
+  background: linear-gradient(135deg, #667eea, #764ba2);
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  border: 3px solid white;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.range-input::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
 }
 
 .range-input::-moz-range-thumb {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  background: #667eea;
+  background: linear-gradient(135deg, #667eea, #764ba2);
   cursor: pointer;
-  border: none;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.range-input::-moz-range-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
 }
 
 .color-palette {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   flex-wrap: wrap;
+  justify-content: flex-start;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 16px;
+  border: 2px solid rgba(226, 232, 240, 0.8);
 }
 
 .color-swatch {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   cursor: pointer;
   border: 3px solid transparent;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .color-swatch:hover {
   transform: scale(1.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .color-swatch.active {
-  border-color: #333;
+  border-color: #374151;
   transform: scale(1.15);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
 }
 
 .color-swatch.active::after {
@@ -1231,7 +1339,8 @@ export default {
   transform: translate(-50%, -50%);
   color: white;
   font-weight: bold;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  font-size: 16px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
 }
 
 .checkbox-label {
@@ -1240,7 +1349,15 @@ export default {
   gap: 12px;
   cursor: pointer;
   font-size: 14px;
-  color: #495057;
+  color: #374151;
+  font-weight: 500;
+  padding: 8px 12px;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.checkbox-label:hover {
+  background: rgba(102, 126, 234, 0.05);
 }
 
 .checkbox-label input[type="checkbox"] {
@@ -1248,17 +1365,20 @@ export default {
 }
 
 .checkmark {
-  width: 20px;
-  height: 20px;
-  border: 2px solid #e9ecef;
-  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+  border: 2px solid #d1d5db;
+  border-radius: 6px;
   position: relative;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .checkbox-label input[type="checkbox"]:checked + .checkmark {
-  background: #667eea;
+  background: linear-gradient(135deg, #667eea, #764ba2);
   border-color: #667eea;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
 .checkbox-label input[type="checkbox"]:checked + .checkmark::after {
@@ -1268,60 +1388,75 @@ export default {
   left: 50%;
   transform: translate(-50%, -50%);
   color: white;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: bold;
 }
 
-.settings-actions {
-  max-width: 1200px;
-  margin: 0 auto;
+.settings-modal-footer {
+  padding: 1.5rem 2rem 2rem;
   display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding-top: 30px;
-  border-top: 2px solid #e9ecef;
+  justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  background: linear-gradient(135deg, rgba(248, 250, 252, 0.8), rgba(255, 255, 255, 0.9));
+  backdrop-filter: blur(10px);
 }
 
-.action-btn {
-  padding: 12px 24px;
-  border-radius: 8px;
-  cursor: pointer;
+.modal-btn {
+  padding: 14px 28px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
   font-size: 14px;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   gap: 8px;
-  border: none;
+  min-width: 120px;
+  justify-content: center;
+  letter-spacing: 0.3px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.action-btn.primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+.modal-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.secondary-btn {
+  background: linear-gradient(135deg, rgba(248, 250, 252, 0.9), rgba(255, 255, 255, 0.8));
+  color: #6b7280;
+  border: 2px solid rgba(209, 213, 219, 0.8);
+}
+
+.secondary-btn:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(248, 250, 252, 0.95));
+  color: #374151;
+  border-color: rgba(156, 163, 175, 0.8);
+}
+
+.cancel-btn {
+  background: linear-gradient(135deg, rgba(248, 250, 252, 0.9), rgba(255, 255, 255, 0.8));
+  color: #6b7280;
+  border: 2px solid rgba(209, 213, 219, 0.8);
+}
+
+.cancel-btn:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(248, 250, 252, 0.95));
+  color: #374151;
+  border-color: rgba(156, 163, 175, 0.8);
+}
+
+.save-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-  font-weight: 600;
 }
 
-.action-btn.primary:hover {
+.save-btn:hover {
   transform: translateY(-3px);
   box-shadow: 0 12px 35px rgba(102, 126, 234, 0.5);
-}
-
-.action-btn.secondary {
-  background: rgba(248, 250, 252, 0.9);
-  color: #4a5568;
-  border: 2px solid rgba(226, 232, 240, 0.8);
-  font-weight: 600;
-}
-
-.action-btn.secondary:hover {
-  background: rgba(255, 255, 255, 1);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-}
-
-.btn-icon {
-  font-size: 14px;
 }
 
 /* 响应式设计 */
@@ -1448,7 +1583,7 @@ export default {
   }
   
   .settings-wrapper {
-    padding: 0 16px 32px; /* 恢复移动端的原始padding */
+    padding: 0 16px 32px;
   }
   
   .settings-header {
@@ -1456,45 +1591,139 @@ export default {
     border-radius: 16px;
   }
   
-  .settings-header.expanded-header {
-    border-radius: 16px 16px 0 0;
-    border-bottom: none;
-    box-shadow: none;
-  }
-  
-  .settings-header.expanded-header {
-    border-radius: 16px 16px 0 0;
-    border-bottom: none;
-    box-shadow: none;
-  }
-  
-  .settings-content.expanded {
-    padding: 32px 24px;
-    border-radius: 0 0 16px 16px;
-    border: 1px solid rgba(255, 255, 255, 0.8); /* 移动端展开时显示边框 */
-    border-top: none;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08); /* 移动端展开时显示阴影 */
-  }
-  
   .settings-title {
     font-size: 1.3rem;
   }
   
+  /* 移动端系统设置弹窗适配 */
+  .settings-modal {
+    padding: 0.5rem;
+    align-items: flex-end;
+  }
+  
+  .settings-modal-content {
+    max-width: 100%;
+    width: 100%;
+    max-height: 85vh;
+    border-radius: 24px 24px 0 0;
+    animation: modalSlideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-bottom: 0;
+  }
+  
+  @keyframes modalSlideUp {
+    from {
+      opacity: 0;
+      transform: translateY(100px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .settings-modal-header {
+    padding: 1.5rem 1.5rem 1rem;
+    position: relative;
+  }
+  
+  .settings-modal-header::before {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 4px;
+    background: #e2e8f0;
+    border-radius: 2px;
+  }
+  
+  .settings-modal-title {
+    font-size: 1.4rem;
+    margin-top: 8px;
+  }
+  
+  .settings-modal-body {
+    padding: 0 1.5rem 1.5rem;
+    max-height: 50vh;
+  }
+  
   .settings-grid {
     grid-template-columns: 1fr;
-    gap: 24px;
+    gap: 20px;
+    margin-bottom: 20px;
   }
   
-  .settings-actions {
-    justify-content: center;
+  .settings-panel {
+    padding: 20px;
+    border-radius: 16px;
+    background: rgba(248, 250, 252, 0.95);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  }
+  
+  .panel-title {
+    font-size: 1.1rem;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+  }
+  
+  .setting-item {
     gap: 12px;
-    flex-wrap: wrap;
+    margin-bottom: 16px;
   }
   
-  .action-btn {
-    flex: 1;
+  .setting-label {
+    font-size: 15px;
+    font-weight: 600;
+    color: #2d3748;
+  }
+  
+  .setting-input, .range-input {
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 2px solid #e2e8f0;
+    font-size: 16px;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  
+  .color-palette {
+    gap: 10px;
     justify-content: center;
-    min-width: 140px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 12px;
+  }
+  
+  .color-swatch {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+  }
+  
+  .checkmark {
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+  }
+  
+  .settings-modal-footer {
+    padding: 1rem 1.5rem;
+    background: rgba(248, 250, 252, 0.95);
+    border-top: 1px solid rgba(226, 232, 240, 0.8);
+    border-radius: 0 0 24px 24px;
+    flex-direction: row;
+    gap: 12px;
+  }
+  
+  .modal-btn {
+    flex: 1;
+    padding: 16px 20px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 }
 
@@ -1584,30 +1813,6 @@ export default {
     border-radius: 14px;
   }
   
-  .settings-header.expanded-header {
-    border-radius: 14px 14px 0 0;
-    border-bottom: none;
-    box-shadow: none;
-  }
-  
-  .settings-content.expanded {
-    padding: 24px 16px;
-    border-radius: 0 0 14px 14px;
-    border: 1px solid rgba(255, 255, 255, 0.8); /* 小屏幕展开时显示边框 */
-    border-top: none;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08); /* 小屏幕展开时显示阴影 */
-  }
-  
-  .settings-actions {
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  .action-btn {
-    width: 100%;
-    min-width: auto;
-  }
-  
   .tag {
     font-size: 12px;
     padding: 8px 14px;
@@ -1620,6 +1825,102 @@ export default {
   
   .settings-icon {
     font-size: 1.5rem;
+  }
+  
+  /* 小屏幕系统设置弹窗适配 */
+  .settings-modal {
+    padding: 0;
+    align-items: flex-end;
+  }
+  
+  .settings-modal-content {
+    border-radius: 20px 20px 0 0;
+    max-height: 80vh;
+    width: 100%;
+  }
+  
+  .settings-modal-header {
+    padding: 1rem 1rem 0.5rem;
+    text-align: center;
+  }
+  
+  .settings-modal-header::before {
+    width: 32px;
+    height: 3px;
+    top: 8px;
+  }
+  
+  .settings-modal-title {
+    font-size: 1.2rem;
+    margin-top: 6px;
+  }
+  
+  .settings-modal-body {
+    padding: 0 1rem 1rem;
+    max-height: 45vh;
+  }
+  
+  .settings-grid {
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .settings-panel {
+    padding: 16px;
+    border-radius: 12px;
+    background: rgba(248, 250, 252, 0.95);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  }
+  
+  .panel-title {
+    font-size: 1rem;
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+  }
+  
+  .setting-item {
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  
+  .setting-label {
+    font-size: 14px;
+  }
+  
+  .setting-input, .range-input {
+    padding: 10px 14px;
+    font-size: 16px;
+    border-radius: 10px;
+  }
+  
+  .color-palette {
+    gap: 8px;
+    padding: 8px;
+    border-radius: 10px;
+  }
+  
+  .color-swatch {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+  
+  .checkmark {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+  }
+  
+  .settings-modal-footer {
+    padding: 0.75rem 1rem;
+    border-radius: 0 0 20px 20px;
+    gap: 8px;
+  }
+  
+  .modal-btn {
+    padding: 14px 16px;
+    font-size: 15px;
+    border-radius: 10px;
   }
   
   .edit-btn {
