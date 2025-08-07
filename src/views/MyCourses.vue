@@ -2,36 +2,48 @@
   <div class="page">
     <div class="header">
       <div class="title-section">
-        <h1 class="page-title">参与的课程</h1>
-        <div class="title-decoration">
-          <div class="decoration-line"></div>
-          <div class="decoration-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z"/>
-            </svg>
-          </div>
-          <div class="decoration-line"></div>
-        </div>
-        <p class="page-subtitle">掌握知识，提升技能，成就更好的自己</p>
+        <h1 class="page-title">我的课程</h1>
       </div>
+      <div class="header-subtitle">持续学习，持续成长</div>
     </div>
 
     <div class="stats-bar">
       <div class="stat-card">
-        <div class="stat-number">10</div>
-        <div class="stat-label">总课程数</div>
+        <div class="stat-number">{{ filteredCourses.length }}</div>
+        <div class="stat-label">{{ debouncedSearchQuery ? '搜索结果' : '总课程数' }}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-number">2</div>
+        <div class="stat-number">{{ learningCount }}</div>
         <div class="stat-label">学习中</div>
       </div>
       <div class="stat-card">
-        <div class="stat-number">8</div>
+        <div class="stat-number">{{ completedCount }}</div>
         <div class="stat-label">已完成</div>
       </div>
-      <div class="stat-card">
-        <div class="stat-number">85%</div>
-        <div class="stat-label">平均完成度</div>
+    </div>
+
+    <!-- 搜索框 -->
+    <div class="search-container">
+      <div class="search-box">
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
+        </svg>
+        <input 
+          type="text" 
+          v-model="searchQuery"
+          placeholder="搜索课程标题、讲师或描述..."
+          class="search-input"
+        />
+        <button 
+          v-if="searchQuery" 
+          @click="clearSearch"
+          class="clear-btn"
+          title="清除搜索"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -60,14 +72,41 @@
     </div>
 
     <div class="courses-container">
-      <div class="course-card" v-for="course in filteredCourses" :key="course.id">
+      <!-- 没有搜索结果时显示 -->
+      <div v-if="filteredCourses.length === 0" class="empty-state">
+        <div class="empty-icon">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
+          </svg>
+        </div>
+        <h3 class="empty-title">
+          {{ debouncedSearchQuery ? '未找到相关课程' : '暂无课程' }}
+        </h3>
+        <p class="empty-description">
+          {{ debouncedSearchQuery ? 
+            `没有找到包含"${debouncedSearchQuery}"的课程，试试其他关键词吧` : 
+            '当前没有符合条件的课程' 
+          }}
+        </p>
+        <button v-if="debouncedSearchQuery" @click="clearSearch" class="empty-action">
+          清除搜索条件
+        </button>
+      </div>
+
+      <!-- 课程列表 -->
+      <div v-else class="course-card" v-for="course in filteredCourses" :key="course.id">
         <div class="course-image">
-          <div class="course-category">{{ course.category }}</div>
-          <div class="course-level" :class="course.level">{{ getLevelText(course.level) }}</div>
+          <img v-if="course.coverImage" :src="course.coverImage" :alt="course.title" class="course-cover" />
         </div>
         
         <div class="course-content">
-          <h3 class="course-title">{{ course.title }}</h3>
+          <div class="course-header">
+            <h3 class="course-title">{{ course.title }}</h3>
+            <div class="course-tags">
+              <div class="course-category">{{ course.category }}</div>
+              <div class="course-level" :class="course.level">{{ getLevelText(course.level) }}</div>
+            </div>
+          </div>
           <p class="course-instructor">讲师：{{ course.instructor }}</p>
           <p class="course-description">{{ course.description }}</p>
           
@@ -127,13 +166,24 @@
 
 <script>
 import { useRouter } from 'vue-router'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 export default {
   name: 'MyCourses',
   setup() {
     const router = useRouter()
     const activeTab = ref('all')
+    const searchQuery = ref('')
+    const debouncedSearchQuery = ref('')
+
+    // 防抖搜索
+    let searchTimeout = null
+    watch(searchQuery, (newValue) => {
+      clearTimeout(searchTimeout)
+      searchTimeout = setTimeout(() => {
+        debouncedSearchQuery.value = newValue
+      }, 300)
+    })
     
     const courses = ref([
       {
@@ -149,7 +199,8 @@ export default {
         students: 1250,
         status: 'learning',
         lastUpdate: '昨天',
-        startDate: '2024-01-15'
+        startDate: '2024-01-15',
+        coverImage: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=400&h=300&fit=crop'
       },
       {
         id: 2,
@@ -164,7 +215,8 @@ export default {
         students: 890,
         status: 'learning',
         lastUpdate: '3天前',
-        startDate: '2024-02-01'
+        startDate: '2024-02-01',
+        coverImage: 'https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=400&h=300&fit=crop'
       },
       {
         id: 3,
@@ -179,7 +231,8 @@ export default {
         students: 2100,
         status: 'completed',
         lastUpdate: '1周前',
-        completedDate: '2024-01-20'
+        completedDate: '2024-01-20',
+        coverImage: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=400&h=300&fit=crop'
       },
       {
         id: 4,
@@ -194,7 +247,8 @@ export default {
         students: 750,
         status: 'completed',
         lastUpdate: '2周前',
-        completedDate: '2024-01-10'
+        completedDate: '2024-01-10',
+        coverImage: 'https://images.unsplash.com/photo-1627398242454-45a1465c2479?w=400&h=300&fit=crop'
       },
       {
         id: 5,
@@ -209,13 +263,40 @@ export default {
         students: 630,
         status: 'completed',
         lastUpdate: '3周前',
-        completedDate: '2023-12-25'
+        completedDate: '2023-12-25',
+        coverImage: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400&h=300&fit=crop'
       }
     ])
 
     const filteredCourses = computed(() => {
-      if (activeTab.value === 'all') return courses.value
-      return courses.value.filter(course => course.status === activeTab.value)
+      let filtered = courses.value
+      
+      // 按标签过滤
+      if (activeTab.value !== 'all') {
+        filtered = filtered.filter(course => course.status === activeTab.value)
+      }
+      
+      // 按搜索关键词过滤
+      if (debouncedSearchQuery.value.trim()) {
+        const query = debouncedSearchQuery.value.toLowerCase().trim()
+        filtered = filtered.filter(course => 
+          course.title.toLowerCase().includes(query) ||
+          course.instructor.toLowerCase().includes(query) ||
+          course.description.toLowerCase().includes(query) ||
+          course.category.toLowerCase().includes(query)
+        )
+      }
+      
+      return filtered
+    })
+
+    // 统计数据
+    const learningCount = computed(() => {
+      return filteredCourses.value.filter(course => course.status === 'learning').length
+    })
+
+    const completedCount = computed(() => {
+      return filteredCourses.value.filter(course => course.status === 'completed').length
     })
 
     const getLevelText = (level) => {
@@ -247,15 +328,24 @@ export default {
       alert('浏览更多课程功能开发中...')
     }
 
+    const clearSearch = () => {
+      searchQuery.value = ''
+      debouncedSearchQuery.value = ''
+    }
+
     return {
       activeTab,
+      searchQuery,
       courses,
       filteredCourses,
+      learningCount,
+      completedCount,
       getLevelText,
       getStatusText,
       continueLearning,
       viewNotes,
-      browseCourses
+      browseCourses,
+      clearSearch
     }
   }
 }
@@ -269,54 +359,68 @@ export default {
 }
 
 .header {
-  text-align: center;
-  margin-bottom: 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 24px 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15);
-  margin: -24px -24px 24px -24px;
+  margin-bottom: 32px;
+  background: white;
+  border-radius: 20px;
+  padding: 24px 32px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  border: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 120px;
+  position: relative;
 }
 
 .title-section {
-  max-width: 500px;
-  margin: 0 auto;
+  max-width: 100%;
+  flex: 1;
 }
 
 .page-title {
-  font-size: 1.8rem;
-  font-weight: 600;
-  margin: 0 0 12px 0;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.title-decoration {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.decoration-line {
-  width: 50px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
-}
-
-.decoration-icon {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 50%;
-  padding: 6px;
-  backdrop-filter: blur(10px);
-}
-
-.page-subtitle {
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.85);
+  font-size: 2.5rem;
+  font-weight: 700;
   margin: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #2c3e50 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  text-shadow: 0 2px 4px rgba(102, 126, 234, 0.1);
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.page-title::before {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  border-radius: 2px;
+  opacity: 0.8;
+}
+
+.page-title:hover {
+  transform: translateY(-1px);
+  text-shadow: 0 4px 8px rgba(102, 126, 234, 0.15);
+}
+
+.header-subtitle {
+  position: absolute;
+  bottom: 20px;
+  right: 32px;
+  font-size: 0.9rem;
+  color: #6c757d;
+  opacity: 0.6;
   font-weight: 300;
+  letter-spacing: 0.02em;
+  font-style: italic;
+  backdrop-filter: blur(2px);
 }
 
 .back-btn {
@@ -339,101 +443,266 @@ export default {
 
 .stats-bar {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 16px;
   margin-bottom: 32px;
 }
 
 .stat-card {
   background: white;
-  padding: 20px;
-  border-radius: 12px;
+  padding: 12px 16px;
+  border-radius: 16px;
   text-align: center;
-  border: 2px solid #e9ecef;
+  border: 1px solid #f0f0f0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  border-color: #667eea;
 }
 
 .stat-number {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #f093fb;
-  margin-bottom: 4px;
+  font-size: 1.8rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 2px;
 }
 
 .stat-label {
   color: #6c757d;
-  font-size: 14px;
+  font-size: 13px;
+}
+
+/* 搜索框样式 */
+.search-container {
+  margin-bottom: 24px;
+}
+
+.search-box {
+  position: relative;
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 16px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.search-box:focus-within {
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  transform: translateY(-1px);
+}
+
+.search-icon {
+  color: #6c757d;
+  flex-shrink: 0;
+  transition: color 0.3s ease;
+}
+
+.search-box:focus-within .search-icon {
+  color: #667eea;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 15px;
+  color: #2c3e50;
+  background: transparent;
+  font-weight: 400;
+}
+
+.search-input::placeholder {
+  color: #adb5bd;
+  font-weight: 300;
+}
+
+.clear-btn {
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.clear-btn:hover {
+  background: #f8f9fa;
+  color: #dc3545;
 }
 
 .filter-tabs {
   display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
+  gap: 12px;
+  margin-bottom: 32px;
   background: white;
-  padding: 8px;
-  border-radius: 12px;
-  border: 2px solid #e9ecef;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .tab-btn {
-  padding: 8px 16px;
+  padding: 12px 20px;
   border: none;
   background: transparent;
   color: #6c757d;
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  font-weight: 500;
+  font-size: 15px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
 }
 
 .tab-btn.active {
-  background: #f093fb;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  transform: translateY(-1px);
+}
+
+.tab-btn:hover:not(.active) {
+  background: #f8f9fa;
+  color: #667eea;
 }
 
 .courses-container {
   display: grid;
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+/* 空状态样式 */
+.empty-state {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 40px;
+  background: white;
+  border-radius: 20px;
+  border: 2px dashed #e9ecef;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.empty-state:hover {
+  border-color: #667eea;
+  background: #fafbfc;
+}
+
+.empty-icon {
+  color: #adb5bd;
+  margin-bottom: 24px;
+  opacity: 0.7;
+}
+
+.empty-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #495057;
+  margin: 0 0 12px 0;
+}
+
+.empty-description {
+  color: #6c757d;
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0 0 24px 0;
+  max-width: 400px;
+}
+
+.empty-action {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.empty-action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 .course-card {
   background: white;
-  border: 2px solid #e9ecef;
-  border-radius: 16px;
+  border: 1px solid #e9ecef;
+  border-radius: 20px;
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .course-card:hover {
   border-color: #f093fb;
-  box-shadow: 0 4px 12px rgba(240, 147, 251, 0.1);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(240, 147, 251, 0.15);
 }
 
 .course-image {
-  width: 200px;
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  width: 220px;
+  background: #f8f9fa;
   position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 20px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.course-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.course-card:hover .course-cover {
+  transform: scale(1.05);
 }
 
 .course-category {
-  background: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   padding: 6px 12px;
   border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-  align-self: flex-start;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
 }
 
 .course-level {
-  padding: 4px 8px;
-  border-radius: 12px;
+  padding: 6px 12px;
+  border-radius: 20px;
   font-size: 11px;
-  font-weight: 500;
-  align-self: flex-end;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .course-level.beginner {
@@ -453,29 +722,47 @@ export default {
 
 .course-content {
   flex: 1;
-  padding: 24px;
+  padding: 28px;
   display: flex;
   flex-direction: column;
+  background: linear-gradient(145deg, #ffffff 0%, #fafbfc 100%);
+}
+
+.course-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  gap: 20px;
+}
+
+.course-tags {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .course-title {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1.3rem;
+  font-weight: 700;
   color: #2c3e50;
-  margin: 0 0 8px 0;
+  margin: 0;
+  flex: 1;
+  line-height: 1.3;
 }
 
 .course-instructor {
-  color: #f093fb;
+  color: #667eea;
   font-size: 14px;
-  margin: 0 0 12px 0;
-  font-weight: 500;
+  margin: 0 0 16px 0;
+  font-weight: 600;
 }
 
 .course-description {
   color: #6c757d;
-  margin-bottom: 20px;
-  line-height: 1.5;
+  margin-bottom: 24px;
+  line-height: 1.6;
+  font-size: 15px;
 }
 
 .course-progress {
@@ -492,16 +779,35 @@ export default {
 
 .progress-bar {
   width: 100%;
-  height: 6px;
-  background: #e9ecef;
-  border-radius: 3px;
+  height: 8px;
+  background: #f1f3f4;
+  border-radius: 10px;
   overflow: hidden;
+  position: relative;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #f093fb, #f5576c);
-  transition: width 0.3s ease;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 10px;
+  position: relative;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 .course-stats {
@@ -536,29 +842,36 @@ export default {
 }
 
 .action-btn {
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 2px solid #e9ecef;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
   background: white;
   color: #6c757d;
   cursor: pointer;
   font-size: 14px;
-  transition: all 0.3s ease;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 }
 
 .action-btn.primary {
-  background: #f093fb;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  border-color: #f093fb;
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
 .action-btn:hover {
-  border-color: #f093fb;
-  color: #f093fb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+  border-color: #667eea;
+  color: #667eea;
 }
 
 .action-btn.primary:hover {
-  background: #e084ea;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+  color: white;
 }
 
 .floating-actions {
@@ -568,24 +881,40 @@ export default {
 }
 
 .fab {
-  width: 56px;
-  height: 56px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  background: #f093fb;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(240, 147, 251, 0.3);
-  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.fab::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.fab:hover::before {
+  left: 100%;
 }
 
 .fab:hover {
-  background: #e084ea;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(240, 147, 251, 0.4);
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 8px 30px rgba(102, 126, 234, 0.5);
 }
 
 @media (max-width: 768px) {
@@ -594,20 +923,56 @@ export default {
   }
 
   .header {
-    margin: -16px -16px 16px -16px;
-    padding: 20px 16px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    min-height: 100px;
+  }
+
+  .stats-bar {
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 10px 12px;
+  }
+
+  .stat-number {
+    font-size: 1.6rem;
+  }
+
+  .stat-label {
+    font-size: 12px;
   }
 
   .page-title {
-    font-size: 1.5rem;
+    font-size: 2rem;
+    font-weight: 600;
   }
 
-  .page-subtitle {
-    font-size: 0.85rem;
+  .page-title::before {
+    width: 50px;
+    height: 2px;
   }
 
-  .decoration-line {
-    width: 40px;
+  .header-subtitle {
+    font-size: 0.8rem;
+    bottom: 16px;
+    right: 24px;
+  }
+
+  .filter-tabs {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .tab-btn {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+
+  .courses-container {
+    grid-template-columns: 1fr;
+    gap: 20px;
   }
 
   .course-card {
@@ -616,9 +981,21 @@ export default {
 
   .course-image {
     width: 100%;
-    height: 120px;
-    flex-direction: row;
-    align-items: center;
+    height: 180px;
+  }
+
+  .course-content {
+    padding: 20px;
+  }
+
+  .course-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .course-tags {
+    align-self: flex-end;
   }
 
   .course-footer {
@@ -627,9 +1004,97 @@ export default {
     align-items: flex-start;
   }
 
+  .course-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .action-btn {
+    flex: 1;
+    text-align: center;
+  }
+
   .fab {
     bottom: 20px;
     right: 20px;
+    width: 56px;
+    height: 56px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 16px 20px;
+    min-height: 90px;
+  }
+
+  .stats-bar {
+    gap: 8px;
+  }
+
+  .stat-card {
+    padding: 8px 10px;
+  }
+
+  .stat-number {
+    font-size: 1.4rem;
+  }
+
+  .stat-label {
+    font-size: 11px;
+  }
+
+  .page-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+  }
+
+  .page-title::before {
+    width: 40px;
+    height: 2px;
+  }
+
+  .header-subtitle {
+    font-size: 0.75rem;
+    bottom: 12px;
+    right: 20px;
+  }
+
+  .filter-tabs {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .tab-btn {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .courses-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .course-image {
+    height: 160px;
+  }
+  
+  .course-content {
+    padding: 16px;
+  }
+  
+  .course-title {
+    font-size: 1.1rem;
+  }
+  
+  .course-stats {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  
+  .stat-item {
+    font-size: 13px;
   }
 }
 </style>
