@@ -44,7 +44,7 @@
         <h3 class="card-title">智库</h3>
         <p class="card-description">AI智能助手和知识问答</p>
         <div class="card-stats">
-          <span class="stat-item">对话: 24</span>
+          <span class="stat-item">对话: {{ stats.conversations }}</span>
           <span class="stat-item">在线助手: 1</span>
         </div>
       </div>
@@ -59,8 +59,8 @@
         <h3 class="card-title">参与的项目</h3>
         <p class="card-description">查看和管理您参与的所有项目</p>
         <div class="card-stats">
-          <span class="stat-item">进行中: 3</span>
-          <span class="stat-item">已完成: 5</span>
+          <span class="stat-item">进行中: {{ stats.activeProjects }}</span>
+          <span class="stat-item">已完成: {{ stats.completedProjects }}</span>
         </div>
       </div>
 
@@ -74,8 +74,8 @@
         <h3 class="card-title">参与的课程</h3>
         <p class="card-description">您正在学习的课程和培训</p>
         <div class="card-stats">
-          <span class="stat-item">学习中: 2</span>
-          <span class="stat-item">已完成: 8</span>
+          <span class="stat-item">学习中: {{ stats.learningCourses }}</span>
+          <span class="stat-item">已完成: {{ stats.completedCourses }}</span>
         </div>
       </div>
 
@@ -89,8 +89,8 @@
         <h3 class="card-title">聊天室</h3>
         <p class="card-description">与团队成员实时交流协作</p>
         <div class="card-stats">
-          <span class="stat-item">活跃群组: 4</span>
-          <span class="stat-item">未读消息: 12</span>
+          <span class="stat-item">活跃群组: {{ stats.activeGroups }}</span>
+          <span class="stat-item">未读消息: {{ stats.unreadMessages }}</span>
         </div>
       </div>
 
@@ -104,7 +104,7 @@
         <h3 class="card-title">课程笔记</h3>
         <p class="card-description">整理和查看学习笔记</p>
         <div class="card-stats">
-          <span class="stat-item">笔记数: 24</span>
+          <span class="stat-item">笔记数: {{ stats.totalNotes }}</span>
           <span class="stat-item">最近更新: 今天</span>
         </div>
       </div>
@@ -119,7 +119,7 @@
         <h3 class="card-title">收藏</h3>
         <p class="card-description">收藏的课程资源和项目</p>
         <div class="card-stats">
-          <span class="stat-item">资源: 15</span>
+          <span class="stat-item">资源: {{ stats.favoritesCount }}</span>
           <span class="stat-item">项目: 7</span>
         </div>
       </div>
@@ -134,7 +134,7 @@
         <h3 class="card-title">随手记录</h3>
         <p class="card-description">快速记录想法和灵感</p>
         <div class="card-stats">
-          <span class="stat-item">记录数: 32</span>
+          <span class="stat-item">记录数: {{ stats.quickNotesCount }}</span>
           <span class="stat-item">今日新增: 3</span>
         </div>
       </div>
@@ -149,7 +149,7 @@
         <h3 class="card-title">知识库</h3>
         <p class="card-description">浏览和搜索项目知识资源</p>
         <div class="card-stats">
-          <span class="stat-item">文档: 156</span>
+          <span class="stat-item">文档: {{ stats.knowledgeDocsCount }}</span>
           <span class="stat-item">分类: 12</span>
         </div>
       </div>
@@ -159,33 +159,86 @@
 
 <script>
 import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useDashboardData, useNotesData, useProjectsData } from '@/composables/useApiData.js'
 
 export default {
   name: 'Home',
   setup() {
     const router = useRouter()
+    const { summary, fetchSummary, fetchDashboardProjects, fetchDashboardCourses } = useDashboardData()
+    const { notes, fetchNotes } = useNotesData()
+    const { projects, fetchProjects } = useProjectsData()
+
+    // 统计数据
+    const stats = ref({
+      conversations: 24,
+      activeProjects: 0,
+      completedProjects: 0,
+      learningCourses: 0,
+      completedCourses: 0,
+      activeGroups: 4,
+      unreadMessages: 0,
+      totalNotes: 0,
+      favoritesCount: 15,
+      quickNotesCount: 0,
+      knowledgeDocsCount: 156
+    })
 
     const navigateTo = (path) => {
       router.push(path)
     }
 
     const createProject = () => {
-      alert('创建项目功能开发中...')
+      router.push('/my-projects?action=create')
     }
 
     const addNote = () => {
-      alert('新建笔记功能开发中...')
+      router.push('/course-notes?action=create')
     }
 
     const joinGroup = () => {
-      alert('加入群组功能开发中...')
+      router.push('/chat-rooms?action=join')
     }
 
     const searchResources = () => {
-      alert('搜索资源功能开发中...')
+      router.push('/knowledge-hub?action=search')
     }
 
+    // 加载数据
+    const loadData = async () => {
+      try {
+        // 获取工作台概览数据
+        await fetchSummary()
+        if (summary.value) {
+          stats.value.activeProjects = summary.value.active_projects_count || 0
+          stats.value.completedProjects = summary.value.completed_projects_count || 0
+          stats.value.learningCourses = summary.value.learning_courses_count || 0
+          stats.value.completedCourses = summary.value.completed_courses_count || 0
+          stats.value.unreadMessages = summary.value.unread_messages_count || 0
+        }
+
+        // 获取笔记数量
+        await fetchNotes('current_user')
+        if (notes.value) {
+          stats.value.totalNotes = notes.value.length || 0
+        }
+
+        // 获取项目总数
+        await fetchProjects()
+        // 项目统计已经从工作台概览获取
+
+      } catch (error) {
+        console.warn('加载首页数据失败:', error)
+      }
+    }
+
+    onMounted(() => {
+      loadData()
+    })
+
     return {
+      stats,
       navigateTo,
       createProject,
       addNote,

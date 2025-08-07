@@ -28,6 +28,7 @@
     "@capacitor/cli": "^7.4.2",
     "@capacitor/core": "^7.4.2",
     "@element-plus/icons-vue": "^2.3.0",
+    "axios": "^1.11.0",
     "element-plus": "^2.4.0",
     "pinia": "^2.1.0",
     "vue": "^3.4.0",

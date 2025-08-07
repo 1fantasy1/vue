@@ -13,10 +13,20 @@
               <div class="name-section">
                 <div class="name-container">
                   <h1 class="profile-name">{{ userProfile.name }}</h1>
-                  <button class="edit-btn-inline" @click="startEdit">
-                    <span class="btn-icon">✏️</span>
-                    编辑资料
-                  </button>
+                  <div class="action-buttons">
+                    <button class="edit-btn-inline" @click="startEdit" :disabled="userLoading">
+                      <span class="btn-icon">✏️</span>
+                      编辑资料
+                    </button>
+                    <button class="refresh-btn-inline" @click="loadUserData" :disabled="userLoading">
+                      <span class="btn-icon" :class="{ loading: userLoading }">🔄</span>
+                      刷新
+                    </button>
+                    <button class="logout-btn-inline" @click="handleLogout">
+                      <span class="btn-icon">🚪</span>
+                      登出
+                    </button>
+                  </div>
                 </div>
                 <div class="username">@{{ userProfile.username }}</div>
               </div>
@@ -885,17 +895,29 @@
 
 <script>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { useGlobalStore } from '@/stores/global'
+
+import { useUserData, useDashboardData, useProjectsData } from '@/composables/useApiData.js'
 
 export default {
   name: 'Profile',
   setup() {
+    const router = useRouter()
+    const globalStore = useGlobalStore()
+    
     const expandedCard = ref(null)
     const isEditing = ref(false)
     const isSettingsOpen = ref(false)
     const currentView = ref('main') // 'main' | 'detail'
     const currentSettingDetail = ref('')
     const isMobile = ref(false)
+
+    // API数据管理
+    const { user, getCurrentUser, updateProfile, loading: userLoading } = useUserData()
+    const { summary, fetchSummary } = useDashboardData()
+    const { projects, fetchProjects } = useProjectsData()
 
     // 检测设备类型
     const checkMobile = () => {
@@ -905,38 +927,111 @@ export default {
     onMounted(() => {
       checkMobile()
       window.addEventListener('resize', checkMobile)
+      loadUserData()
     })
 
+    // 加载用户数据
+    const loadUserData = async () => {
+      try {
+        await Promise.all([
+          getCurrentUser(),
+          fetchSummary(),
+          fetchProjects()
+        ])
+        
+        // 更新用户配置信息
+        if (user.value) {
+          updateUserProfile()
+        }
+        
+        // 更新统计数据
+        if (summary.value) {
+          updateStatistics()
+        }
+      } catch (error) {
+        console.warn('加载用户数据失败:', error)
+      }
+    }
+
+    // 用户配置信息（默认值）
     const userProfile = ref({
-      name: '张小明',
-      username: '1fantasy1',
-      email: 'zhang.xiaoming@example.com',
-      major: '计算机科学与技术专业',
-      school: '清华大学',
-      skills: ['Python', '机器学习', '数据分析', '深度学习'],
-      interests: '人工智能、大数据分析、区块链技术、创新创业',
-      status: '专注于AI技术研究，热爱开源项目 🚀'
+      name: '用户',
+      username: 'user',
+      email: 'user@example.com',
+      major: '专业未设置',
+      school: '学校未设置',
+      skills: ['技能待完善'],
+      interests: '兴趣爱好待完善',
+      status: '个人简介待完善 ✨'
     })
+
+    // 更新用户配置信息
+    const updateUserProfile = () => {
+      if (user.value) {
+        // 处理技能数据 - 可能是字符串或数组
+        let skills = []
+        if (typeof user.value.skills === 'string') {
+          skills = user.value.skills.split(',').map(s => s.trim()).filter(s => s)
+        } else if (Array.isArray(user.value.skills)) {
+          skills = user.value.skills
+        }
+        
+        userProfile.value = {
+          name: user.value.name || user.value.username || '用户',
+          username: user.value.username || user.value.email?.split('@')[0] || 'user',
+          email: user.value.email || 'user@example.com',
+          major: user.value.major || '专业未设置',
+          school: user.value.school || '学校未设置', 
+          skills: skills.length ? skills : ['技能待完善'],
+          interests: user.value.interests || '兴趣爱好待完善',
+          status: user.value.bio || '个人简介待完善 ✨'
+        }
+        
+        // 更新编辑表单
+        editProfile.value = {
+          name: userProfile.value.name,
+          username: userProfile.value.username,
+          major: userProfile.value.major,
+          school: userProfile.value.school,
+          skillsString: Array.isArray(userProfile.value.skills) ? userProfile.value.skills.join(', ') : userProfile.value.skills,
+          interests: userProfile.value.interests,
+          status: userProfile.value.status
+        }
+      }
+    }
 
     const editProfile = ref({
-      name: userProfile.value.name,
-      username: userProfile.value.username,
-      major: userProfile.value.major,
-      school: userProfile.value.school,
-      skillsString: userProfile.value.skills.join(', '),
-      interests: userProfile.value.interests,
-      status: userProfile.value.status
+      name: '用户',
+      username: 'user',
+      major: '专业未设置',
+      school: '学校未设置',
+      skillsString: '技能待完善',
+      interests: '兴趣爱好待完善',
+      status: '个人简介待完善 ✨'
     })
 
     // 保存原始数据用于取消编辑时恢复
     const originalProfile = ref(null)
 
+    // 统计数据
     const statistics = ref({
-      projects: 3,
-      courses: 5,
-      recommendations: 12,
-      points: '2,580'
+      projects: 0,
+      courses: 0,
+      recommendations: 0,
+      points: '0'
     })
+
+    // 更新统计数据
+    const updateStatistics = () => {
+      if (summary.value) {
+        statistics.value = {
+          projects: (summary.value.active_projects_count || 0) + (summary.value.completed_projects_count || 0),
+          courses: (summary.value.learning_courses_count || 0) + (summary.value.completed_courses_count || 0),
+          recommendations: summary.value.recommendations_received_count || 0,
+          points: (summary.value.total_points || 0).toLocaleString()
+        }
+      }
+    }
 
     const achievements = ref([
       { 
@@ -1115,6 +1210,16 @@ export default {
       isEditing.value = true
     }
 
+    // 处理登出
+    const handleLogout = () => {
+      const confirmed = confirm('确定要登出吗？')
+      if (confirmed) {
+        globalStore.logout()
+        ElMessage.success('已安全登出')
+        router.push('/login')
+      }
+    }
+
     const cancelEdit = () => {
       // 恢复原始数据
       if (originalProfile.value) {
@@ -1132,16 +1237,43 @@ export default {
       isEditing.value = false
     }
 
-    const saveProfile = () => {
-      userProfile.value.name = editProfile.value.name
-      userProfile.value.username = editProfile.value.username
-      userProfile.value.major = editProfile.value.major
-      userProfile.value.school = editProfile.value.school
-      userProfile.value.skills = editProfile.value.skillsString.split(',').map(s => s.trim()).filter(s => s)
-      userProfile.value.interests = editProfile.value.interests
-      userProfile.value.status = editProfile.value.status
-      isEditing.value = false
-      ElMessage.success('个人信息保存成功！')
+    const saveProfile = async () => {
+      try {
+        // 构建更新数据 - 根据后端API的字段要求
+        const updateData = {
+          name: editProfile.value.name,
+          major: editProfile.value.major,
+          skills: editProfile.value.skillsString,  // 后端期望字符串格式
+          interests: editProfile.value.interests,
+          bio: editProfile.value.status
+        }
+
+        // 添加学校字段（如果需要）
+        if (editProfile.value.school && editProfile.value.school !== '学校未设置') {
+          updateData.school = editProfile.value.school
+        }
+
+        console.log('准备更新的用户数据:', updateData)
+
+        // 调用API更新
+        const result = await updateProfile(updateData)
+        console.log('更新结果:', result)
+        
+        // 更新本地数据显示
+        userProfile.value.name = editProfile.value.name
+        userProfile.value.username = editProfile.value.username
+        userProfile.value.major = editProfile.value.major
+        userProfile.value.school = editProfile.value.school
+        userProfile.value.skills = editProfile.value.skillsString.split(',').map(s => s.trim()).filter(s => s)
+        userProfile.value.interests = editProfile.value.interests
+        userProfile.value.status = editProfile.value.status
+        
+        isEditing.value = false
+        ElMessage.success('个人信息保存成功！')
+      } catch (error) {
+        console.error('保存个人信息失败:', error)
+        ElMessage.error('保存失败: ' + (error.message || '未知错误'))
+      }
     }
 
     const toggleSettings = () => {
@@ -1213,12 +1345,19 @@ export default {
       startEdit,
       cancelEdit,
       saveProfile,
+      handleLogout,
       toggleSettings,
       openSettingsModal,
       closeSettingsModal,
       openSettingDetail,
       backToMain,
-      getDetailTitle
+      getDetailTitle,
+      // API数据相关
+      user,
+      userLoading,
+      loadUserData,
+      updateUserProfile,
+      updateStatistics
     }
   }
 }
@@ -1396,7 +1535,15 @@ export default {
   gap: 12px;
 }
 
-.edit-btn-inline {
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.edit-btn-inline,
+.refresh-btn-inline,
+.logout-btn-inline {
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
@@ -1414,11 +1561,41 @@ export default {
   min-width: fit-content;
 }
 
-.edit-btn-inline:hover {
+.logout-btn-inline {
+  background: rgba(255, 59, 48, 0.1);
+  border-color: rgba(255, 59, 48, 0.2);
+}
+
+.edit-btn-inline:hover,
+.refresh-btn-inline:hover {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.3);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.logout-btn-inline:hover {
+  background: rgba(255, 59, 48, 0.2);
+  border-color: rgba(255, 59, 48, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 59, 48, 0.15);
+}
+
+.edit-btn-inline:disabled,
+.refresh-btn-inline:disabled,
+.logout-btn-inline:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-icon.loading {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .profile-name {

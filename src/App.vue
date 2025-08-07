@@ -1,19 +1,23 @@
 <template>
   <div id="app" :class="{ 'knowledge-page': $route.path === '/knowledge', 'profile-page': $route.path === '/profile' }">
     <!-- 头部 - 仅在首页显示 -->
-    <div class="header" v-if="$route.path === '/'">
+    <div class="header" v-if="$route.path === '/' && isAuthenticated">
       <div class="container">
         <h1>🚀 鸿庆书云</h1>
         <p>云聚书，书载鸿，鸿成庆</p>
       </div>
     </div>
 
-    <div class="container" :class="{ 'knowledge-container': $route.path === '/knowledge', 'profile-container': $route.path === '/profile' }">
+    <div class="container" :class="{ 
+      'knowledge-container': $route.path === '/knowledge', 
+      'profile-container': $route.path === '/profile',
+      'login-container': $route.path === '/login'
+    }">
       <router-view />
     </div>
 
-    <!-- 底部导航 -->
-    <div class="bottom-nav" v-if="$route.path !== '/knowledge'">
+    <!-- 底部导航 - 仅在已登录且非智库页面时显示 -->
+    <div class="bottom-nav" v-if="$route.path !== '/knowledge' && $route.path !== '/login' && isAuthenticated">
       <router-link to="/" class="nav-item" active-class="active">
         <div class="nav-icon">🏠</div>
         <div class="nav-text">首页</div>
@@ -31,8 +35,24 @@
 </template>
 
 <script>
+import { computed } from 'vue'
+import { useGlobalStore } from './stores/global'
+
 export default {
   name: 'App',
+  setup() {
+    const globalStore = useGlobalStore()
+    
+    // 初始化认证状态
+    globalStore.initAuth()
+    
+    // 计算认证状态
+    const isAuthenticated = computed(() => globalStore.isAuthenticated)
+    
+    return {
+      isAuthenticated
+    }
+  },
   watch: {
     '$route'(to) {
       // 动态添加/移除body类
@@ -98,8 +118,18 @@ body:not(.knowledge-page):not(.profile-page) {
 }
 
 /* 为非智库和个人页面添加padding */
-.container:not(.knowledge-container):not(.profile-container) {
+.container:not(.knowledge-container):not(.profile-container):not(.login-container) {
   padding: 20px;
+}
+
+/* 登录页面的容器样式 */
+.container.login-container {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* 智库页面的容器样式 */

@@ -91,40 +91,36 @@ const routes = [
     meta: { requiresAuth: true }
   }
 ]
+    name: 'ChatRooms',
+    component: ChatRooms
+  },
+  {
+    path: '/course-notes',
+    name: 'CourseNotes',
+    component: CourseNotes
+  },
+  {
+    path: '/favorites',
+    name: 'Favorites',
+    component: Favorites
+  },
+  {
+    path: '/quick-notes',
+    name: 'QuickNotes',
+    component: QuickNotes
+  },
+  {
+    path: '/knowledge-hub',
+    name: 'KnowledgeBase',
+    component: KnowledgeBase
+  }
+]
 
 const router = createRouter({
   history: window.navigator.userAgent.indexOf('Electron') !== -1 
     ? createWebHashHistory(import.meta.env.BASE_URL)
     : createWebHistory(import.meta.env.BASE_URL),
   routes
-})
-
-// 全局路由守卫
-router.beforeEach((to, from, next) => {
-  const globalStore = useGlobalStore()
-  
-  // 初始化认证状态
-  globalStore.initAuth()
-  
-  const isAuthenticated = globalStore.checkAuth()
-  
-  // 如果需要认证但用户未登录
-  if (to.matched.some(record => record.meta.requiresAuth)) {
-    if (!isAuthenticated) {
-      next('/login')
-      return
-    }
-  }
-  
-  // 如果是登录页面但用户已登录
-  if (to.matched.some(record => record.meta.requiresGuest)) {
-    if (isAuthenticated) {
-      next('/')
-      return
-    }
-  }
-  
-  next()
 })
 
 export default router
