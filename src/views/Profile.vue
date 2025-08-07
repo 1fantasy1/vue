@@ -196,81 +196,6 @@
             </div>
           </div>
         </div>
-          <!-- 模型与服务分组 -->
-          <div class="settings-group">
-            <h3 class="group-title">模型与服务</h3>
-            <div class="settings-list">
-              <div class="settings-item" @click="openSettingDetail('defaultModel')">
-                <div class="item-icon">♥</div>
-                <div class="item-content">
-                  <div class="item-title">默认模型</div>
-                  <div class="item-subtitle">设置各个功能的默认模型</div>
-                </div>
-                <div class="item-arrow">›</div>
-              </div>
-              
-              <div class="settings-item" @click="openSettingDetail('theme')">
-                <div class="item-icon">🎨</div>
-                <div class="item-content">
-                  <div class="item-title">主题设置</div>
-                  <div class="item-subtitle">主题模式和色彩配置</div>
-                </div>
-                <div class="item-arrow">›</div>
-              </div>
-              
-              <div class="settings-item" @click="openSettingDetail('search')">
-                <div class="item-icon">🌐</div>
-                <div class="item-content">
-                  <div class="item-title">搜索服务</div>
-                  <div class="item-subtitle">设置搜索服务</div>
-                </div>
-                <div class="item-arrow">›</div>
-              </div>
-              
-              <div class="settings-item" @click="openSettingDetail('voice')">
-                <div class="item-icon">🔊</div>
-                <div class="item-content">
-                  <div class="item-title">语音服务</div>
-                  <div class="item-subtitle">配置语音合成服务提供商</div>
-                </div>
-                <div class="item-arrow">›</div>
-              </div>
-              
-              <div class="settings-item" @click="openSettingDetail('mcp')">
-                <div class="item-icon">>_</div>
-                <div class="item-content">
-                  <div class="item-title">MCP</div>
-                  <div class="item-subtitle">配置MCP服务器</div>
-                </div>
-                <div class="item-arrow">›</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 数据设置分组 -->
-          <div class="settings-group">
-            <h3 class="group-title">数据设置</h3>
-            <div class="settings-list">
-              <div class="settings-item" @click="openSettingDetail('backup')">
-                <div class="item-icon">🗃️</div>
-                <div class="item-content">
-                  <div class="item-title">数据备份</div>
-                  <div class="item-subtitle">备份和恢复应用数据</div>
-                </div>
-                <div class="item-arrow">›</div>
-              </div>
-              
-              <div class="settings-item" @click="openSettingDetail('storage')">
-                <div class="item-icon">💾</div>
-                <div class="item-content">
-                  <div class="item-title">聊天记录存储</div>
-                  <div class="item-subtitle">0 个文件, 0.00 MB</div>
-                </div>
-                <div class="item-arrow">›</div>
-              </div>
-            </div>
-          </div>
-        </div>
 
         <!-- 设置详情页面 -->
         <div v-if="currentView === 'detail'" class="setting-detail-page">
@@ -514,6 +439,7 @@
       </div>
     </div>
   </div>
+</div>
 </template>
 
 <script>
