@@ -191,6 +191,83 @@
               </div>
             </div>
           </div>
+
+          <div class="settings-panel">
+            <h4 class="panel-title">🎙️ 语言合成服务商</h4>
+            <div class="settings-items">
+              <div class="setting-item">
+                <label class="setting-label">TTS服务提供商</label>
+                <select class="setting-input" v-model="settings.ttsProvider">
+                  <option value="azure">Azure Cognitive Services</option>
+                  <option value="google">Google Text-to-Speech</option>
+                  <option value="amazon">Amazon Polly</option>
+                  <option value="iflytek">科大讯飞</option>
+                  <option value="baidu">百度语音</option>
+                  <option value="local">本地合成引擎</option>
+                </select>
+              </div>
+              <div class="setting-item">
+                <label class="setting-label">默认语音</label>
+                <select class="setting-input" v-model="settings.defaultVoice">
+                  <option value="zh-CN-XiaoxiaoNeural">晓晓 (女声)</option>
+                  <option value="zh-CN-YunxiNeural">云希 (男声)</option>
+                  <option value="zh-CN-YunyangNeural">云扬 (男声)</option>
+                  <option value="en-US-JennyNeural">Jenny (English)</option>
+                </select>
+              </div>
+              <div class="setting-item">
+                <label class="setting-label">语速: {{ settings.speechRate }}</label>
+                <input type="range" min="0.5" max="2" step="0.1" v-model="settings.speechRate" class="range-input">
+              </div>
+              <div class="setting-item checkbox-item">
+                <label class="checkbox-label">
+                  <input type="checkbox" v-model="settings.autoPlay">
+                  <span class="checkmark"></span>
+                  <span>自动播放生成的语音</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-panel">
+            <h4 class="panel-title">🔗 MCP服务配置</h4>
+            <div class="settings-items">
+              <div class="setting-item">
+                <label class="setting-label">MCP服务器地址</label>
+                <input type="text" class="setting-input" placeholder="ws://localhost:3001" v-model="settings.mcpServerUrl">
+              </div>
+              <div class="setting-item">
+                <label class="setting-label">连接协议</label>
+                <select class="setting-input" v-model="settings.mcpProtocol">
+                  <option value="websocket">WebSocket</option>
+                  <option value="stdio">Standard I/O</option>
+                  <option value="sse">Server-Sent Events</option>
+                </select>
+              </div>
+              <div class="setting-item">
+                <label class="setting-label">认证令牌</label>
+                <input type="password" class="setting-input" placeholder="输入MCP认证令牌" v-model="settings.mcpAuthToken">
+              </div>
+              <div class="setting-item">
+                <label class="setting-label">连接超时 (秒): {{ settings.mcpTimeout }}</label>
+                <input type="range" min="5" max="60" step="5" v-model="settings.mcpTimeout" class="range-input">
+              </div>
+              <div class="setting-item checkbox-item">
+                <label class="checkbox-label">
+                  <input type="checkbox" v-model="settings.mcpAutoReconnect">
+                  <span class="checkmark"></span>
+                  <span>自动重连</span>
+                </label>
+              </div>
+              <div class="setting-item checkbox-item">
+                <label class="checkbox-label">
+                  <input type="checkbox" v-model="settings.mcpDebugMode">
+                  <span class="checkmark"></span>
+                  <span>调试模式</span>
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -377,7 +454,19 @@ export default {
       apiKey: 'sk-****',
       temperature: 0.7,
       searchEngine: 'google',
-      realtimeSearch: true
+      realtimeSearch: true,
+      // TTS 语言合成设置
+      ttsProvider: 'azure',
+      defaultVoice: 'zh-CN-XiaoxiaoNeural',
+      speechRate: 1.0,
+      autoPlay: false,
+      // MCP 服务配置
+      mcpServerUrl: 'ws://localhost:3001',
+      mcpProtocol: 'websocket',
+      mcpAuthToken: '',
+      mcpTimeout: 30,
+      mcpAutoReconnect: true,
+      mcpDebugMode: false
     })
 
     const themeColors = ref([
@@ -481,7 +570,19 @@ export default {
         apiKey: '',
         temperature: 0.7,
         searchEngine: 'google',
-        realtimeSearch: true
+        realtimeSearch: true,
+        // TTS 语言合成设置
+        ttsProvider: 'azure',
+        defaultVoice: 'zh-CN-XiaoxiaoNeural',
+        speechRate: 1.0,
+        autoPlay: false,
+        // MCP 服务配置
+        mcpServerUrl: 'ws://localhost:3001',
+        mcpProtocol: 'websocket',
+        mcpAuthToken: '',
+        mcpTimeout: 30,
+        mcpAutoReconnect: true,
+        mcpDebugMode: false
       }
       ElMessage.success('已重置为默认设置！')
     }
