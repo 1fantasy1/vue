@@ -1,41 +1,65 @@
 <template>
-  <div class="page">
-    <div class="header">
-      <div class="title-section">
-        <h1 class="page-title">参与的项目</h1>
-        <div class="title-decoration">
-          <div class="decoration-line"></div>
-          <div class="decoration-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/>
+  <div class="my-projects-page">
+    <!-- 页面头部 -->
+    <div class="page-header">
+      <div class="header-content">
+        <div class="header-left">
+          <div class="page-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20 6h-2l-2-2H8L6 6H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-5 3c1.1 0 2 .9 2 2s-.9 2-2 2-2-.9-2-2 .9-2 2-2zm4 8h-2v-1c0-1.33-2.67-2-4-2s-4 .67-4 2v1H7V9h10v8z"/>
             </svg>
           </div>
-          <div class="decoration-line"></div>
+          <div class="header-text">
+            <h1 class="page-title">我的项目</h1>
+            <p class="page-description">管理和跟踪您参与的所有项目</p>
+          </div>
         </div>
-        <p class="page-subtitle">管理和跟踪您参与的所有项目进展</p>
+        <div class="header-right">
+          <button class="create-btn" @click="createProject">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+            </svg>
+            创建项目
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- 搜索和筛选区域 -->
-    <div class="controls-section">
-      <div class="search-container">
-        <div class="search-input-wrapper">
+    <!-- 统计卡片 -->
+    <div class="stats-section">
+      <div class="stats-grid">
+        <div class="stat-card" v-for="(stat, index) in statsData" :key="index" :class="stat.type">
+          <div class="stat-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <path :d="stat.icon"/>
+            </svg>
+          </div>
+          <div class="stat-content">
+            <div class="stat-number">{{ stat.value }}</div>
+            <div class="stat-label">{{ stat.label }}</div>
+          </div>
+          <div class="stat-trend" v-if="stat.trend">
+            <span class="trend-value" :class="stat.trend.type">{{ stat.trend.value }}</span>
+            <span class="trend-label">{{ stat.trend.label }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 筛选和搜索 -->
+    <div class="filters-section">
+      <div class="search-wrapper">
+        <div class="search-box">
           <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
             <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79L19 20l1-1-4.5-4.5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/>
           </svg>
           <input 
             v-model="searchQuery" 
             type="text" 
-            placeholder="搜索项目名称或描述..." 
+            placeholder="搜索项目名称、描述或团队成员..."
             class="search-input"
-            @input="handleSearch"
           />
-          <button 
-            v-if="searchQuery" 
-            @click="clearSearch" 
-            class="clear-search"
-            aria-label="清除搜索"
-          >
+          <button v-if="searchQuery" @click="clearSearch" class="clear-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
               <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
             </svg>
@@ -43,161 +67,190 @@
         </div>
       </div>
       
-      <div class="filter-container">
-        <div class="filter-group">
-          <label for="status-filter" class="filter-label">状态筛选:</label>
-          <select 
-            id="status-filter" 
-            v-model="statusFilter" 
-            class="filter-select"
-            @change="handleFilter"
-          >
-            <option value="all">全部状态</option>
-            <option value="active">进行中</option>
-            <option value="completed">已完成</option>
-          </select>
-        </div>
-        
-        <div class="filter-group">
-          <label for="role-filter" class="filter-label">角色筛选:</label>
-          <select 
-            id="role-filter" 
-            v-model="roleFilter" 
-            class="filter-select"
-            @change="handleFilter"
-          >
-            <option value="all">全部角色</option>
-            <option value="项目组长">项目组长</option>
-            <option value="前端开发">前端开发</option>
-            <option value="后端开发">后端开发</option>
-            <option value="UI设计师">UI设计师</option>
-            <option value="数据分析师">数据分析师</option>
-          </select>
-        </div>
+      <div class="filter-tabs">
+        <button 
+          v-for="filter in filters" 
+          :key="filter.key"
+          class="filter-tab"
+          :class="{ active: activeFilter === filter.key }"
+          @click="setActiveFilter(filter.key)"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path :d="filter.icon"/>
+          </svg>
+          {{ filter.label }}
+          <span class="filter-count">{{ getFilterCount(filter.key) }}</span>
+        </button>
+      </div>
+      
+      <div class="sort-dropdown">
+        <select v-model="sortBy" class="sort-select">
+          <option value="lastUpdate">最近更新</option>
+          <option value="progress">项目进度</option>
+          <option value="title">项目名称</option>
+          <option value="priority">优先级</option>
+        </select>
       </div>
     </div>
 
-    <div class="stats-bar">
-      <div class="stat-card" v-for="(stat, index) in statsData" :key="index">
-        <div class="stat-number">{{ stat.value }}</div>
-        <div class="stat-label">{{ stat.label }}</div>
-      </div>
-    </div>
-
-    <div class="projects-container">
-      <!-- 空状态显示 -->
+    <!-- 项目列表 -->
+    <div class="projects-section">
       <div v-if="filteredProjects.length === 0" class="empty-state">
-        <div class="empty-icon">
-          <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2L2 7V10C2 16 6 20.5 12 22C18 20.5 22 16 22 10V7L12 2Z"/>
+        <div class="empty-illustration">
+          <svg width="120" height="120" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2L2 7L12 12L22 7L12 2Z"/>
+            <path d="M2 17L12 22L22 17"/>
+            <path d="M2 12L12 17L22 12"/>
           </svg>
         </div>
         <h3 class="empty-title">{{ getEmptyStateTitle() }}</h3>
         <p class="empty-description">{{ getEmptyStateDescription() }}</p>
-        <button @click="clearAllFilters" class="empty-action" v-if="hasActiveFilters">
-          清除所有筛选条件
-        </button>
+        <div class="empty-actions">
+          <button v-if="hasActiveFilters" @click="clearAllFilters" class="secondary-btn">
+            清除筛选条件
+          </button>
+          <button @click="createProject" class="primary-btn">
+            创建第一个项目
+          </button>
+        </div>
       </div>
 
-      <!-- 项目列表 -->
-      <transition-group name="project-list" tag="div" class="projects-grid" v-else>
-        <div 
-          class="project-card" 
-          v-for="project in filteredProjects" 
-          :key="project.id"
-          @click="viewProject(project.id)"
-          @keydown.enter="viewProject(project.id)"
-          @keydown.space.prevent="viewProject(project.id)"
-          tabindex="0"
-          :aria-label="`项目: ${project.title}, 状态: ${getStatusText(project.status)}, 进度: ${project.progress}%`"
-        >
-          <div class="project-header">
-            <div class="project-info">
+      <div v-else class="projects-grid">
+        <transition-group name="project" tag="div" class="projects-list">
+          <div 
+            v-for="project in filteredProjects" 
+            :key="project.id"
+            class="project-card"
+            :class="{ 'high-priority': project.priority === 'high' }"
+            @click="viewProject(project)"
+          >
+            <!-- 项目头部 -->
+            <div class="project-header">
+              <div class="project-meta">
+                <span class="project-status" :class="project.status">
+                  {{ getStatusText(project.status) }}
+                </span>
+                <span class="project-priority" :class="project.priority">
+                  {{ getPriorityText(project.priority) }}
+                </span>
+              </div>
+              <div class="project-actions">
+                <button 
+                  class="action-btn" 
+                  @click.stop="toggleFavorite(project.id)"
+                  :class="{ active: project.isFavorite }"
+                  :title="project.isFavorite ? '取消收藏' : '收藏项目'"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5 2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z"/>
+                  </svg>
+                </button>
+                <button class="action-btn" @click.stop="openProjectMenu(project.id)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12,16A2,2 0 0,1 14,18A2,2 0 0,1 12,20A2,2 0 0,1 10,18A2,2 0 0,1 12,16M12,10A2,2 0 0,1 14,12A2,2 0 0,1 12,14A2,2 0 0,1 10,12A2,2 0 0,1 12,10M12,4A2,2 0 0,1 14,6A2,2 0 0,1 12,8A2,2 0 0,1 10,6A2,2 0 0,1 12,4Z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- 项目内容 -->
+            <div class="project-content">
               <h3 class="project-title">{{ project.title }}</h3>
-              <span class="project-status" :class="project.status">{{ getStatusText(project.status) }}</span>
-            </div>
-            <div class="project-role">{{ project.role }}</div>
-          </div>
-          
-          <p class="project-description">{{ project.description }}</p>
-          
-          <div class="project-progress">
-            <div class="progress-header">
-              <span>项目进度</span>
-              <span>{{ project.progress }}%</span>
-            </div>
-            <div class="progress-bar">
-              <div 
-                class="progress-fill" 
-                :style="{ width: project.progress + '%' }"
-                :aria-label="`进度 ${project.progress}%`"
-              ></div>
-            </div>
-          </div>
-
-          <div class="project-team">
-            <div class="team-avatars">
-              <div 
-                class="avatar" 
-                v-for="(member, index) in project.team.slice(0, 4)" 
-                :key="member.id" 
-                :title="member.name"
-                :style="{ zIndex: project.team.length - index }"
-              >
-                {{ member.name.charAt(0) }}
-              </div>
-              <div 
-                v-if="project.team.length > 4" 
-                class="avatar more-members"
-                :title="`还有 ${project.team.length - 4} 位成员`"
-              >
-                +{{ project.team.length - 4 }}
+              <p class="project-description">{{ project.description }}</p>
+              
+              <div class="project-details">
+                <div class="detail-item">
+                  <span class="detail-label">我的角色</span>
+                  <span class="detail-value role-badge" :class="getRoleClass(project.role)">
+                    {{ project.role }}
+                  </span>
+                </div>
+                <div class="detail-item">
+                  <span class="detail-label">团队规模</span>
+                  <span class="detail-value">{{ project.team.length }} 人</span>
+                </div>
               </div>
             </div>
-            <span class="team-count">{{ project.team.length }}人团队</span>
-          </div>
 
-          <div class="project-footer">
-            <div class="project-date">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M12.5 7V12.25L17 14.92L16.25 16.15L11 13V7H12.5Z"/>
-              </svg>
-              更新于 {{ project.lastUpdate }}
+            <!-- 进度条 -->
+            <div class="project-progress">
+              <div class="progress-header">
+                <span class="progress-label">完成进度</span>
+                <span class="progress-value">{{ project.progress }}%</span>
+              </div>
+              <div class="progress-bar">
+                <div 
+                  class="progress-fill" 
+                  :style="{ width: project.progress + '%' }"
+                  :class="getProgressClass(project.progress)"
+                ></div>
+              </div>
             </div>
-            <div class="project-actions">
-              <button 
-                class="action-btn primary" 
-                @click.stop="viewProject(project.id)"
-                :aria-label="`查看项目 ${project.title} 详情`"
-              >
-                查看详情
-              </button>
-              <button 
-                class="action-btn" 
-                @click.stop="openChat(project.id)"
-                :aria-label="`打开项目 ${project.title} 团队聊天`"
-              >
-                团队聊天
-              </button>
+
+            <!-- 团队成员 -->
+            <div class="project-team">
+              <div class="team-label">团队成员</div>
+              <div class="team-avatars">
+                <div 
+                  v-for="(member, index) in project.team.slice(0, 5)" 
+                  :key="member.id"
+                  class="member-avatar"
+                  :title="member.name"
+                  :style="{ zIndex: 10 - index }"
+                >
+                  <img v-if="member.avatar" :src="member.avatar" :alt="member.name" />
+                  <span v-else>{{ member.name.charAt(0) }}</span>
+                </div>
+                <div v-if="project.team.length > 5" class="member-avatar more" :title="`还有 ${project.team.length - 5} 位成员`">
+                  +{{ project.team.length - 5 }}
+                </div>
+              </div>
+            </div>
+
+            <!-- 项目底部 -->
+            <div class="project-footer">
+              <div class="footer-info">
+                <div class="deadline" v-if="project.deadline">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M12 20C7.59 20 4 16.41 4 12S7.59 4 12 4 20 7.59 20 12 16.41 20 12 20M12.5 7V12.25L17 14.92L16.25 16.15L11 13V7H12.5Z"/>
+                  </svg>
+                  {{ formatDeadline(project.deadline) }}
+                </div>
+                <div class="last-update">
+                  更新于 {{ project.lastUpdate }}
+                </div>
+              </div>
+              <div class="footer-actions">
+                <button class="quick-action" @click.stop="openChat(project.id)" title="团队聊天">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20,2H4A2,2 0 0,0 2,4V22L6,18H20A2,2 0 0,0 22,16V4C22,2.89 21.1,2 20,2Z"/>
+                  </svg>
+                  <span class="action-text">聊天</span>
+                </button>
+                <button class="quick-action" @click.stop="viewTasks(project.id)" title="查看任务">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3M10,17L5,12L6.41,10.58L10,14.17L17.59,6.58L19,8L10,17Z"/>
+                  </svg>
+                  <span class="action-text">任务</span>
+                </button>
+                <button class="quick-action" @click.stop="viewFiles(project.id)" title="项目文件">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M13,9V3.5L18.5,9M6,2C4.89,2 4,2.89 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6Z"/>
+                  </svg>
+                  <span class="action-text">文件</span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </transition-group>
-    </div>
-
-    <div class="floating-actions">
-      <button class="fab" @click="createProject" title="创建新项目">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
-        </svg>
-      </button>
+        </transition-group>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ref, computed, nextTick } from 'vue'
 
 export default {
   name: 'MyProjects',
@@ -206,86 +259,144 @@ export default {
     
     // 响应式数据
     const searchQuery = ref('')
-    const statusFilter = ref('all')
-    const roleFilter = ref('all')
-    const isLoading = ref(false)
+    const activeFilter = ref('all')
+    const sortBy = ref('lastUpdate')
     
+    // 项目数据
     const projects = ref([
       {
         id: 1,
-        title: '智能学习系统开发',
-        description: '基于AI的个性化学习推荐系统，帮助学生提高学习效率。',
+        title: '智能教育平台',
+        description: '基于AI的个性化学习推荐系统，为学生提供定制化的学习路径和智能辅导。',
         status: 'active',
-        progress: 75,
-        role: '前端开发',
+        progress: 85,
+        role: '前端开发工程师',
+        priority: 'high',
+        deadline: '2024-12-15',
+        lastUpdate: '2小时前',
+        isFavorite: true,
         team: [
-          { id: 1, name: '张三' },
-          { id: 2, name: '李四' },
-          { id: 3, name: '王五' },
-          { id: 4, name: '赵六' }
-        ],
-        lastUpdate: '2天前',
-        priority: 'high'
+          { id: 1, name: '张小明', avatar: null },
+          { id: 2, name: '李华', avatar: null },
+          { id: 3, name: '王芳', avatar: null },
+          { id: 4, name: '刘强', avatar: null },
+          { id: 5, name: '陈雪', avatar: null }
+        ]
       },
       {
         id: 2,
-        title: '移动端购物应用',
-        description: '跨平台电商应用，支持多种支付方式和物流跟踪。',
+        title: '电商移动应用',
+        description: '跨平台购物应用开发，支持多端同步、智能推荐和一键支付功能。',
         status: 'active',
-        progress: 45,
-        role: '项目组长',
-        team: [
-          { id: 5, name: '刘七' },
-          { id: 6, name: '陈八' },
-          { id: 7, name: '杨九' }
-        ],
+        progress: 60,
+        role: '项目经理',
+        priority: 'high',
+        deadline: '2024-11-30',
         lastUpdate: '1天前',
-        priority: 'medium'
+        isFavorite: false,
+        team: [
+          { id: 6, name: '赵敏', avatar: null },
+          { id: 7, name: '孙涛', avatar: null },
+          { id: 8, name: '周杰', avatar: null }
+        ]
       },
       {
         id: 3,
-        title: '数据可视化平台',
-        description: '企业级数据分析和可视化解决方案。',
+        title: '数据可视化仪表板',
+        description: '企业级商业智能平台，提供实时数据分析、图表展示和决策支持。',
         status: 'completed',
         progress: 100,
         role: '数据分析师',
-        team: [
-          { id: 8, name: '周十' },
-          { id: 9, name: '吴一' }
-        ],
+        priority: 'medium',
+        deadline: '2024-10-20',
         lastUpdate: '1周前',
-        priority: 'low'
+        isFavorite: true,
+        team: [
+          { id: 9, name: '吴梅', avatar: null },
+          { id: 10, name: '郑飞', avatar: null }
+        ]
       },
       {
         id: 4,
-        title: '在线协作工具',
-        description: '团队协作和项目管理工具，提高工作效率。',
+        title: '协作办公系统',
+        description: '团队协作和项目管理一体化解决方案，提升工作效率和沟通质量。',
         status: 'active',
-        progress: 30,
-        role: 'UI设计师',
-        team: [
-          { id: 10, name: '郑二' },
-          { id: 11, name: '孙三' },
-          { id: 12, name: '李四' },
-          { id: 13, name: '钱五' },
-          { id: 14, name: '赵六' }
-        ],
+        progress: 40,
+        role: 'UI/UX设计师',
+        priority: 'medium',
+        deadline: '2025-01-15',
         lastUpdate: '3天前',
-        priority: 'high'
+        isFavorite: false,
+        team: [
+          { id: 11, name: '黄磊', avatar: null },
+          { id: 12, name: '徐静', avatar: null },
+          { id: 13, name: '马超', avatar: null },
+          { id: 14, name: '林娜', avatar: null },
+          { id: 15, name: '何伟', avatar: null },
+          { id: 16, name: '宋丽', avatar: null }
+        ]
       },
       {
         id: 5,
-        title: '智能家居控制系统',
-        description: '物联网智能家居控制平台，支持语音控制。',
+        title: '智能家居控制中心',
+        description: '物联网家居设备统一管理平台，支持语音控制和自动化场景设置。',
         status: 'completed',
         progress: 100,
-        role: '后端开发',
-        team: [
-          { id: 15, name: '孙七' },
-          { id: 16, name: '周八' }
-        ],
+        role: '后端开发工程师',
+        priority: 'low',
+        deadline: '2024-09-30',
         lastUpdate: '2周前',
-        priority: 'medium'
+        isFavorite: false,
+        team: [
+          { id: 17, name: '江涛', avatar: null },
+          { id: 18, name: '钱丽丽', avatar: null },
+          { id: 19, name: '罗峰', avatar: null }
+        ]
+      },
+      {
+        id: 6,
+        title: '区块链金融应用',
+        description: '基于区块链技术的去中心化金融平台，提供安全可靠的数字资产管理。',
+        status: 'planning',
+        progress: 15,
+        role: '技术负责人',
+        priority: 'high',
+        deadline: '2025-03-20',
+        lastUpdate: '5天前',
+        isFavorite: true,
+        team: [
+          { id: 20, name: '谢军', avatar: null },
+          { id: 21, name: '邓磊', avatar: null }
+        ]
+      }
+    ])
+
+    // 筛选配置
+    const filters = ref([
+      { 
+        key: 'all', 
+        label: '全部项目', 
+        icon: 'M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z' 
+      },
+      { 
+        key: 'active', 
+        label: '进行中', 
+        icon: 'M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,17L7,12L10.5,8.5L12,10L17.5,4.5L21,8L12,17Z' 
+      },
+      { 
+        key: 'completed', 
+        label: '已完成', 
+        icon: 'M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z' 
+      },
+      { 
+        key: 'favorites', 
+        label: '我的收藏', 
+        icon: 'M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5 2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z' 
+      },
+      { 
+        key: 'planning', 
+        label: '计划中', 
+        icon: 'M9,10V12H7V10H9M13,10V12H11V10H13M17,10V12H15V10H17M19,3A2,2 0 0,1 21,5V19A2,2 0 0,1 19,21H5C3.89,21 3,20.1 3,19V5A2,2 0 0,1 5,3H6V1H8V3H16V1H18V3H19M19,19V8H5V19H19M9,14V16H7V14H9M13,14V16H11V14H13M17,14V16H15V14H17Z' 
       }
     ])
 
@@ -299,19 +410,34 @@ export default {
         filtered = filtered.filter(project => 
           project.title.toLowerCase().includes(query) ||
           project.description.toLowerCase().includes(query) ||
-          project.role.toLowerCase().includes(query)
+          project.role.toLowerCase().includes(query) ||
+          project.team.some(member => member.name.toLowerCase().includes(query))
         )
       }
 
       // 状态筛选
-      if (statusFilter.value !== 'all') {
-        filtered = filtered.filter(project => project.status === statusFilter.value)
+      if (activeFilter.value !== 'all') {
+        if (activeFilter.value === 'favorites') {
+          filtered = filtered.filter(project => project.isFavorite)
+        } else {
+          filtered = filtered.filter(project => project.status === activeFilter.value)
+        }
       }
 
-      // 角色筛选
-      if (roleFilter.value !== 'all') {
-        filtered = filtered.filter(project => project.role === roleFilter.value)
-      }
+      // 排序
+      filtered.sort((a, b) => {
+        switch (sortBy.value) {
+          case 'progress':
+            return b.progress - a.progress
+          case 'title':
+            return a.title.localeCompare(b.title)
+          case 'priority':
+            const priorityOrder = { high: 3, medium: 2, low: 1 }
+            return priorityOrder[b.priority] - priorityOrder[a.priority]
+          default: // lastUpdate
+            return new Date(b.lastUpdate) - new Date(a.lastUpdate)
+        }
+      })
 
       return filtered
     })
@@ -319,47 +445,53 @@ export default {
     const statsData = computed(() => {
       const activeProjects = projects.value.filter(p => p.status === 'active')
       const completedProjects = projects.value.filter(p => p.status === 'completed')
-      const leaderProjects = projects.value.filter(p => p.role === '项目组长')
+      const planningProjects = projects.value.filter(p => p.status === 'planning')
+      const favoriteProjects = projects.value.filter(p => p.isFavorite)
 
       return [
-        { label: '总项目数', value: projects.value.length },
-        { label: '进行中', value: activeProjects.length },
-        { label: '已完成', value: completedProjects.length },
-        { label: '担任组长', value: leaderProjects.length }
+        {
+          label: '总项目数',
+          value: projects.value.length,
+          type: 'total',
+          icon: 'M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z',
+          trend: { value: '+2', label: '本月新增', type: 'positive' }
+        },
+        {
+          label: '进行中',
+          value: activeProjects.length,
+          type: 'active',
+          icon: 'M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,17L7,12L10.5,8.5L12,10L17.5,4.5L21,8L12,17Z',
+          trend: { value: '+1', label: '较上周', type: 'positive' }
+        },
+        {
+          label: '已完成',
+          value: completedProjects.length,
+          type: 'completed',
+          icon: 'M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z',
+          trend: { value: '+1', label: '本月完成', type: 'positive' }
+        },
+        {
+          label: '我的收藏',
+          value: favoriteProjects.length,
+          type: 'favorites',
+          icon: 'M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5 2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z'
+        }
       ]
     })
 
     const hasActiveFilters = computed(() => {
-      return searchQuery.value || statusFilter.value !== 'all' || roleFilter.value !== 'all'
+      return searchQuery.value || activeFilter.value !== 'all'
     })
 
     // 方法
-    const getStatusText = (status) => {
-      return status === 'active' ? '进行中' : '已完成'
+    const getFilterCount = (filterKey) => {
+      if (filterKey === 'all') return projects.value.length
+      if (filterKey === 'favorites') return projects.value.filter(p => p.isFavorite).length
+      return projects.value.filter(p => p.status === filterKey).length
     }
 
-    const getEmptyStateTitle = () => {
-      if (searchQuery.value) return '未找到匹配的项目'
-      if (hasActiveFilters.value) return '没有符合条件的项目'
-      return '暂无项目'
-    }
-
-    const getEmptyStateDescription = () => {
-      if (searchQuery.value) return `没有找到包含"${searchQuery.value}"的项目`
-      if (hasActiveFilters.value) return '尝试调整筛选条件查看更多项目'
-      return '您还没有参与任何项目，点击右下角按钮创建新项目'
-    }
-
-    const handleSearch = () => {
-      // 可以在这里添加防抖逻辑
-      // 目前由于计算属性的响应式特性，会自动更新
-    }
-
-    const handleFilter = () => {
-      // 筛选变化时的处理逻辑
-      nextTick(() => {
-        // 可以添加一些动画或其他效果
-      })
+    const setActiveFilter = (filter) => {
+      activeFilter.value = filter
     }
 
     const clearSearch = () => {
@@ -368,35 +500,113 @@ export default {
 
     const clearAllFilters = () => {
       searchQuery.value = ''
-      statusFilter.value = 'all'
-      roleFilter.value = 'all'
+      activeFilter.value = 'all'
     }
 
-    const viewProject = (projectId) => {
-      // 可以跳转到项目详情页面
-      alert(`查看项目 ${projectId} 详情`)
-      // router.push(`/projects/${projectId}`)
+    const getStatusText = (status) => {
+      const statusMap = {
+        active: '进行中',
+        completed: '已完成',
+        planning: '计划中',
+        paused: '已暂停'
+      }
+      return statusMap[status] || status
+    }
+
+    const getPriorityText = (priority) => {
+      const priorityMap = {
+        high: '高优先级',
+        medium: '中优先级',
+        low: '低优先级'
+      }
+      return priorityMap[priority] || priority
+    }
+
+    const getRoleClass = (role) => {
+      if (role.includes('经理') || role.includes('负责人')) return 'manager'
+      if (role.includes('开发')) return 'developer'
+      if (role.includes('设计')) return 'designer'
+      if (role.includes('分析')) return 'analyst'
+      return 'default'
+    }
+
+    const getProgressClass = (progress) => {
+      if (progress >= 80) return 'high'
+      if (progress >= 50) return 'medium'
+      return 'low'
+    }
+
+    const formatDeadline = (deadline) => {
+      const date = new Date(deadline)
+      const now = new Date()
+      const diffTime = date - now
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+      
+      if (diffDays < 0) return '已逾期'
+      if (diffDays === 0) return '今天截止'
+      if (diffDays === 1) return '明天截止'
+      if (diffDays <= 7) return `${diffDays}天后截止`
+      return date.toLocaleDateString('zh-CN')
+    }
+
+    const getEmptyStateTitle = () => {
+      if (searchQuery.value) return '未找到匹配的项目'
+      if (activeFilter.value === 'favorites') return '暂无收藏项目'
+      if (activeFilter.value === 'completed') return '暂无已完成项目'
+      if (activeFilter.value === 'active') return '暂无进行中项目'
+      return '暂无项目'
+    }
+
+    const getEmptyStateDescription = () => {
+      if (searchQuery.value) return `没有找到包含"${searchQuery.value}"的项目，请尝试其他关键词`
+      if (activeFilter.value === 'favorites') return '您还没有收藏任何项目，点击项目卡片上的心形图标收藏项目'
+      return '您还没有参与任何项目，创建您的第一个项目开始工作吧！'
+    }
+
+    const toggleFavorite = (projectId) => {
+      const project = projects.value.find(p => p.id === projectId)
+      if (project) {
+        project.isFavorite = !project.isFavorite
+      }
+    }
+
+    const openProjectMenu = (projectId) => {
+      console.log(`打开项目 ${projectId} 菜单`)
+      // 这里可以实现项目菜单功能
+    }
+
+    const viewProject = (project) => {
+      console.log(`查看项目详情:`, project)
+      // router.push(`/projects/${project.id}`)
     }
 
     const openChat = (projectId) => {
-      // 可以打开聊天窗口或跳转到聊天页面
-      alert(`打开项目 ${projectId} 团队聊天`)
+      console.log(`打开项目 ${projectId} 聊天`)
       // router.push(`/chat/project/${projectId}`)
     }
 
+    const viewTasks = (projectId) => {
+      console.log(`查看项目 ${projectId} 任务`)
+      // router.push(`/projects/${projectId}/tasks`)
+    }
+
+    const viewFiles = (projectId) => {
+      console.log(`查看项目 ${projectId} 文件`)
+      // router.push(`/projects/${projectId}/files`)
+    }
+
     const createProject = () => {
-      // 可以打开创建项目的模态框或跳转到创建页面
-      alert('创建新项目功能开发中...')
+      console.log('创建新项目')
       // router.push('/projects/create')
     }
 
     return {
       // 响应式数据
       searchQuery,
-      statusFilter,
-      roleFilter,
-      isLoading,
+      activeFilter,
+      sortBy,
       projects,
+      filters,
       
       // 计算属性
       filteredProjects,
@@ -404,15 +614,23 @@ export default {
       hasActiveFilters,
       
       // 方法
-      getStatusText,
-      getEmptyStateTitle,
-      getEmptyStateDescription,
-      handleSearch,
-      handleFilter,
+      getFilterCount,
+      setActiveFilter,
       clearSearch,
       clearAllFilters,
+      getStatusText,
+      getPriorityText,
+      getRoleClass,
+      getProgressClass,
+      formatDeadline,
+      getEmptyStateTitle,
+      getEmptyStateDescription,
+      toggleFavorite,
+      openProjectMenu,
       viewProject,
       openChat,
+      viewTasks,
+      viewFiles,
       createProject
     }
   }
@@ -420,280 +638,343 @@ export default {
 </script>
 
 <style scoped>
-/* 基础页面样式 - 平衡版本 */
-.page {
-  margin: 0;
-  padding: 24px;
-  width: 100%;
+/* 页面基础样式 */
+.my-projects-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
-  box-sizing: border-box;
-  position: relative;
-  overflow-x: hidden;
+  background: #ffffff;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-/* 头部样式 - 恢复合理间距 */
-.header {
-  text-align: center;
-  margin-bottom: 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 24px 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15);
-  margin: -24px -24px 24px -24px;
+/* 页面头部 */
+.page-header {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 20px;
+  padding: 30px;
+  margin-bottom: 30px;
+  color: #333;
 }
 
-.title-section {
-  max-width: 500px;
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
-.page-title {
-  font-size: 1.8rem;
-  font-weight: 600;
-  margin: 0 0 12px 0;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.title-decoration {
+.header-left {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: 20px;
 }
 
-.decoration-line {
-  width: 50px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+.page-icon {
+  background: #e9ecef;
+  border-radius: 16px;
+  padding: 16px;
+  color: #667eea;
 }
 
-.decoration-icon {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 50%;
-  padding: 6px;
-  backdrop-filter: blur(10px);
+.header-text h1 {
+  margin: 0 0 8px 0;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #333;
 }
 
-.page-subtitle {
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.85);
+.header-text p {
   margin: 0;
+  font-size: 1.1rem;
+  color: #666;
   font-weight: 300;
 }
 
-/* 控制区域样式 */
-.controls-section {
-  margin-bottom: 24px;
+.create-btn {
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.2);
 }
 
-.search-container {
+.create-btn:hover {
+  background: #5a67d8;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(102, 126, 234, 0.3);
+}
+
+/* 统计卡片区域 */
+.stats-section {
+  margin-bottom: 30px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.stat-card {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 16px;
+  padding: 24px;
+  color: #333;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 40px rgba(102, 126, 234, 0.15);
+  border-color: #667eea;
+}
+
+.stat-card:hover::before {
+  opacity: 1;
+}
+
+.stat-card .stat-icon {
+  background: #f0f2ff;
+  border-radius: 12px;
+  padding: 12px;
+  display: inline-flex;
+  margin-bottom: 16px;
+  color: #667eea;
+}
+
+.stat-card .stat-content {
+  position: relative;
+  z-index: 1;
+}
+
+.stat-number {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: #333;
+}
+
+.stat-label {
+  font-size: 1rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.stat-trend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.trend-value.positive {
+  color: #4ade80;
+}
+
+.trend-value.negative {
+  color: #f87171;
+}
+
+.trend-label {
+  color: #999;
+}
+
+/* 筛选和搜索区域 */
+.filters-section {
+  max-width: 1200px;
+  margin: 0 auto 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.search-wrapper {
   display: flex;
   justify-content: center;
 }
 
-.search-input-wrapper {
+.search-box {
   position: relative;
-  max-width: 400px;
+  max-width: 500px;
   width: 100%;
 }
 
 .search-input {
   width: 100%;
-  padding: 12px 16px 12px 48px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  padding: 16px 20px 16px 52px;
+  border: 2px solid #e9ecef;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  color: white;
-  font-size: 14px;
+  background: white;
+  color: #333;
+  font-size: 16px;
   transition: all 0.3s ease;
 }
 
 .search-input::placeholder {
-  color: rgba(255, 255, 255, 0.7);
+  color: #999;
 }
 
 .search-input:focus {
   outline: none;
-  border-color: rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.2);
+  border-color: #667eea;
+  background: white;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.1);
 }
 
 .search-icon {
   position: absolute;
-  left: 16px;
+  left: 18px;
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.7);
+  color: #999;
   pointer-events: none;
 }
 
-.clear-search {
+.clear-btn {
   position: absolute;
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.7);
+  color: #999;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: color 0.3s ease;
+  padding: 8px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
 }
 
-.clear-search:hover {
-  color: white;
+.clear-btn:hover {
+  color: #667eea;
+  background: #f0f2ff;
 }
 
-.filter-container {
+.filter-tabs {
   display: flex;
   justify-content: center;
-  gap: 24px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
-.filter-group {
+.filter-tab {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 10px;
+  padding: 12px 20px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.3s ease;
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.filter-label {
-  color: rgba(255, 255, 255, 0.9);
   font-size: 14px;
   font-weight: 500;
 }
 
-.filter-select {
-  padding: 8px 12px;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  color: white;
-  font-size: 14px;
-  min-width: 120px;
-  cursor: pointer;
-  transition: all 0.3s ease;
+.filter-tab:hover {
+  background: #f0f2ff;
+  border-color: #667eea;
+  color: #667eea;
 }
 
-.filter-select:focus {
-  outline: none;
-  border-color: rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.2);
-}
-
-.filter-select option {
+.filter-tab.active {
   background: #667eea;
   color: white;
-}
-
-/* 统计栏样式 */
-.stats-bar {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 32px;
-}
-
-.stat-card {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 20px;
-  border-radius: 12px;
-  text-align: center;
-  color: white;
-  transition: all 0.3s ease;
-}
-
-.stat-card:hover {
-  background: rgba(255, 255, 255, 0.2);
-  transform: translateY(-2px);
-}
-
-.stat-number {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #ffffff;
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 14px;
-}
-
-/* 项目容器样式 */
-.projects-container {
-  position: relative;
-}
-
-.projects-grid {
-  display: grid;
-  gap: 20px;
-}
-
-/* 空状态样式 */
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: white;
-}
-
-.empty-icon {
-  margin-bottom: 20px;
-  opacity: 0.6;
-}
-
-.empty-title {
-  font-size: 1.5rem;
+  border-color: #667eea;
   font-weight: 600;
-  margin-bottom: 12px;
-  color: white;
 }
 
-.empty-description {
-  color: rgba(255, 255, 255, 0.8);
-  margin-bottom: 24px;
-  line-height: 1.5;
+.filter-count {
+  background: #e9ecef;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.empty-action {
+.filter-tab.active .filter-count {
   background: rgba(255, 255, 255, 0.2);
-  border: 2px solid rgba(255, 255, 255, 0.3);
   color: white;
-  padding: 12px 24px;
-  border-radius: 8px;
+}
+
+.sort-dropdown {
+  display: flex;
+  justify-content: center;
+}
+
+.sort-select {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 10px;
+  padding: 12px 16px;
+  color: #333;
   cursor: pointer;
   font-size: 14px;
-  transition: all 0.3s ease;
+  min-width: 150px;
 }
 
-.empty-action:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
+.sort-select:focus {
+  outline: none;
+  border-color: #667eea;
 }
 
-/* 项目卡片样式 */
+.sort-select option {
+  background: white;
+  color: #333;
+}
+
+/* 项目列表区域 */
+.projects-section {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.projects-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 24px;
+}
+
+/* 项目卡片 */
 .project-card {
-  background: rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(15px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 16px;
-  padding: 24px;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  color: white;
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 20px;
+  padding: 28px;
+  color: #333;
   cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .project-card::before {
@@ -703,92 +984,197 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, transparent 50%);
   opacity: 0;
   transition: opacity 0.3s ease;
 }
 
 .project-card:hover {
-  border-color: rgba(255, 255, 255, 0.4);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  background: rgba(255, 255, 255, 0.18);
-  transform: translateY(-4px);
+  transform: translateY(-8px);
+  box-shadow: 0 20px 60px rgba(102, 126, 234, 0.15);
+  border-color: #667eea;
 }
 
 .project-card:hover::before {
   opacity: 1;
 }
 
-.project-card:focus {
-  outline: 2px solid rgba(255, 255, 255, 0.6);
-  outline-offset: 2px;
+.project-card.high-priority {
+  border-left: 4px solid #f59e0b;
 }
 
+/* 项目头部 */
 .project-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   position: relative;
   z-index: 1;
 }
 
-.project-info {
+.project-meta {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-}
-
-.project-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #ffffff;
-  margin: 0;
-  line-height: 1.3;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .project-status {
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.project-status.active {
-  background: rgba(40, 167, 69, 0.8);
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
-}
-
-.project-status.completed {
-  background: rgba(0, 123, 255, 0.8);
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
-}
-
-.project-role {
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
   padding: 6px 12px;
   border-radius: 20px;
   font-size: 12px;
-  font-weight: 500;
-  backdrop-filter: blur(10px);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.project-description {
-  color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 20px;
-  line-height: 1.6;
+.project-status.active {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.project-status.completed {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.project-status.planning {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.project-priority {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.project-priority.high {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.project-priority.medium {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.project-priority.low {
+  background: rgba(107, 114, 128, 0.2);
+  color: #9ca3af;
+  border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+.project-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 8px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.action-btn:hover {
+  background: #e9ecef;
+  color: #333;
+  border-color: #dee2e6;
+}
+
+.action-btn.active {
+  color: #f87171;
+}
+
+/* 项目内容 */
+.project-content {
+  margin-bottom: 24px;
   position: relative;
   z-index: 1;
 }
 
-/* 进度条样式 */
-.project-progress {
+.project-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0 0 12px 0;
+  line-height: 1.3;
+  color: #333;
+}
+
+.project-description {
+  color: #666;
+  line-height: 1.6;
   margin-bottom: 20px;
+  font-size: 15px;
+}
+
+.project-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.detail-label {
+  font-size: 14px;
+  color: #888;
+  font-weight: 500;
+}
+
+.detail-value {
+  font-size: 14px;
+  color: #333;
+  font-weight: 600;
+}
+
+.role-badge {
+  background: #f0f2ff;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: #667eea;
+}
+
+.role-badge.manager {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.role-badge.developer {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+
+.role-badge.designer {
+  background: rgba(168, 85, 247, 0.2);
+  color: #a78bfa;
+}
+
+.role-badge.analyst {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+/* 进度条 */
+.project-progress {
+  margin-bottom: 24px;
   position: relative;
   z-index: 1;
 }
@@ -796,16 +1182,25 @@ export default {
 .progress-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   margin-bottom: 8px;
+}
+
+.progress-label {
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 500;
+  color: #666;
+  font-weight: 600;
+}
+
+.progress-value {
+  font-size: 14px;
+  color: #333;
+  font-weight: 700;
 }
 
 .progress-bar {
-  width: 100%;
   height: 8px;
-  background: rgba(255, 255, 255, 0.2);
+  background: #e9ecef;
   border-radius: 4px;
   overflow: hidden;
   position: relative;
@@ -813,10 +1208,21 @@ export default {
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #ffffff, rgba(255, 255, 255, 0.8));
-  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 4px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+}
+
+.progress-fill.high {
+  background: linear-gradient(90deg, #4ade80, #22c55e);
+}
+
+.progress-fill.medium {
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+}
+
+.progress-fill.low {
+  background: linear-gradient(90deg, #f87171, #ef4444);
 }
 
 .progress-fill::after {
@@ -826,7 +1232,7 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
   transform: translateX(-100%);
   animation: progress-shine 2s infinite;
 }
@@ -836,60 +1242,68 @@ export default {
   100% { transform: translateX(100%); }
 }
 
-/* 团队样式 */
+/* 团队成员 */
 .project-team {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   position: relative;
   z-index: 1;
 }
 
+.team-label {
+  font-size: 14px;
+  color: #666;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
 .team-avatars {
   display: flex;
+  align-items: center;
   gap: -8px;
 }
 
-.avatar {
-  width: 32px;
-  height: 32px;
+.member-avatar {
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.9);
-  color: #667eea;
+  background: #667eea;
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   margin-left: -8px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 3px solid white;
   transition: all 0.3s ease;
   position: relative;
+  overflow: hidden;
 }
 
-.avatar:first-child {
+.member-avatar:first-child {
   margin-left: 0;
 }
 
-.avatar:hover {
-  transform: translateY(-2px) scale(1.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+.member-avatar:hover {
+  transform: translateY(-4px) scale(1.1);
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
   z-index: 10;
 }
 
-.avatar.more-members {
-  background: rgba(255, 255, 255, 0.6);
-  font-size: 10px;
+.member-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
-.team-count {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 14px;
-  font-weight: 500;
+.member-avatar.more {
+  background: #e9ecef;
+  color: #666;
+  font-size: 11px;
 }
 
-/* 项目底部样式 */
+/* 项目底部 */
 .project-footer {
   display: flex;
   justify-content: space-between;
@@ -898,264 +1312,291 @@ export default {
   z-index: 1;
 }
 
-.project-date {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 14px;
+.footer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.deadline {
   display: flex;
   align-items: center;
   gap: 6px;
+  font-size: 13px;
+  color: #fbbf24;
+  font-weight: 600;
 }
 
-.project-actions {
+.last-update {
+  font-size: 13px;
+  color: #999;
+}
+
+.footer-actions {
   display: flex;
   gap: 8px;
 }
 
-.action-btn {
-  padding: 8px 16px;
+.quick-action {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(10px);
+  padding: 8px;
+  color: #666;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
   transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.action-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s ease;
-}
-
-.action-btn:hover::before {
-  left: 100%;
-}
-
-.action-btn.primary {
-  background: rgba(255, 255, 255, 0.9);
-  color: #667eea;
-  border-color: rgba(255, 255, 255, 0.6);
-  font-weight: 600;
-}
-
-.action-btn:hover {
-  border-color: rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
-  transform: translateY(-1px);
-}
-
-.action-btn.primary:hover {
-  background: rgba(255, 255, 255, 1);
-  color: #5a6abf;
-}
-
-/* 浮动按钮样式 - 移动端优化 */
-.floating-actions {
-  position: fixed;
-  bottom: 32px;
-  right: 32px;
-  z-index: 100;
-}
-
-.fab {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.9);
-  color: #667eea;
-  border: none;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  /* 移动端触摸优化 */
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
 }
 
-.fab:hover {
-  background: rgba(255, 255, 255, 1);
-  color: #5a6abf;
-  transform: translateY(-4px) scale(1.05);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+.quick-action .action-text {
+  display: none;
 }
 
-.fab:active {
-  transform: translateY(-2px) scale(0.98);
+.quick-action:hover {
+  background: #e9ecef;
+  color: #333;
+  border-color: #dee2e6;
+  transform: translateY(-2px);
 }
 
-/* 动画样式 */
-.project-list-enter-active,
-.project-list-leave-active {
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: #333;
+}
+
+.empty-illustration {
+  margin-bottom: 24px;
+  opacity: 0.4;
+  color: #999;
+}
+
+.empty-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+.empty-description {
+  color: #666;
+  margin-bottom: 32px;
+  line-height: 1.6;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.empty-actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.primary-btn, .secondary-btn {
+  padding: 14px 28px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  border: none;
+}
+
+.primary-btn {
+  background: #667eea;
+  color: white;
+}
+
+.primary-btn:hover {
+  background: #5a67d8;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(102, 126, 234, 0.3);
+}
+
+.secondary-btn {
+  background: white;
+  color: #667eea;
+  border: 1px solid #e9ecef;
+}
+
+.secondary-btn:hover {
+  background: #f0f2ff;
+  border-color: #667eea;
+}
+
+/* 动画效果 */
+.project-enter-active,
+.project-leave-active {
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.project-list-enter-from {
+.project-enter-from {
   opacity: 0;
   transform: translateY(30px) scale(0.95);
 }
 
-.project-list-leave-to {
+.project-leave-to {
   opacity: 0;
   transform: translateY(-30px) scale(0.95);
 }
 
-.project-list-move {
+.project-move {
   transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 响应式设计 - 修复版本 */
+/* 响应式设计 */
 @media (max-width: 768px) {
-  .page {
+  .my-projects-page {
     padding: 16px;
-    width: 100%;
-    min-height: 100vh;
-    box-sizing: border-box;
-    overflow-x: hidden;
   }
 
-  .header {
-    margin: -16px -16px 16px -16px;
-    padding: 20px 16px;
-    border-radius: 0;
-  }
-
-  .page-title {
-    font-size: 1.5rem;
-  }
-
-  .page-subtitle {
-    font-size: 0.85rem;
-  }
-
-  .decoration-line {
-    width: 40px;
-  }
-
-  .controls-section {
-    margin-bottom: 16px;
-    gap: 12px;
-  }
-
-  .filter-container {
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .filter-group {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-
-  .filter-select {
-    width: 100%;
-    min-width: auto;
-  }
-
-  .stats-bar {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+  .page-header {
+    padding: 24px 20px;
     margin-bottom: 24px;
   }
 
+  .header-content {
+    flex-direction: column;
+    gap: 20px;
+    text-align: center;
+  }
+
+  .header-left {
+    justify-content: center;
+  }
+
+  .header-text h1 {
+    font-size: 2rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
   .stat-card {
-    padding: 16px;
+    padding: 20px;
   }
 
   .stat-number {
-    font-size: 1.5rem;
+    font-size: 2rem;
   }
 
-  .projects-container {
-    position: relative;
+  .filter-tabs {
+    gap: 8px;
+  }
+
+  .filter-tab {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .projects-list {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .project-card {
+    padding: 24px;
   }
 
   .project-header {
-    flex-direction: column;
-    gap: 12px;
     align-items: flex-start;
   }
 
-  .project-info {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
+  .project-meta {
+    flex: 1;
+    justify-content: flex-start;
+  }
+
+  .project-actions {
+    margin-left: auto;
   }
 
   .project-footer {
     flex-direction: column;
-    gap: 12px;
+    gap: 16px;
     align-items: flex-start;
   }
 
-  .project-actions {
+  .footer-actions {
     width: 100%;
-    justify-content: space-between;
+    justify-content: center;
+    gap: 12px;
   }
 
-  .action-btn {
+  .quick-action {
     flex: 1;
-    text-align: center;
+    max-width: 80px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    font-size: 14px;
+    flex-direction: column;
+    gap: 2px;
+    padding: 6px 4px;
   }
 
-  .fab {
-    bottom: 20px;
-    right: 20px;
-    width: 48px;
-    height: 48px;
+  .quick-action .action-text {
+    display: block;
+    margin-left: 0;
+    font-size: 10px;
+    font-weight: 500;
+    color: inherit;
   }
 
-  .floating-actions {
-    margin-right: 4px;
+  .quick-action svg {
+    width: 14px;
+    height: 14px;
   }
 
   .team-avatars {
     flex-wrap: wrap;
+    gap: 4px;
   }
 
-  .avatar {
+  .member-avatar {
     margin-left: 0;
-    margin-right: 4px;
-    margin-bottom: 4px;
   }
 }
 
 @media (max-width: 480px) {
-  .page {
+  .my-projects-page {
     padding: 12px;
   }
 
-  .header {
-    margin: -12px -12px 16px -12px;
-  }
-
-  .stats-bar {
+  .stats-grid {
     grid-template-columns: 1fr;
-    gap: 10px;
-    margin-bottom: 24px;
   }
 
-  .controls-section {
-    margin-bottom: 16px;
+  .filter-tabs {
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  .projects-container {
-    position: relative;
+  .search-box {
+    max-width: none;
+  }
+
+  .search-input {
+    padding: 14px 16px 14px 48px;
+    font-size: 14px;
+  }
+
+  .search-icon {
+    left: 16px;
+  }
+
+  .clear-btn {
+    right: 10px;
   }
 
   .project-card {
@@ -1163,86 +1604,65 @@ export default {
   }
 
   .project-title {
-    font-size: 1.1rem;
+    font-size: 1.2rem;
   }
 
-  .project-actions {
+  .empty-actions {
     flex-direction: column;
-    gap: 8px;
+    align-items: center;
   }
 
-  .action-btn {
-    width: 100%;
+  .primary-btn, .secondary-btn {
+    padding: 12px 24px;
+    font-size: 14px;
   }
 }
 
-/* 深色模式支持 */
-@media (prefers-color-scheme: dark) {
-  .search-input,
-  .filter-select {
-    color: rgba(255, 255, 255, 0.9);
-  }
-  
-  .search-input::placeholder {
-    color: rgba(255, 255, 255, 0.6);
-  }
-}
-
-/* 高对比度模式支持 */
-@media (prefers-contrast: high) {
-  .project-card {
-    border: 2px solid rgba(255, 255, 255, 0.8);
-  }
-  
-  .action-btn {
-    border: 2px solid rgba(255, 255, 255, 0.8);
-  }
-  
-  .search-input,
-  .filter-select {
-    border: 2px solid rgba(255, 255, 255, 0.8);
-  }
-}
-
-/* 减少动画偏好支持 */
+/* 无障碍优化 */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  * {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }
 
+/* 高对比度模式 */
+@media (prefers-contrast: high) {
+  .project-card {
+    border: 2px solid rgba(255, 255, 255, 0.6);
+  }
+  
+  .filter-tab {
+    border: 2px solid rgba(255, 255, 255, 0.6);
+  }
+  
+  .action-btn {
+    border: 2px solid rgba(255, 255, 255, 0.6);
+  }
+}
+
 /* 打印样式 */
 @media print {
-  .page {
+  .my-projects-page {
     background: white !important;
     color: black !important;
-    padding: 20px !important;
   }
   
-  .controls-section,
-  .floating-actions {
-    display: none !important;
-  }
-  
+  .page-header,
+  .stat-card,
   .project-card {
     background: white !important;
     border: 1px solid #ccc !important;
     color: black !important;
-    break-inside: avoid;
-    margin-bottom: 20px;
   }
   
-  .header {
-    background: white !important;
-    color: black !important;
-    border: 1px solid #ccc !important;
+  .filters-section {
+    display: none !important;
   }
   
-  .stats-bar {
+  .project-actions,
+  .footer-actions {
     display: none !important;
   }
 }
