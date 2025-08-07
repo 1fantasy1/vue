@@ -1,37 +1,52 @@
-<template>
+ <template>
   <div class="page">
     <div class="header">
       <div class="title-section">
         <h1 class="page-title">收藏</h1>
-        <div class="title-decoration">
-          <div class="decoration-line"></div>
-          <div class="decoration-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12,21.35L10.55,20.03C5.4,15.36 2,12.28 2,8.5 2,5.42 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.09C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.42 22,8.5C22,12.28 18.6,15.36 13.45,20.04L12,21.35Z"/>
-            </svg>
-          </div>
-          <div class="decoration-line"></div>
-        </div>
-        <p class="page-subtitle">珍藏精华内容，构建个人知识宝库</p>
       </div>
     </div>
 
     <div class="stats-bar">
       <div class="stat-card">
-        <div class="stat-number">22</div>
-        <div class="stat-label">总收藏数</div>
+        <div class="stat-number">{{ filteredFavorites.length }}</div>
+        <div class="stat-label">{{ searchQuery ? '搜索结果' : '总收藏数' }}</div>
       </div>
       <div class="stat-card">
-        <div class="stat-number">15</div>
+        <div class="stat-number">{{ coursesCount }}</div>
         <div class="stat-label">课程资源</div>
       </div>
       <div class="stat-card">
-        <div class="stat-number">7</div>
+        <div class="stat-number">{{ projectsCount }}</div>
         <div class="stat-label">项目案例</div>
       </div>
       <div class="stat-card">
-        <div class="stat-number">本周</div>
-        <div class="stat-label">最近收藏</div>
+        <div class="stat-number">{{ articlesCount }}</div>
+        <div class="stat-label">文章资料</div>
+      </div>
+    </div>
+
+    <!-- 搜索框 -->
+    <div class="search-container">
+      <div class="search-box">
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
+        </svg>
+        <input 
+          type="text" 
+          v-model="searchQuery"
+          placeholder="搜索收藏标题、作者或标签..."
+          class="search-input"
+        />
+        <button 
+          v-if="searchQuery" 
+          @click="clearSearch"
+          class="clear-btn"
+          title="清除搜索"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -66,15 +81,30 @@
       </button>
     </div>
 
-    <div class="search-box">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
-      </svg>
-      <input type="text" placeholder="搜索收藏内容..." v-model="searchQuery">
-    </div>
-
     <div class="favorites-container">
-      <div class="favorite-card" v-for="item in filteredFavorites" :key="item.id">
+      <!-- 没有搜索结果时显示 -->
+      <div v-if="filteredFavorites.length === 0" class="empty-state">
+        <div class="empty-icon">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12,21.35L10.55,20.03C5.4,15.36 2,12.28 2,8.5 2,5.42 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.09C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.42 22,8.5C22,12.28 18.6,15.36 13.45,20.04L12,21.35Z"/>
+          </svg>
+        </div>
+        <h3 class="empty-title">
+          {{ searchQuery ? '未找到相关收藏' : '暂无收藏内容' }}
+        </h3>
+        <p class="empty-description">
+          {{ searchQuery ? 
+            `没有找到包含"${searchQuery}"的收藏内容，试试其他关键词吧` : 
+            '收藏感兴趣的课程、项目和文章，在这里统一管理' 
+          }}
+        </p>
+        <button v-if="searchQuery" @click="clearSearch" class="empty-action">
+          清除搜索条件
+        </button>
+      </div>
+
+      <!-- 收藏列表 -->
+      <div v-else class="favorite-card" v-for="item in filteredFavorites" :key="item.id">
         <div class="favorite-image">
           <div class="favorite-type" :class="item.type">{{ getTypeText(item.type) }}</div>
           <div class="favorite-date">{{ item.addedDate }}</div>
@@ -130,20 +160,12 @@
         </div>
       </div>
     </div>
-
-    <div class="empty-state" v-if="filteredFavorites.length === 0">
-      <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor" opacity="0.3">
-        <path d="M12,21.35L10.55,20.03C5.4,15.36 2,12.28 2,8.5 2,5.42 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.09C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.42 22,8.5C22,12.28 18.6,15.36 13.45,20.04L12,21.35Z"/>
-      </svg>
-      <h3>暂无收藏内容</h3>
-      <p>收藏感兴趣的课程、项目和文章，在这里统一管理</p>
-    </div>
   </div>
 </template>
 
 <script>
 import { useRouter } from 'vue-router'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 export default {
   name: 'Favorites',
@@ -151,6 +173,16 @@ export default {
     const router = useRouter()
     const activeTab = ref('all')
     const searchQuery = ref('')
+    const debouncedSearchQuery = ref('')
+
+    // 防抖搜索
+    let searchTimeout = null
+    watch(searchQuery, (newValue) => {
+      clearTimeout(searchTimeout)
+      searchTimeout = setTimeout(() => {
+        debouncedSearchQuery.value = newValue
+      }, 300)
+    })
     
     const favorites = ref([
       {
@@ -249,15 +281,30 @@ export default {
         filtered = filtered.filter(item => item.type === activeTab.value)
       }
 
-      if (searchQuery.value) {
+      if (debouncedSearchQuery.value.trim()) {
+        const query = debouncedSearchQuery.value.toLowerCase().trim()
         filtered = filtered.filter(item => 
-          item.title.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-          item.description.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-          item.tags.some(tag => tag.toLowerCase().includes(searchQuery.value.toLowerCase()))
+          item.title.toLowerCase().includes(query) ||
+          item.description.toLowerCase().includes(query) ||
+          item.author.toLowerCase().includes(query) ||
+          item.tags.some(tag => tag.toLowerCase().includes(query))
         )
       }
 
       return filtered
+    })
+
+    // 统计数据
+    const coursesCount = computed(() => {
+      return favorites.value.filter(item => item.type === 'courses').length
+    })
+
+    const projectsCount = computed(() => {
+      return favorites.value.filter(item => item.type === 'projects').length
+    })
+
+    const articlesCount = computed(() => {
+      return favorites.value.filter(item => item.type === 'articles').length
     })
 
     const getTypeText = (type) => {
@@ -295,16 +342,24 @@ export default {
       alert(`分享收藏项目 ${itemId}`)
     }
 
+    const clearSearch = () => {
+      searchQuery.value = ''
+    }
+
     return {
       activeTab,
       searchQuery,
       favorites,
       filteredFavorites,
+      coursesCount,
+      projectsCount,
+      articlesCount,
       getTypeText,
       getViewButtonText,
       viewItem,
       removeFavorite,
-      shareItem
+      shareItem,
+      clearSearch
     }
   }
 }
@@ -318,54 +373,68 @@ export default {
 }
 
 .header {
-  text-align: center;
-  margin-bottom: 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 24px 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15);
-  margin: -24px -24px 24px -24px;
+  margin-bottom: 32px;
+  background: white;
+  border-radius: 20px;
+  padding: 24px 32px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  border: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 120px;
+  position: relative;
 }
 
 .title-section {
-  max-width: 500px;
-  margin: 0 auto;
+  max-width: 100%;
+  flex: 1;
 }
 
 .page-title {
-  font-size: 1.8rem;
-  font-weight: 600;
-  margin: 0 0 12px 0;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.title-decoration {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.decoration-line {
-  width: 50px;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
-}
-
-.decoration-icon {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 50%;
-  padding: 6px;
-  backdrop-filter: blur(10px);
-}
-
-.page-subtitle {
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.85);
+  font-size: 2.5rem;
+  font-weight: 700;
   margin: 0;
+  background: linear-gradient(135deg, #ff7b42 0%, #ff5722 50%, #e64a19 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  text-shadow: 0 2px 4px rgba(255, 123, 66, 0.1);
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.page-title::before {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, #ff7b42, #ff5722);
+  border-radius: 2px;
+  opacity: 0.8;
+}
+
+.page-title:hover {
+  transform: translateY(-1px);
+  text-shadow: 0 4px 8px rgba(255, 123, 66, 0.15);
+}
+
+.header-subtitle {
+  position: absolute;
+  bottom: 20px;
+  right: 32px;
+  font-size: 0.9rem;
+  color: #6c757d;
+  opacity: 0.6;
   font-weight: 300;
+  letter-spacing: 0.02em;
+  font-style: italic;
+  backdrop-filter: blur(2px);
 }
 
 .back-btn {
@@ -388,112 +457,236 @@ export default {
 
 .stats-bar {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 16px;
   margin-bottom: 32px;
 }
 
 .stat-card {
   background: white;
-  padding: 20px;
-  border-radius: 12px;
+  padding: 12px 16px;
+  border-radius: 16px;
   text-align: center;
-  border: 2px solid #e9ecef;
+  border: 1px solid #f0f0f0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  border-color: #ff7b42;
 }
 
 .stat-number {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #fa709a;
-  margin-bottom: 4px;
+  font-size: 1.8rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #ff7b42 0%, #ff5722 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 2px;
 }
 
 .stat-label {
   color: #6c757d;
-  font-size: 14px;
+  font-size: 13px;
 }
 
-.filter-tabs {
-  display: flex;
-  gap: 8px;
+/* 搜索框样式 */
+.search-container {
   margin-bottom: 24px;
-  background: white;
-  padding: 8px;
-  border-radius: 12px;
-  border: 2px solid #e9ecef;
-}
-
-.tab-btn {
-  padding: 8px 16px;
-  border: none;
-  background: transparent;
-  color: #6c757d;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  font-size: 14px;
-}
-
-.tab-btn.active {
-  background: #fa709a;
-  color: white;
 }
 
 .search-box {
   position: relative;
-  margin-bottom: 24px;
-  max-width: 400px;
-}
-
-.search-box svg {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #6c757d;
-}
-
-.search-box input {
-  width: 100%;
-  padding: 12px 12px 12px 36px;
-  border: 2px solid #e9ecef;
-  border-radius: 8px;
-  font-size: 14px;
   background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 16px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-.search-box input:focus {
+.search-box:focus-within {
+  border-color: #ff7b42;
+  box-shadow: 0 4px 12px rgba(255, 123, 66, 0.15);
+  transform: translateY(-1px);
+}
+
+.search-icon {
+  color: #6c757d;
+  flex-shrink: 0;
+  transition: color 0.3s ease;
+}
+
+.search-box:focus-within .search-icon {
+  color: #ff7b42;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
   outline: none;
-  border-color: #fa709a;
+  font-size: 15px;
+  color: #2c3e50;
+  background: transparent;
+  font-weight: 400;
+}
+
+.search-input::placeholder {
+  color: #adb5bd;
+  font-weight: 300;
+}
+
+.clear-btn {
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.clear-btn:hover {
+  background: #f8f9fa;
+  color: #dc3545;
+}
+
+.filter-tabs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 32px;
+  background: white;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.tab-btn {
+  padding: 12px 20px;
+  border: none;
+  background: transparent;
+  color: #6c757d;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 15px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.tab-btn.active {
+  background: linear-gradient(135deg, #ff7b42 0%, #ff5722 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(255, 123, 66, 0.3);
+  transform: translateY(-1px);
+}
+
+.tab-btn:hover:not(.active) {
+  background: #f8f9fa;
+  color: #ff7b42;
 }
 
 .favorites-container {
   display: grid;
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+/* 空状态样式 */
+.empty-state {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 40px;
+  background: white;
+  border-radius: 20px;
+  border: 2px dashed #e9ecef;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.empty-state:hover {
+  border-color: #ff7b42;
+  background: #fafbfc;
+}
+
+.empty-icon {
+  color: #adb5bd;
+  margin-bottom: 24px;
+  opacity: 0.7;
+}
+
+.empty-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #495057;
+  margin: 0 0 12px 0;
+}
+
+.empty-description {
+  color: #6c757d;
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0 0 24px 0;
+  max-width: 400px;
+}
+
+.empty-action {
+  background: linear-gradient(135deg, #ff7b42 0%, #ff5722 100%);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(255, 123, 66, 0.3);
+}
+
+.empty-action:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 123, 66, 0.4);
 }
 
 .favorite-card {
   background: white;
-  border: 2px solid #e9ecef;
-  border-radius: 16px;
+  border: 1px solid #e9ecef;
+  border-radius: 20px;
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .favorite-card:hover {
-  border-color: #fa709a;
-  box-shadow: 0 4px 12px rgba(250, 112, 154, 0.1);
+  border-color: #ff9f7a;
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(255, 159, 122, 0.15);
 }
 
 .favorite-image {
-  width: 200px;
-  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  width: 220px;
+  background: linear-gradient(135deg, #ff7b42 0%, #ff5722 100%);
   position: relative;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   padding: 20px;
+  transition: all 0.3s ease;
 }
 
 .favorite-type {
@@ -501,21 +694,26 @@ export default {
   color: white;
   padding: 6px 12px;
   border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
   align-self: flex-start;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .favorite-type.courses {
-  background: rgba(102, 126, 234, 0.8);
+  background: linear-gradient(135deg, #ff7b42 0%, #ff5722 100%);
 }
 
 .favorite-type.projects {
-  background: rgba(67, 233, 123, 0.8);
+  background: #fff3e0;
+  color: #f57c00;
 }
 
 .favorite-type.articles {
-  background: rgba(74, 172, 254, 0.8);
+  background: #fce4ec;
+  color: #e91e63;
 }
 
 .favorite-date {
@@ -558,14 +756,15 @@ export default {
 
 .favorite-content {
   flex: 1;
-  padding: 24px;
+  padding: 28px;
   display: flex;
   flex-direction: column;
+  background: linear-gradient(145deg, #ffffff 0%, #fafbfc 100%);
 }
 
 .favorite-title {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1.3rem;
+  font-weight: 700;
   color: #2c3e50;
   margin: 0 0 12px 0;
   line-height: 1.3;
@@ -574,8 +773,9 @@ export default {
 .favorite-description {
   color: #6c757d;
   margin-bottom: 16px;
-  line-height: 1.5;
+  line-height: 1.6;
   flex: 1;
+  font-size: 15px;
 }
 
 .favorite-meta {
@@ -601,8 +801,8 @@ export default {
 }
 
 .tag {
-  background: #f8f9ff;
-  color: #667eea;
+  background: #fff3e0;
+  color: #ff7b42;
   padding: 4px 8px;
   border-radius: 12px;
   font-size: 11px;
@@ -613,48 +813,30 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-top: auto;
 }
 
 .view-btn {
-  background: #fa709a;
+  background: linear-gradient(135deg, #ff7b42 0%, #ff5722 100%);
   color: white;
-  padding: 10px 20px;
+  padding: 10px 16px;
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(255, 123, 66, 0.3);
 }
 
 .view-btn:hover {
-  background: #e85d8b;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(255, 123, 66, 0.4);
 }
 
 .favorite-source {
   color: #6c757d;
   font-size: 12px;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 60px 20px;
-  text-align: center;
-  color: #6c757d;
-}
-
-.empty-state h3 {
-  margin: 0;
-  font-size: 1.25rem;
-}
-
-.empty-state p {
-  margin: 0;
-  font-size: 14px;
 }
 
 @media (max-width: 768px) {
@@ -663,24 +845,56 @@ export default {
   }
 
   .header {
-    margin: -16px -16px 16px -16px;
-    padding: 20px 16px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    min-height: 100px;
+  }
+
+  .stats-bar {
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 10px 12px;
+  }
+
+  .stat-number {
+    font-size: 1.6rem;
+  }
+
+  .stat-label {
+    font-size: 12px;
   }
 
   .page-title {
-    font-size: 1.5rem;
+    font-size: 2rem;
+    font-weight: 600;
   }
 
-  .page-subtitle {
-    font-size: 0.85rem;
+  .page-title::before {
+    width: 50px;
+    height: 2px;
   }
 
-  .decoration-line {
-    width: 40px;
+  .header-subtitle {
+    font-size: 0.8rem;
+    bottom: 16px;
+    right: 24px;
   }
 
   .filter-tabs {
-    flex-wrap: wrap;
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .tab-btn {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+
+  .favorites-container {
+    grid-template-columns: 1fr;
+    gap: 20px;
   }
 
   .favorite-card {
@@ -698,10 +912,90 @@ export default {
     align-self: center;
   }
 
+  .favorite-content {
+    padding: 20px;
+  }
+
   .favorite-footer {
     flex-direction: column;
     gap: 12px;
     align-items: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 16px 20px;
+    min-height: 90px;
+  }
+
+  .stats-bar {
+    gap: 8px;
+  }
+
+  .stat-card {
+    padding: 8px 10px;
+  }
+
+  .stat-number {
+    font-size: 1.4rem;
+  }
+
+  .stat-label {
+    font-size: 11px;
+  }
+
+  .page-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+  }
+
+  .page-title::before {
+    width: 40px;
+    height: 2px;
+  }
+
+  .header-subtitle {
+    font-size: 0.75rem;
+    bottom: 12px;
+    right: 20px;
+  }
+
+  .filter-tabs {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .tab-btn {
+    flex: 1;
+    min-width: 0;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .favorites-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .favorite-image {
+    height: 100px;
+  }
+  
+  .favorite-content {
+    padding: 16px;
+  }
+  
+  .favorite-title {
+    font-size: 1.1rem;
+  }
+  
+  .favorite-meta {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  
+  .meta-item {
+    font-size: 13px;
   }
 }
 </style>
