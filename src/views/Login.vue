@@ -175,6 +175,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGlobalStore } from '../stores/global'
+import { ApiService } from '../services/api.js'
 
 export default {
   name: 'Login',
@@ -215,26 +216,27 @@ export default {
       isLoading.value = true
       
       try {
-        // 模拟登录API调用
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        // 登录成功，更新全局状态
-        globalStore.login({
-          id: 1,
+        // 调用真正的登录API
+        const response = await ApiService.login({
           username: loginForm.username,
-          name: loginForm.username,
-          email: `${loginForm.username}@example.com`,
-          avatar: '',
-          skills: ['Vue.js', 'JavaScript'],
-          interests: ['前端开发', '学习']
+          password: loginForm.password
         })
         
-        // 跳转到首页
-        router.push('/')
-        
-        alert('登录成功！')
+        if (response.data.success) {
+          // 登录成功，更新全局状态
+          globalStore.login(response.data.data.user)
+          
+          // 跳转到首页
+          router.push('/')
+          
+          alert('登录成功！')
+        } else {
+          // 登录失败，显示错误信息
+          alert(response.data.message || '登录失败，请检查用户名和密码')
+        }
       } catch (error) {
-        alert('登录失败，请检查用户名和密码')
+        console.error('登录错误:', error)
+        alert('登录失败：' + (error.message || '网络连接错误，请稍后重试'))
       } finally {
         isLoading.value = false
       }
@@ -260,21 +262,30 @@ export default {
       isRegistering.value = true
       
       try {
-        // 模拟注册API调用
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        alert('注册成功！请登录')
-        showRegister.value = false
-        
-        // 清空注册表单
-        Object.assign(registerForm, {
-          username: '',
-          email: '',
-          password: '',
-          confirmPassword: ''
+        // 调用真正的注册API
+        const response = await ApiService.register({
+          username: registerForm.username,
+          email: registerForm.email,
+          password: registerForm.password
         })
+        
+        if (response.data.success) {
+          alert('注册成功！请登录')
+          showRegister.value = false
+          
+          // 清空注册表单
+          Object.assign(registerForm, {
+            username: '',
+            email: '',
+            password: '',
+            confirmPassword: ''
+          })
+        } else {
+          alert(response.data.message || '注册失败，请稍后重试')
+        }
       } catch (error) {
-        alert('注册失败，请稍后重试')
+        console.error('注册错误:', error)
+        alert('注册失败：' + (error.message || '网络连接错误，请稍后重试'))
       } finally {
         isRegistering.value = false
       }

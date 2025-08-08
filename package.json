@@ -28,8 +28,11 @@
     "@capacitor/cli": "^7.4.2",
     "@capacitor/core": "^7.4.2",
     "@element-plus/icons-vue": "^2.3.0",
+    "@ionic/vue": "^8.7.2",
+    "@ionic/vue-router": "^8.7.2",
     "axios": "^1.11.0",
     "element-plus": "^2.4.0",
+    "ionicons": "^8.0.13",
     "pinia": "^2.1.0",
     "vue": "^3.4.0",
     "vue-router": "^4.0.0"

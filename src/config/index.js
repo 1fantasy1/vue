@@ -2,9 +2,9 @@
 export const config = {
   // API配置
   api: {
-    // 设置为 false 使用远程API，设置为 true 使用本地数据
+    // 除课程外，所有功能都使用远程API
     useLocalData: false,
-    baseURL: 'http://localhost:8001',
+    baseURL: '/api',
     timeout: 30000
   },
 
