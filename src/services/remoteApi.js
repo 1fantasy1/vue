@@ -40,7 +40,7 @@ class BaseAPI {
 // 认证API
 export class AuthAPI extends BaseAPI {
   constructor() {
-    super('/auth')
+    super('')
   }
 
   async register(userData) {
@@ -48,14 +48,33 @@ export class AuthAPI extends BaseAPI {
   }
 
   async login(credentials) {
-    const response = await this.request('POST', '/login', credentials)
+    // OAuth2 token endpoint 需要 application/x-www-form-urlencoded 格式
+    const params = new URLSearchParams()
+    params.append('username', credentials.email)
+    params.append('password', credentials.password)
     
-    // 如果登录成功，保存token（根据后端返回的token字段调整）
-    if (response.access_token) {
-      localStorage.setItem('access_token', response.access_token)
+    try {
+      const config = {
+        method: 'POST',
+        url: '/token',
+        data: params,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
+      
+      const response = await httpClient(config)
+      const data = response.data
+      
+      // 如果登录成功，保存token
+      if (data.access_token) {
+        localStorage.setItem('access_token', data.access_token)
+      }
+      
+      return data
+    } catch (error) {
+      throw this.handleError(error)
     }
-    
-    return response
   }
 
   logout() {

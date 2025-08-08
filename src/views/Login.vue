@@ -9,12 +9,12 @@
       <div class="login-form">
         <form @submit.prevent="handleLogin">
           <div class="form-group">
-            <label for="username">用户名</label>
+            <label for="username">邮箱</label>
             <input
               id="username"
               v-model="loginForm.username"
-              type="text"
-              placeholder="请输入用户名或邮箱"
+              type="email"
+              placeholder="请输入邮箱地址"
               required
             />
           </div>
@@ -122,7 +122,7 @@
                 id="reg-username"
                 v-model="registerForm.username"
                 type="text"
-                placeholder="请输入用户名"
+                placeholder="请输入用户名（3-20位，仅字母数字下划线）"
                 required
               />
             </div>
@@ -142,7 +142,7 @@
                 id="reg-password"
                 v-model="registerForm.password"
                 type="password"
-                placeholder="请输入密码（至少6位）"
+                placeholder="请输入密码（至少8位）"
                 required
               />
             </div>
@@ -154,6 +154,43 @@
                 type="password"
                 placeholder="请再次输入密码"
                 required
+              />
+            </div>
+            <div class="form-group">
+              <label for="reg-fullname">真实姓名</label>
+              <input
+                id="reg-fullname"
+                v-model="registerForm.full_name"
+                type="text"
+                placeholder="请输入真实姓名"
+                required
+              />
+            </div>
+            <div class="form-group">
+              <label for="reg-bio">个人简介</label>
+              <textarea
+                id="reg-bio"
+                v-model="registerForm.bio"
+                placeholder="请简单介绍一下自己（可选）"
+                rows="3"
+              ></textarea>
+            </div>
+            <div class="form-group">
+              <label for="reg-skills">技能</label>
+              <input
+                id="reg-skills"
+                v-model="registerForm.skills"
+                type="text"
+                placeholder="例如：Vue.js, Python, 数据分析"
+              />
+            </div>
+            <div class="form-group">
+              <label for="reg-interests">兴趣爱好</label>
+              <input
+                id="reg-interests"
+                v-model="registerForm.interests"
+                type="text"
+                placeholder="例如：前端开发, 机器学习, 阅读"
               />
             </div>
             <button
@@ -195,7 +232,11 @@ export default {
       username: '',
       email: '',
       password: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      full_name: '',
+      bio: '',
+      skills: '',
+      interests: ''
     })
     
     // 状态控制
@@ -218,7 +259,7 @@ export default {
       try {
         // 调用真正的登录API
         const response = await ApiService.login({
-          username: loginForm.username,
+          email: loginForm.username, // 将用户名当作邮箱发送
           password: loginForm.password
         })
         
@@ -244,8 +285,8 @@ export default {
     
     // 处理注册
     const handleRegister = async () => {
-      if (!registerForm.username || !registerForm.email || !registerForm.password) {
-        alert('请填写完整的注册信息')
+      if (!registerForm.username || !registerForm.email || !registerForm.password || !registerForm.full_name) {
+        alert('请填写完整的注册信息（用户名、邮箱、密码、真实姓名为必填项）')
         return
       }
       
@@ -254,20 +295,58 @@ export default {
         return
       }
       
-      if (registerForm.password.length < 6) {
-        alert('密码长度不能少于6位')
+      if (registerForm.password.length < 8) {
+        alert('密码长度不能少于8位')
+        return
+      }
+      
+      // 验证邮箱格式
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(registerForm.email)) {
+        alert('请输入有效的邮箱地址')
+        return
+      }
+      
+      // 验证用户名格式（只允许字母、数字、下划线）
+      const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/
+      if (!usernameRegex.test(registerForm.username)) {
+        alert('用户名只能包含字母、数字、下划线，长度3-20位')
         return
       }
       
       isRegistering.value = true
       
       try {
-        // 调用真正的注册API
-        const response = await ApiService.register({
+        // 处理技能和兴趣字符串
+        const skillsString = registerForm.skills ? registerForm.skills.trim() : ''
+        const interestsString = registerForm.interests ? registerForm.interests.trim() : ''
+        
+        // 构建请求数据，只包含非空字段
+        const requestData = {
           username: registerForm.username,
           email: registerForm.email,
-          password: registerForm.password
-        })
+          password: registerForm.password,
+          full_name: registerForm.full_name
+        }
+        
+        // 只有非空时才添加可选字段，并且作为字符串发送
+        if (registerForm.bio && registerForm.bio.trim()) {
+          requestData.bio = registerForm.bio.trim()
+        }
+        
+        if (skillsString) {
+          requestData.skills = skillsString  // 发送字符串而不是数组
+        }
+        
+        if (interestsString) {
+          requestData.interests = interestsString  // 发送字符串而不是数组
+        }
+        
+        console.log('发送注册数据:', requestData)
+        console.log('requestData的完整JSON:', JSON.stringify(requestData, null, 2))
+        
+        // 调用真正的注册API
+        const response = await ApiService.register(requestData)
         
         if (response.data.success) {
           alert('注册成功！请登录')
@@ -278,14 +357,38 @@ export default {
             username: '',
             email: '',
             password: '',
-            confirmPassword: ''
+            confirmPassword: '',
+            full_name: '',
+            bio: '',
+            skills: '',
+            interests: ''
           })
         } else {
+          console.error('注册失败详情:', response)
           alert(response.data.message || '注册失败，请稍后重试')
         }
       } catch (error) {
-        console.error('注册错误:', error)
-        alert('注册失败：' + (error.message || '网络连接错误，请稍后重试'))
+        console.error('注册错误详情:', error)
+        console.error('错误响应:', error.response)
+        
+        let errorMessage = '注册失败：'
+        if (error.response?.data?.detail) {
+          if (Array.isArray(error.response.data.detail)) {
+            // 处理验证错误数组
+            const validationErrors = error.response.data.detail.map(err => {
+              return `${err.loc ? err.loc.join('.') : '字段'}: ${err.msg}`
+            }).join('; ')
+            errorMessage += validationErrors
+          } else {
+            errorMessage += error.response.data.detail
+          }
+        } else if (error.response?.data?.message) {
+          errorMessage += error.response.data.message
+        } else {
+          errorMessage += error.message || '网络连接错误，请稍后重试'
+        }
+        
+        alert(errorMessage)
       } finally {
         isRegistering.value = false
       }
@@ -419,7 +522,20 @@ export default {
   transition: border-color 0.3s ease;
 }
 
-.form-group input:focus {
+.form-group textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e1e5e9;
+  border-radius: 10px;
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
   outline: none;
   border-color: #667eea;
 }
@@ -565,6 +681,10 @@ export default {
   max-height: 90vh;
   overflow-y: auto;
   animation: modalSlideUp 0.3s ease-out;
+}
+
+.register-modal {
+  max-width: 600px;
 }
 
 @keyframes modalSlideUp {

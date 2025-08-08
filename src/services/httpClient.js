@@ -13,7 +13,8 @@ const httpClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
-  }
+  },
+  withCredentials: false // 跨域请求不发送cookies
 })
 
 // 请求拦截器
