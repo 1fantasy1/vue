@@ -1,6 +1,6 @@
 <div align="center">
 
-# � 鸿庆书云 - 现代化协作平台
+# 🚀 鸿庆书云 - 现代化协作平台
 
 ![Vue.js](https://img.shields.io/badge/Vue.js-3.4.0-4FC08D?style=for-the-badge&logo=vue.js&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-5.0.0-646CFF?style=for-the-badge&logo=vite&logoColor=white)
