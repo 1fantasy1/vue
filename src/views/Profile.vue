@@ -110,6 +110,42 @@
                 </div>
               </div>
             </div>
+            <div class="soft-skills-section">
+              <div class="soft-skills-title">
+                <span class="meta-icon">🧠</span>
+                <span>软技能</span>
+              </div>
+              <div class="soft-skills-content">{{ userProfile.soft_skills }}</div>
+            </div>
+            <div class="portfolio-section">
+              <div class="portfolio-title">
+                <span class="meta-icon">🔗</span>
+                <span>作品集链接</span>
+              </div>
+              <div class="portfolio-content">
+                <a v-if="userProfile.portfolio_link && userProfile.portfolio_link !== '作品集链接待完善'" 
+                   :href="userProfile.portfolio_link" 
+                   target="_blank" 
+                   class="portfolio-link">
+                  {{ userProfile.portfolio_link }}
+                </a>
+                <span v-else class="portfolio-placeholder">{{ userProfile.portfolio_link }}</span>
+              </div>
+            </div>
+            <div class="role-section">
+              <div class="role-title">
+                <span class="meta-icon">👤</span>
+                <span>偏好角色</span>
+              </div>
+              <div class="role-content">{{ userProfile.preferred_role }}</div>
+            </div>
+            <div class="availability-section">
+              <div class="availability-title">
+                <span class="meta-icon">⏰</span>
+                <span>可用时间</span>
+              </div>
+              <div class="availability-content">{{ userProfile.availability }}</div>
+            </div>
             <div class="skills-section">
               <span class="tag" v-for="skill in userProfile.skills" :key="skill">{{ skill }}</span>
             </div>
@@ -932,6 +968,24 @@
             <label class="input-label">学术成就</label>
             <textarea class="form-input" rows="3" v-model="editProfile.academic_achievements" placeholder="描述您的学术成就和研究成果"></textarea>
           </div>
+          <div class="input-group full-width">
+            <label class="input-label">软技能</label>
+            <textarea class="form-input" rows="2" v-model="editProfile.soft_skills" placeholder="描述您的软技能，如沟通能力、团队协作等"></textarea>
+          </div>
+          <div class="input-group full-width">
+            <label class="input-label">作品集链接</label>
+            <input type="url" class="form-input" v-model="editProfile.portfolio_link" placeholder="输入您的作品集或项目展示链接">
+          </div>
+          <div class="form-row">
+            <div class="input-group">
+              <label class="input-label">偏好角色</label>
+              <input type="text" class="form-input" v-model="editProfile.preferred_role" placeholder="如前端开发、产品经理等">
+            </div>
+            <div class="input-group">
+              <label class="input-label">可用时间</label>
+              <input type="text" class="form-input" v-model="editProfile.availability" placeholder="如每周10小时、全职等">
+            </div>
+          </div>
         </div>
       </div>
       
@@ -1023,6 +1077,10 @@ export default {
       bio: '兴趣爱好待完善',
       awards_competitions: '奖项比赛待完善',
       academic_achievements: '学术成就待完善',
+      soft_skills: '软技能待完善',
+      portfolio_link: '作品集链接待完善',
+      preferred_role: '偏好角色待完善',
+      availability: '可用时间待完善',
       status: '个性签名待设置 ✨'
     })
 
@@ -1049,6 +1107,10 @@ export default {
           bio: user.value.bio || '兴趣爱好待完善',
           awards_competitions: user.value.awards_competitions || '奖项比赛待完善',
           academic_achievements: user.value.academic_achievements || '学术成就待完善',
+          soft_skills: user.value.soft_skills || '软技能待完善',
+          portfolio_link: user.value.portfolio_link || '作品集链接待完善',
+          preferred_role: user.value.preferred_role || '偏好角色待完善',
+          availability: user.value.availability || '可用时间待完善',
           status: user.value.status || '个性签名待设置 ✨'
         }
         
@@ -1064,6 +1126,10 @@ export default {
           bio: userProfile.value.bio,
           awards_competitions: userProfile.value.awards_competitions,
           academic_achievements: userProfile.value.academic_achievements,
+          soft_skills: userProfile.value.soft_skills,
+          portfolio_link: userProfile.value.portfolio_link,
+          preferred_role: userProfile.value.preferred_role,
+          availability: userProfile.value.availability,
           status: userProfile.value.status
         }
       }
@@ -1080,6 +1146,10 @@ export default {
       bio: '兴趣爱好待完善',
       awards_competitions: '奖项比赛待完善',
       academic_achievements: '学术成就待完善',
+      soft_skills: '软技能待完善',
+      portfolio_link: '作品集链接待完善',
+      preferred_role: '偏好角色待完善',
+      availability: '可用时间待完善',
       status: '个性签名待设置 ✨'
     })
 
@@ -1280,6 +1350,10 @@ export default {
         bio: userProfile.value.bio,
         awards_competitions: userProfile.value.awards_competitions,
         academic_achievements: userProfile.value.academic_achievements,
+        soft_skills: userProfile.value.soft_skills,
+        portfolio_link: userProfile.value.portfolio_link,
+        preferred_role: userProfile.value.preferred_role,
+        availability: userProfile.value.availability,
         status: userProfile.value.status
       }
       
@@ -1295,6 +1369,10 @@ export default {
         bio: userProfile.value.bio,
         awards_competitions: userProfile.value.awards_competitions,
         academic_achievements: userProfile.value.academic_achievements,
+        soft_skills: userProfile.value.soft_skills,
+        portfolio_link: userProfile.value.portfolio_link,
+        preferred_role: userProfile.value.preferred_role,
+        availability: userProfile.value.availability,
         status: userProfile.value.status
       }
       
@@ -1326,6 +1404,10 @@ export default {
           bio: originalProfile.value.bio,
           awards_competitions: originalProfile.value.awards_competitions,
           academic_achievements: originalProfile.value.academic_achievements,
+          soft_skills: originalProfile.value.soft_skills,
+          portfolio_link: originalProfile.value.portfolio_link,
+          preferred_role: originalProfile.value.preferred_role,
+          availability: originalProfile.value.availability,
           status: originalProfile.value.status
         }
       }
@@ -1344,6 +1426,10 @@ export default {
           bio: editProfile.value.bio,              // 兴趣爱好
           awards_competitions: editProfile.value.awards_competitions,  // 奖项比赛
           academic_achievements: editProfile.value.academic_achievements,  // 学术成就
+          soft_skills: editProfile.value.soft_skills,  // 软技能
+          portfolio_link: editProfile.value.portfolio_link,  // 作品集链接
+          preferred_role: editProfile.value.preferred_role,  // 偏好角色
+          availability: editProfile.value.availability,  // 可用时间
           status: editProfile.value.status         // 个性签名
         }
 
@@ -1369,6 +1455,10 @@ export default {
         userProfile.value.bio = editProfile.value.bio
         userProfile.value.awards_competitions = editProfile.value.awards_competitions
         userProfile.value.academic_achievements = editProfile.value.academic_achievements
+        userProfile.value.soft_skills = editProfile.value.soft_skills
+        userProfile.value.portfolio_link = editProfile.value.portfolio_link
+        userProfile.value.preferred_role = editProfile.value.preferred_role
+        userProfile.value.availability = editProfile.value.availability
         userProfile.value.status = editProfile.value.status
         
         isEditing.value = false
@@ -1966,6 +2056,117 @@ export default {
   background: rgba(255, 255, 255, 0.35);
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* 新增字段的CSS样式 */
+.soft-skills-section,
+.portfolio-section,
+.preferred-role-section,
+.availability-section {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(15px);
+  border-radius: 15px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.soft-skills-section:hover,
+.portfolio-section:hover,
+.preferred-role-section:hover,
+.availability-section:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.soft-skills-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.soft-skill-tag {
+  background: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.95);
+  padding: 6px 12px;
+  border-radius: 15px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.soft-skill-tag:hover {
+  background: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+.portfolio-link {
+  color: #4fc3f7;
+  text-decoration: none;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  margin-top: 8px;
+}
+
+.portfolio-link:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #29b6f6;
+  transform: translateY(-1px);
+  text-decoration: underline;
+}
+
+.portfolio-link::after {
+  content: "🔗";
+  font-size: 14px;
+}
+
+.role-tag,
+.availability-tag {
+  background: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.95);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: inline-block;
+  margin-top: 8px;
+  transition: all 0.3s ease;
+}
+
+.role-tag:hover,
+.availability-tag:hover {
+  background: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+.availability-tag.available {
+  background: rgba(76, 175, 80, 0.3);
+  border-color: rgba(76, 175, 80, 0.5);
+  color: #81c784;
+}
+
+.availability-tag.busy {
+  background: rgba(255, 193, 7, 0.3);
+  border-color: rgba(255, 193, 7, 0.5);
+  color: #ffb74d;
+}
+
+.availability-tag.unavailable {
+  background: rgba(244, 67, 54, 0.3);
+  border-color: rgba(244, 67, 54, 0.5);
+  color: #e57373;
 }
 
 /* 编辑模式 */
