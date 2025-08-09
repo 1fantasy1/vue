@@ -54,8 +54,8 @@ export class AuthAPI extends BaseAPI {
     // 支持邮箱和手机号登录
     if (credentials.email) {
       params.append('username', credentials.email)
-    } else if (credentials.phone) {
-      params.append('username', credentials.phone)
+    } else if (credentials.phone_number) {  // 修正字段名为 phone_number
+      params.append('username', credentials.phone_number)
     } else {
       throw new Error('请提供邮箱或手机号')
     }

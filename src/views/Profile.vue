@@ -1099,7 +1099,7 @@ export default {
           name: user.value.name || user.value.username || '用户',
           username: user.value.username || user.value.email?.split('@')[0] || 'user',
           email: user.value.email || 'user@example.com',
-          phone: user.value.phone || '',
+          phone: user.value.phone_number || '',  // 修正字段名为 phone_number
           major: user.value.major || '专业未设置',
           school: user.value.school || '学校未设置', 
           skills: skills.length ? skills : ['技能待完善'],
@@ -1420,7 +1420,7 @@ export default {
         const updateData = {
           name: editProfile.value.name,
           major: editProfile.value.major,
-          phone: editProfile.value.phone,
+          phone_number: editProfile.value.phone,  // 修正字段名为 phone_number
           skills: editProfile.value.skillsString,  // 后端期望字符串格式
           interests: editProfile.value.interests,  // 兴趣方向
           bio: editProfile.value.bio,              // 兴趣爱好

@@ -365,7 +365,7 @@ export default {
         if (loginType.value === 'email') {
           loginData.email = loginForm.username
         } else {
-          loginData.phone = loginForm.username
+          loginData.phone_number = loginForm.username  // 修正字段名为 phone_number
         }
         
         // 调用真正的登录API
@@ -461,7 +461,7 @@ export default {
         if (registerType.value === 'email') {
           requestData.email = registerForm.email
         } else {
-          requestData.phone = registerForm.phone
+          requestData.phone_number = registerForm.phone  // 修正字段名为 phone_number
           requestData.sms_code = registerForm.smsCode
         }
         
@@ -600,7 +600,7 @@ export default {
       
       try {
         // 调用发送短信验证码API
-        const response = await ApiService.sendSmsCode({ phone: registerForm.phone })
+        const response = await ApiService.sendSmsCode({ phone_number: registerForm.phone })  // 修正字段名为 phone_number
         
         if (response.data.success) {
           alert('验证码已发送，请注意查收')
