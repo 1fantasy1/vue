@@ -31,8 +31,8 @@
                 <div class="username">@{{ userProfile.username }}</div>
               </div>
               
-              <div class="status-section">
-                <div class="status-text">{{ userProfile.status }}</div>
+              <div class="signature-section">
+                <div class="signature-text">{{ userProfile.status }}</div>
               </div>
             </div>
           </div>
@@ -68,6 +68,24 @@
                 <span class="meta-icon">📧</span>
                 <span>{{ userProfile.email }}</span>
               </div>
+              <div class="meta-item">
+                <span class="meta-icon">📱</span>
+                <span>{{ userProfile.phone || '手机号码未设置' }}</span>
+              </div>
+            </div>
+            <div class="interests-section">
+              <div class="interests-title">
+                <span class="meta-icon">🎯</span>
+                <span>兴趣方向</span>
+              </div>
+              <div class="interests-content">{{ userProfile.interests }}</div>
+            </div>
+            <div class="bio-section">
+              <div class="bio-title">
+                <span class="meta-icon">❤️</span>
+                <span>兴趣爱好</span>
+              </div>
+              <div class="bio-content">{{ userProfile.bio }}</div>
             </div>
             <div class="skills-section">
               <span class="tag" v-for="skill in userProfile.skills" :key="skill">{{ skill }}</span>
@@ -863,17 +881,25 @@
           </div>
           <div class="form-row">
             <div class="input-group">
+              <label class="input-label">手机号码</label>
+              <input type="tel" class="form-input" v-model="editProfile.phone" placeholder="请输入手机号码">
+            </div>
+            <div class="input-group">
               <label class="input-label">技能标签</label>
               <input type="text" class="form-input" v-model="editProfile.skillsString" placeholder="用逗号分隔多个技能">
             </div>
           </div>
           <div class="input-group full-width">
-            <label class="input-label">个人状态</label>
-            <input type="text" class="form-input" v-model="editProfile.status" placeholder="描述您的当前状态">
+            <label class="input-label">个性签名</label>
+            <input type="text" class="form-input" v-model="editProfile.status" placeholder="展示您的个性与态度">
           </div>
           <div class="input-group full-width">
             <label class="input-label">兴趣方向</label>
-            <textarea class="form-input" rows="3" v-model="editProfile.interests" placeholder="描述您的兴趣方向和特长"></textarea>
+            <textarea class="form-input" rows="2" v-model="editProfile.interests" placeholder="描述您的专业兴趣方向"></textarea>
+          </div>
+          <div class="input-group full-width">
+            <label class="input-label">兴趣爱好</label>
+            <textarea class="form-input" rows="3" v-model="editProfile.bio" placeholder="分享您的兴趣爱好和生活偏好"></textarea>
           </div>
         </div>
       </div>
@@ -958,11 +984,13 @@ export default {
       name: '用户',
       username: 'user',
       email: 'user@example.com',
+      phone: '',
       major: '专业未设置',
       school: '学校未设置',
       skills: ['技能待完善'],
-      interests: '兴趣爱好待完善',
-      status: '个人简介待完善 ✨'
+      interests: '兴趣方向待完善',
+      bio: '兴趣爱好待完善',
+      status: '个性签名待设置 ✨'
     })
 
     // 更新用户配置信息
@@ -980,11 +1008,13 @@ export default {
           name: user.value.name || user.value.username || '用户',
           username: user.value.username || user.value.email?.split('@')[0] || 'user',
           email: user.value.email || 'user@example.com',
+          phone: user.value.phone || '',
           major: user.value.major || '专业未设置',
           school: user.value.school || '学校未设置', 
           skills: skills.length ? skills : ['技能待完善'],
-          interests: user.value.interests || '兴趣爱好待完善',
-          status: user.value.bio || '个人简介待完善 ✨'
+          interests: user.value.interests || '兴趣方向待完善',
+          bio: user.value.bio || '兴趣爱好待完善',
+          status: user.value.status || '个性签名待设置 ✨'
         }
         
         // 更新编辑表单
@@ -993,8 +1023,10 @@ export default {
           username: userProfile.value.username,
           major: userProfile.value.major,
           school: userProfile.value.school,
+          phone: userProfile.value.phone,
           skillsString: Array.isArray(userProfile.value.skills) ? userProfile.value.skills.join(', ') : userProfile.value.skills,
           interests: userProfile.value.interests,
+          bio: userProfile.value.bio,
           status: userProfile.value.status
         }
       }
@@ -1005,9 +1037,11 @@ export default {
       username: 'user',
       major: '专业未设置',
       school: '学校未设置',
+      phone: '',
       skillsString: '技能待完善',
-      interests: '兴趣爱好待完善',
-      status: '个人简介待完善 ✨'
+      interests: '兴趣方向待完善',
+      bio: '兴趣爱好待完善',
+      status: '个性签名待设置 ✨'
     })
 
     // 保存原始数据用于取消编辑时恢复
@@ -1191,8 +1225,10 @@ export default {
         username: userProfile.value.username,
         major: userProfile.value.major,
         school: userProfile.value.school,
+        phone: userProfile.value.phone,
         skills: [...userProfile.value.skills],
         interests: userProfile.value.interests,
+        bio: userProfile.value.bio,
         status: userProfile.value.status
       }
       
@@ -1202,8 +1238,10 @@ export default {
         username: userProfile.value.username,
         major: userProfile.value.major,
         school: userProfile.value.school,
+        phone: userProfile.value.phone,
         skillsString: userProfile.value.skills.join(', '),
         interests: userProfile.value.interests,
+        bio: userProfile.value.bio,
         status: userProfile.value.status
       }
       
@@ -1229,8 +1267,10 @@ export default {
           username: originalProfile.value.username,
           major: originalProfile.value.major,
           school: originalProfile.value.school,
+          phone: originalProfile.value.phone,
           skillsString: originalProfile.value.skills.join(', '),
           interests: originalProfile.value.interests,
+          bio: originalProfile.value.bio,
           status: originalProfile.value.status
         }
       }
@@ -1243,9 +1283,11 @@ export default {
         const updateData = {
           name: editProfile.value.name,
           major: editProfile.value.major,
+          phone: editProfile.value.phone,
           skills: editProfile.value.skillsString,  // 后端期望字符串格式
-          interests: editProfile.value.interests,
-          bio: editProfile.value.status
+          interests: editProfile.value.interests,  // 兴趣方向
+          bio: editProfile.value.bio,              // 兴趣爱好
+          status: editProfile.value.status         // 个性签名
         }
 
         // 添加学校字段（如果需要）
@@ -1264,8 +1306,10 @@ export default {
         userProfile.value.username = editProfile.value.username
         userProfile.value.major = editProfile.value.major
         userProfile.value.school = editProfile.value.school
+        userProfile.value.phone = editProfile.value.phone
         userProfile.value.skills = editProfile.value.skillsString.split(',').map(s => s.trim()).filter(s => s)
         userProfile.value.interests = editProfile.value.interests
+        userProfile.value.bio = editProfile.value.bio
         userProfile.value.status = editProfile.value.status
         
         isEditing.value = false
@@ -1615,19 +1659,20 @@ export default {
   letter-spacing: 0.3px;
 }
 
-.status-section {
+.signature-section {
   display: flex;
   align-items: center;
   gap: 8px;
   min-height: 28px;
 }
 
-.status-text {
+.signature-text {
   flex: 1;
   color: rgba(255, 255, 255, 0.9);
   font-size: 0.95rem;
   line-height: 1.4;
   word-break: break-word;
+  font-style: italic;
 }
 
 /* 成就徽章区域 */
@@ -1717,6 +1762,54 @@ export default {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+/* 兴趣爱好区域样式 */
+.interests-section {
+  margin-top: 16px;
+  padding: 16px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.interests-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.interests-content {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  padding-left: 36px;
+}
+
+/* 兴趣爱好区域样式 */
+.bio-section {
+  margin-top: 16px;
+  padding: 16px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.bio-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.bio-content {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  padding-left: 36px;
 }
 
 .tag {
