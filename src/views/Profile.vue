@@ -827,7 +827,7 @@
   </div>
 
   <!-- 编辑资料弹窗 -->
-  <div v-if="isEditing" class="edit-modal" @click.self="cancelEdit">
+  <div v-if="isEditing" class="edit-modal">
     <div class="edit-modal-content">
       <div class="edit-modal-header">
         <h3 class="edit-modal-title">
