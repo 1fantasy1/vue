@@ -113,10 +113,7 @@ export class ApiService {
   // ========== 认证相关API ==========
   static async login(credentials) {
     try {
-      const response = await remoteApiService.auth.login({
-        email: credentials.email || credentials.username,
-        password: credentials.password
-      })
+      const response = await remoteApiService.auth.login(credentials)
       // 获取用户信息
       const userInfo = await remoteApiService.users.getMe()
       localStorageAPI.set('currentUser', userInfo)
@@ -138,6 +135,15 @@ export class ApiService {
   static logout() {
     remoteApiService.auth.logout()
     localStorageAPI.remove('currentUser')
+  }
+
+  static async sendSmsCode(phoneData) {
+    try {
+      const response = await remoteApiService.auth.sendSmsCode(phoneData)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
   }
 
   // ========== 用户相关API ==========

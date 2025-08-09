@@ -50,7 +50,16 @@ export class AuthAPI extends BaseAPI {
   async login(credentials) {
     // OAuth2 token endpoint 需要 application/x-www-form-urlencoded 格式
     const params = new URLSearchParams()
-    params.append('username', credentials.email)
+    
+    // 支持邮箱和手机号登录
+    if (credentials.email) {
+      params.append('username', credentials.email)
+    } else if (credentials.phone) {
+      params.append('username', credentials.phone)
+    } else {
+      throw new Error('请提供邮箱或手机号')
+    }
+    
     params.append('password', credentials.password)
     
     try {
@@ -80,6 +89,10 @@ export class AuthAPI extends BaseAPI {
   logout() {
     localStorage.removeItem('access_token')
     localStorage.removeItem('currentUser')
+  }
+
+  async sendSmsCode(phoneData) {
+    return await this.request('POST', '/send-sms-code', phoneData)
   }
 }
 

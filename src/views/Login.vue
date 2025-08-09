@@ -7,14 +7,34 @@
       </div>
       
       <div class="login-form">
+        <!-- 登录方式切换 -->
+        <div class="login-type-tabs">
+          <button 
+            type="button" 
+            class="tab-btn" 
+            :class="{ active: loginType === 'email' }"
+            @click="switchLoginType('email')"
+          >
+            邮箱登录
+          </button>
+          <button 
+            type="button" 
+            class="tab-btn" 
+            :class="{ active: loginType === 'phone' }"
+            @click="switchLoginType('phone')"
+          >
+            手机号登录
+          </button>
+        </div>
+
         <form @submit.prevent="handleLogin">
           <div class="form-group">
-            <label for="username">邮箱</label>
+            <label for="username">{{ loginType === 'email' ? '邮箱' : '手机号' }}</label>
             <input
               id="username"
               v-model="loginForm.username"
-              type="email"
-              placeholder="请输入邮箱地址"
+              :type="loginType === 'email' ? 'email' : 'tel'"
+              :placeholder="loginType === 'email' ? '请输入邮箱地址' : '请输入手机号码'"
               required
             />
           </div>
@@ -115,6 +135,26 @@
           <button class="close-btn" @click="showRegister = false">×</button>
         </div>
         <div class="modal-body">
+          <!-- 注册方式切换 -->
+          <div class="register-type-tabs">
+            <button 
+              type="button" 
+              class="tab-btn" 
+              :class="{ active: registerType === 'email' }"
+              @click="switchRegisterType('email')"
+            >
+              邮箱注册
+            </button>
+            <button 
+              type="button" 
+              class="tab-btn" 
+              :class="{ active: registerType === 'phone' }"
+              @click="switchRegisterType('phone')"
+            >
+              手机号注册
+            </button>
+          </div>
+
           <form @submit.prevent="handleRegister">
             <div class="form-group">
               <label for="reg-username">用户名</label>
@@ -126,7 +166,9 @@
                 required
               />
             </div>
-            <div class="form-group">
+            
+            <!-- 邮箱注册 -->
+            <div v-if="registerType === 'email'" class="form-group">
               <label for="reg-email">邮箱</label>
               <input
                 id="reg-email"
@@ -135,6 +177,43 @@
                 placeholder="请输入邮箱地址"
                 required
               />
+            </div>
+            
+            <!-- 手机号注册 -->
+            <div v-if="registerType === 'phone'" class="form-group">
+              <label for="reg-phone">手机号</label>
+              <input
+                id="reg-phone"
+                v-model="registerForm.phone"
+                type="tel"
+                placeholder="请输入手机号码"
+                required
+              />
+            </div>
+            
+            <!-- 手机号注册时的验证码 -->
+            <div v-if="registerType === 'phone'" class="form-group">
+              <label for="reg-sms-code">短信验证码</label>
+              <div class="sms-input-group">
+                <input
+                  id="reg-sms-code"
+                  v-model="registerForm.smsCode"
+                  type="text"
+                  placeholder="请输入验证码"
+                  maxlength="6"
+                  required
+                />
+                <button
+                  type="button"
+                  class="sms-btn"
+                  @click="sendSmsCode"
+                  :disabled="smsCountdown > 0 || isSendingSms"
+                >
+                  <span v-if="isSendingSms">发送中...</span>
+                  <span v-else-if="smsCountdown > 0">{{ smsCountdown }}s后重试</span>
+                  <span v-else>获取验证码</span>
+                </button>
+              </div>
             </div>
             <div class="form-group">
               <label for="reg-password">密码</label>
@@ -231,6 +310,8 @@ export default {
     const registerForm = reactive({
       username: '',
       email: '',
+      phone: '',
+      smsCode: '',
       password: '',
       confirmPassword: '',
       full_name: '',
@@ -243,9 +324,13 @@ export default {
     const isLoading = ref(false)
     const isResetting = ref(false)
     const isRegistering = ref(false)
+    const isSendingSms = ref(false)
     const showForgotPassword = ref(false)
     const showRegister = ref(false)
     const resetEmail = ref('')
+    const loginType = ref('email') // 'email' | 'phone'
+    const registerType = ref('email') // 'email' | 'phone'
+    const smsCountdown = ref(0)
     
     // 处理登录
     const handleLogin = async () => {
@@ -254,14 +339,37 @@ export default {
         return
       }
       
+      // 验证输入格式
+      if (loginType.value === 'email') {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(loginForm.username)) {
+          alert('请输入有效的邮箱地址')
+          return
+        }
+      } else {
+        const phoneRegex = /^1[3-9]\d{9}$/
+        if (!phoneRegex.test(loginForm.username)) {
+          alert('请输入正确的手机号码')
+          return
+        }
+      }
+      
       isLoading.value = true
       
       try {
-        // 调用真正的登录API
-        const response = await ApiService.login({
-          email: loginForm.username, // 将用户名当作邮箱发送
+        // 构建登录数据
+        const loginData = {
           password: loginForm.password
-        })
+        }
+        
+        if (loginType.value === 'email') {
+          loginData.email = loginForm.username
+        } else {
+          loginData.phone = loginForm.username
+        }
+        
+        // 调用真正的登录API
+        const response = await ApiService.login(loginData)
         
         if (response.data.success) {
           // 登录成功，更新全局状态
@@ -273,7 +381,7 @@ export default {
           alert('登录成功！')
         } else {
           // 登录失败，显示错误信息
-          alert(response.data.message || '登录失败，请检查用户名和密码')
+          alert(response.data.message || `登录失败，请检查${loginType.value === 'email' ? '邮箱' : '手机号'}和密码`)
         }
       } catch (error) {
         console.error('登录错误:', error)
@@ -285,9 +393,37 @@ export default {
     
     // 处理注册
     const handleRegister = async () => {
-      if (!registerForm.username || !registerForm.email || !registerForm.password || !registerForm.full_name) {
-        alert('请填写完整的注册信息（用户名、邮箱、密码、真实姓名为必填项）')
+      // 基本信息验证
+      if (!registerForm.username || !registerForm.password || !registerForm.full_name) {
+        alert('请填写完整的注册信息（用户名、密码、真实姓名为必填项）')
         return
+      }
+      
+      // 验证注册方式的必填字段
+      if (registerType.value === 'email') {
+        if (!registerForm.email) {
+          alert('请输入邮箱地址')
+          return
+        }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(registerForm.email)) {
+          alert('请输入有效的邮箱地址')
+          return
+        }
+      } else {
+        if (!registerForm.phone) {
+          alert('请输入手机号码')
+          return
+        }
+        if (!registerForm.smsCode) {
+          alert('请输入短信验证码')
+          return
+        }
+        const phoneRegex = /^1[3-9]\d{9}$/
+        if (!phoneRegex.test(registerForm.phone)) {
+          alert('请输入正确的手机号码')
+          return
+        }
       }
       
       if (registerForm.password !== registerForm.confirmPassword) {
@@ -297,13 +433,6 @@ export default {
       
       if (registerForm.password.length < 8) {
         alert('密码长度不能少于8位')
-        return
-      }
-      
-      // 验证邮箱格式
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(registerForm.email)) {
-        alert('请输入有效的邮箱地址')
         return
       }
       
@@ -324,9 +453,16 @@ export default {
         // 构建请求数据，只包含非空字段
         const requestData = {
           username: registerForm.username,
-          email: registerForm.email,
           password: registerForm.password,
           full_name: registerForm.full_name
+        }
+        
+        // 根据注册类型添加邮箱或手机号
+        if (registerType.value === 'email') {
+          requestData.email = registerForm.email
+        } else {
+          requestData.phone = registerForm.phone
+          requestData.sms_code = registerForm.smsCode
         }
         
         // 只有非空时才添加可选字段，并且作为字符串发送
@@ -356,6 +492,8 @@ export default {
           Object.assign(registerForm, {
             username: '',
             email: '',
+            phone: '',
+            smsCode: '',
             password: '',
             confirmPassword: '',
             full_name: '',
@@ -426,20 +564,88 @@ export default {
       alert('QQ登录功能开发中...')
     }
     
+    // 切换登录方式
+    const switchLoginType = (type) => {
+      loginType.value = type
+      loginForm.username = '' // 清空输入
+    }
+    
+    // 切换注册方式
+    const switchRegisterType = (type) => {
+      registerType.value = type
+      // 清空相关字段
+      if (type === 'email') {
+        registerForm.phone = ''
+        registerForm.smsCode = ''
+      } else {
+        registerForm.email = ''
+      }
+    }
+    
+    // 发送短信验证码
+    const sendSmsCode = async () => {
+      if (!registerForm.phone) {
+        alert('请先输入手机号码')
+        return
+      }
+      
+      // 验证手机号格式
+      const phoneRegex = /^1[3-9]\d{9}$/
+      if (!phoneRegex.test(registerForm.phone)) {
+        alert('请输入正确的手机号码')
+        return
+      }
+      
+      isSendingSms.value = true
+      
+      try {
+        // 调用发送短信验证码API
+        const response = await ApiService.sendSmsCode({ phone: registerForm.phone })
+        
+        if (response.data.success) {
+          alert('验证码已发送，请注意查收')
+          
+          // 开始倒计时
+          smsCountdown.value = 60
+          const countdown = setInterval(() => {
+            smsCountdown.value--
+            if (smsCountdown.value <= 0) {
+              clearInterval(countdown)
+            }
+          }, 1000)
+        } else {
+          alert(response.data.message || '发送验证码失败')
+        }
+        
+      } catch (error) {
+        console.error('发送短信验证码失败:', error)
+        alert('发送验证码失败：' + (error.message || '请稍后重试'))
+      } finally {
+        isSendingSms.value = false
+      }
+    }
+
     return {
       loginForm,
       registerForm,
       isLoading,
       isResetting,
       isRegistering,
+      isSendingSms,
       showForgotPassword,
       showRegister,
       resetEmail,
+      loginType,
+      registerType,
+      smsCountdown,
       handleLogin,
       handleRegister,
       handlePasswordReset,
       loginWithWechat,
-      loginWithQQ
+      loginWithQQ,
+      switchLoginType,
+      switchRegisterType,
+      sendSmsCode
     }
   }
 }
@@ -502,6 +708,42 @@ export default {
   font-size: 14px;
 }
 
+/* 登录/注册方式切换标签页 */
+.login-type-tabs,
+.register-type-tabs {
+  display: flex;
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 24px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  color: #666;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.tab-btn.active {
+  background: #667eea;
+  color: white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.tab-btn:hover:not(.active) {
+  background: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+}
+
 .form-group {
   margin-bottom: 20px;
 }
@@ -538,6 +780,42 @@ export default {
 .form-group textarea:focus {
   outline: none;
   border-color: #667eea;
+}
+
+/* 短信验证码输入组 */
+.sms-input-group {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.sms-input-group input {
+  flex: 1;
+}
+
+.sms-btn {
+  padding: 12px 16px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  min-width: 100px;
+  transition: all 0.3s ease;
+}
+
+.sms-btn:hover:not(:disabled) {
+  background: #5a6fd8;
+  transform: translateY(-1px);
+}
+
+.sms-btn:disabled {
+  background: #c0c4cc;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .form-options {
