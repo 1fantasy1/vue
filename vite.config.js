@@ -28,7 +28,6 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-    // 确保相对路径用于 Electron
     rollupOptions: {
       output: {
         manualChunks: {
@@ -38,7 +37,6 @@ export default defineConfig({
       }
     }
   },
-  base: process.env.ELECTRON === 'true' ? './' : '/',
   define: {
     __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
   }

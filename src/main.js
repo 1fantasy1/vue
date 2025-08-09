@@ -10,11 +10,6 @@ import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
-// 移动端调试工具（仅在开发环境）
-if (import.meta.env.DEV) {
-  import('./utils/mobileDebug.js')
-}
-
 // 创建应用实例
 const app = createApp(App)
 

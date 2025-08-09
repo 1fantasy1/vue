@@ -68,13 +68,6 @@ export default {
     if (this.$route.path === '/knowledge') {
       document.body.classList.add('knowledge-page')
     }
-    
-    // 确保在 Electron 环境中正确导航到首页
-    if (window.navigator.userAgent.indexOf('Electron') !== -1) {
-      if (this.$route.path === '/' && this.$route.name !== 'Home') {
-        this.$router.replace({ name: 'Home' })
-      }
-    }
   }
 }
 </script>

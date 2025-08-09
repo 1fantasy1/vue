@@ -8,98 +8,18 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:electron": "cross-env ELECTRON=true vite build",
-    "preview": "vite preview",
-    "electron": "electron .",
-    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && electron .\"",
-    "build:win": "npm run build:electron && electron-builder --win --publish=never",
-    "build:win:portable": "npm run build:electron && electron-builder --win --config.win.target=portable --publish=never",
-    "build:portable": "node scripts/build-portable.cjs",
-    "build:linux": "npm run build:electron && electron-builder --linux --publish=never",
-    "build:mac": "npm run build:electron && electron-builder --mac --publish=never",
-    "build:all": "npm run build:electron && electron-builder --publish=never",
-    "cap:sync": "npm run build && npx cap sync",
-    "cap:android": "npm run cap:sync android",
-    "cap:open": "npx cap open",
-    "setup": "node scripts/setup.cjs"
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@capacitor/android": "^7.4.2",
-    "@capacitor/cli": "^7.4.2",
-    "@capacitor/core": "^7.4.2",
     "@element-plus/icons-vue": "^2.3.0",
-    "@ionic/vue": "^8.7.2",
-    "@ionic/vue-router": "^8.7.2",
     "axios": "^1.11.0",
     "element-plus": "^2.4.0",
-    "ionicons": "^8.0.13",
     "pinia": "^2.1.0",
     "vue": "^3.4.0",
     "vue-router": "^4.0.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",
-    "concurrently": "^8.2.2",
-    "cross-env": "^10.0.0",
-    "electron": "^28.0.0",
-    "electron-builder": "^24.9.1",
-    "vite": "^5.0.0",
-    "wait-on": "^7.2.0"
-  },
-  "main": "electron/main.cjs",
-  "build": {
-    "appId": "com.fantasy.innovation-collaboration-platform",
-    "productName": "鸿庆书云",
-    "directories": {
-      "output": "dist-electron"
-    },
-    "files": [
-      "dist/**/*",
-      "electron/**/*",
-      "node_modules/**/*"
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        }
-      ]
-    },
-    "linux": {
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "deb",
-          "arch": [
-            "x64"
-          ]
-        }
-      ]
-    },
-    "mac": {
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ]
-    }
+    "vite": "^5.0.0"
   }
 }
