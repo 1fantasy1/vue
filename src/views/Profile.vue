@@ -87,6 +87,29 @@
               </div>
               <div class="bio-content">{{ userProfile.bio }}</div>
             </div>
+            <div class="awards-section">
+              <div class="awards-title">
+                <span class="meta-icon">🏆</span>
+                <span>奖项比赛</span>
+              </div>
+              <div class="awards-content">{{ userProfile.awards_competitions }}</div>
+            </div>
+            <div class="academic-section">
+              <div class="academic-title">
+                <span class="meta-icon">🎓</span>
+                <span>学术成就</span>
+              </div>
+              <div class="academic-content">
+                <div v-if="academicAchievementsList.length > 0" class="academic-list">
+                  <div v-for="(achievement, index) in academicAchievementsList" :key="index" class="academic-item">
+                    {{ achievement }}
+                  </div>
+                </div>
+                <div v-else class="academic-placeholder">
+                  {{ userProfile.academic_achievements }}
+                </div>
+              </div>
+            </div>
             <div class="skills-section">
               <span class="tag" v-for="skill in userProfile.skills" :key="skill">{{ skill }}</span>
             </div>
@@ -901,6 +924,14 @@
             <label class="input-label">兴趣爱好</label>
             <textarea class="form-input" rows="3" v-model="editProfile.bio" placeholder="分享您的兴趣爱好和生活偏好"></textarea>
           </div>
+          <div class="input-group full-width">
+            <label class="input-label">奖项比赛</label>
+            <textarea class="form-input" rows="3" v-model="editProfile.awards_competitions" placeholder="描述您获得的奖项和参与的比赛"></textarea>
+          </div>
+          <div class="input-group full-width">
+            <label class="input-label">学术成就</label>
+            <textarea class="form-input" rows="3" v-model="editProfile.academic_achievements" placeholder="描述您的学术成就和研究成果"></textarea>
+          </div>
         </div>
       </div>
       
@@ -990,6 +1021,8 @@ export default {
       skills: ['技能待完善'],
       interests: '兴趣方向待完善',
       bio: '兴趣爱好待完善',
+      awards_competitions: '奖项比赛待完善',
+      academic_achievements: '学术成就待完善',
       status: '个性签名待设置 ✨'
     })
 
@@ -1014,6 +1047,8 @@ export default {
           skills: skills.length ? skills : ['技能待完善'],
           interests: user.value.interests || '兴趣方向待完善',
           bio: user.value.bio || '兴趣爱好待完善',
+          awards_competitions: user.value.awards_competitions || '奖项比赛待完善',
+          academic_achievements: user.value.academic_achievements || '学术成就待完善',
           status: user.value.status || '个性签名待设置 ✨'
         }
         
@@ -1027,6 +1062,8 @@ export default {
           skillsString: Array.isArray(userProfile.value.skills) ? userProfile.value.skills.join(', ') : userProfile.value.skills,
           interests: userProfile.value.interests,
           bio: userProfile.value.bio,
+          awards_competitions: userProfile.value.awards_competitions,
+          academic_achievements: userProfile.value.academic_achievements,
           status: userProfile.value.status
         }
       }
@@ -1041,6 +1078,8 @@ export default {
       skillsString: '技能待完善',
       interests: '兴趣方向待完善',
       bio: '兴趣爱好待完善',
+      awards_competitions: '奖项比赛待完善',
+      academic_achievements: '学术成就待完善',
       status: '个性签名待设置 ✨'
     })
 
@@ -1171,6 +1210,16 @@ export default {
       })
     })
 
+    // 处理学术成就列表显示
+    const academicAchievementsList = computed(() => {
+      const achievements = userProfile.value.academic_achievements
+      if (!achievements || achievements === '学术成就待完善') {
+        return []
+      }
+      // 将字符串按换行符分割，过滤空行
+      return achievements.split('\n').filter(line => line.trim().length > 0)
+    })
+
     const toggleFeature = (cardId) => {
       if (expandedCard.value === cardId) {
         expandedCard.value = null
@@ -1229,6 +1278,8 @@ export default {
         skills: [...userProfile.value.skills],
         interests: userProfile.value.interests,
         bio: userProfile.value.bio,
+        awards_competitions: userProfile.value.awards_competitions,
+        academic_achievements: userProfile.value.academic_achievements,
         status: userProfile.value.status
       }
       
@@ -1242,6 +1293,8 @@ export default {
         skillsString: userProfile.value.skills.join(', '),
         interests: userProfile.value.interests,
         bio: userProfile.value.bio,
+        awards_competitions: userProfile.value.awards_competitions,
+        academic_achievements: userProfile.value.academic_achievements,
         status: userProfile.value.status
       }
       
@@ -1271,6 +1324,8 @@ export default {
           skillsString: originalProfile.value.skills.join(', '),
           interests: originalProfile.value.interests,
           bio: originalProfile.value.bio,
+          awards_competitions: originalProfile.value.awards_competitions,
+          academic_achievements: originalProfile.value.academic_achievements,
           status: originalProfile.value.status
         }
       }
@@ -1287,6 +1342,8 @@ export default {
           skills: editProfile.value.skillsString,  // 后端期望字符串格式
           interests: editProfile.value.interests,  // 兴趣方向
           bio: editProfile.value.bio,              // 兴趣爱好
+          awards_competitions: editProfile.value.awards_competitions,  // 奖项比赛
+          academic_achievements: editProfile.value.academic_achievements,  // 学术成就
           status: editProfile.value.status         // 个性签名
         }
 
@@ -1310,6 +1367,8 @@ export default {
         userProfile.value.skills = editProfile.value.skillsString.split(',').map(s => s.trim()).filter(s => s)
         userProfile.value.interests = editProfile.value.interests
         userProfile.value.bio = editProfile.value.bio
+        userProfile.value.awards_competitions = editProfile.value.awards_competitions
+        userProfile.value.academic_achievements = editProfile.value.academic_achievements
         userProfile.value.status = editProfile.value.status
         
         isEditing.value = false
@@ -1381,6 +1440,7 @@ export default {
       originalProfile,
       statistics,
       sortedAchievements,
+      academicAchievementsList,
       settings,
       themeColors,
       userInitial,
@@ -1810,6 +1870,83 @@ export default {
   font-size: 0.95rem;
   line-height: 1.5;
   padding-left: 36px;
+}
+
+/* 奖项比赛区域样式 */
+.awards-section {
+  margin-top: 16px;
+  padding: 16px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.awards-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.awards-content {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  padding-left: 36px;
+}
+
+/* 学术成就区域样式 */
+.academic-section {
+  margin-top: 16px;
+  padding: 16px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.academic-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.academic-content {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  padding-left: 36px;
+}
+
+.academic-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.academic-item {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.9);
+  transition: all 0.3s ease;
+}
+
+.academic-item:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.academic-placeholder {
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
 }
 
 .tag {
