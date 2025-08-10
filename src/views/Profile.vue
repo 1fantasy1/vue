@@ -75,15 +75,15 @@
             </div>
             <div class="interests-section">
               <div class="interests-title">
-                <span class="meta-icon">🎯</span>
-                <span>兴趣方向</span>
+                <span class="meta-icon">❤️</span>
+                <span>兴趣爱好</span>
               </div>
-              <div class="interests-content">{{ userProfile.interests }}</div>
+              <div class="interests-content">{{ userProfile.interests || '暂无兴趣爱好' }}</div>
             </div>
             <div class="bio-section">
               <div class="bio-title">
-                <span class="meta-icon">❤️</span>
-                <span>兴趣爱好</span>
+                <span class="meta-icon">📝</span>
+                <span>个人简介</span>
               </div>
               <div class="bio-content">{{ userProfile.bio }}</div>
             </div>
@@ -953,12 +953,12 @@
             <input type="text" class="form-input" v-model="editProfile.status" placeholder="展示您的个性与态度">
           </div>
           <div class="input-group full-width">
-            <label class="input-label">兴趣方向</label>
-            <textarea class="form-input" rows="2" v-model="editProfile.interests" placeholder="描述您的专业兴趣方向"></textarea>
+            <label class="input-label">兴趣爱好</label>
+            <textarea class="form-input" rows="2" v-model="editProfile.interests" placeholder="描述您的兴趣爱好（可选）"></textarea>
           </div>
           <div class="input-group full-width">
-            <label class="input-label">兴趣爱好</label>
-            <textarea class="form-input" rows="3" v-model="editProfile.bio" placeholder="分享您的兴趣爱好和生活偏好"></textarea>
+            <label class="input-label">个人简介</label>
+            <textarea class="form-input" rows="3" v-model="editProfile.bio" placeholder="介绍一下自己吧"></textarea>
           </div>
           <div class="input-group full-width">
             <label class="input-label">奖项比赛</label>
@@ -1073,8 +1073,8 @@ export default {
       major: '专业未设置',
       school: '学校未设置',
       skills: ['技能待完善'],
-      interests: '兴趣方向待完善',
-      bio: '兴趣爱好待完善',
+      interests: '',  // 兴趣爱好，可空
+      bio: '欢迎使用本平台！',  // 个人简介，默认值
       awards_competitions: '奖项比赛待完善',
       academic_achievements: '学术成就待完善',
       soft_skills: '软技能待完善',
@@ -1103,8 +1103,8 @@ export default {
           major: user.value.major || '专业未设置',
           school: user.value.school || '学校未设置', 
           skills: skills.length ? skills : ['技能待完善'],
-          interests: user.value.interests || '兴趣方向待完善',
-          bio: user.value.bio || '兴趣爱好待完善',
+          interests: user.value.interests || '',  // 兴趣爱好，可空
+          bio: user.value.bio || '欢迎使用本平台！',  // 个人简介，默认值
           awards_competitions: user.value.awards_competitions || '奖项比赛待完善',
           academic_achievements: user.value.academic_achievements || '学术成就待完善',
           soft_skills: user.value.soft_skills || '软技能待完善',
@@ -1142,8 +1142,8 @@ export default {
       school: '学校未设置',
       phone: '',
       skillsString: '技能待完善',
-      interests: '兴趣方向待完善',
-      bio: '兴趣爱好待完善',
+      interests: '',  // 兴趣爱好，可空
+      bio: '欢迎使用本平台！',  // 个人简介，默认值
       awards_competitions: '奖项比赛待完善',
       academic_achievements: '学术成就待完善',
       soft_skills: '软技能待完善',
@@ -1422,8 +1422,7 @@ export default {
           major: editProfile.value.major,
           phone_number: editProfile.value.phone,  // 修正字段名为 phone_number
           skills: editProfile.value.skillsString,  // 后端期望字符串格式
-          interests: editProfile.value.interests,  // 兴趣方向
-          bio: editProfile.value.bio,              // 兴趣爱好
+          bio: editProfile.value.bio,              // 个人简介
           awards_competitions: editProfile.value.awards_competitions,  // 奖项比赛
           academic_achievements: editProfile.value.academic_achievements,  // 学术成就
           soft_skills: editProfile.value.soft_skills,  // 软技能
@@ -1431,6 +1430,11 @@ export default {
           preferred_role: editProfile.value.preferred_role,  // 偏好角色
           availability: editProfile.value.availability,  // 可用时间
           status: editProfile.value.status         // 个性签名
+        }
+
+        // 兴趣爱好可空，只有非空时才添加
+        if (editProfile.value.interests && editProfile.value.interests.trim()) {
+          updateData.interests = editProfile.value.interests.trim()
         }
 
         // 添加学校字段（如果需要）
