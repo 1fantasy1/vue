@@ -2550,6 +2550,11 @@ export default {
     transform: translateX(4px);
   }
   
+  /* 隐藏原生复选框，使用自定义 .checkmark 展示 */
+  .checkbox-label input[type="checkbox"] {
+    display: none;
+  }
+  
   .checkmark {
     width: 24px;
     height: 24px;
