@@ -12,6 +12,7 @@ import ChatRooms from '../views/ChatRooms.vue'
 import CourseNotes from '../views/CourseNotes.vue'
 import Favorites from '../views/Favorites.vue'
 import QuickNotes from '../views/QuickNotes.vue'
+import DevTools from '../views/DevTools.vue'
 
 const routes = [
   {
@@ -88,6 +89,12 @@ const routes = [
     path: '/knowledge-hub',
     name: 'KnowledgeBase',
     component: KnowledgeBase,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/dev-tools',
+    name: 'DevTools',
+    component: DevTools,
     meta: { requiresAuth: true }
   }
 ]

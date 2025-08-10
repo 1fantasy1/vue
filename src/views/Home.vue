@@ -153,6 +153,21 @@
           <span class="stat-item">分类: 12</span>
         </div>
       </div>
+
+      <!-- 工具箱卡片 -->
+      <div class="nav-card" @click="navigateTo('/dev-tools')">
+        <div class="card-icon tools-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M22.7,19L13.6,9.9C14.5,7.6 14,4.9 12.1,3C10.1,1 7.1,0.6 4.7,1.7L9,6L6,9L1.6,4.7C0.4,7.1 0.9,10.1 2.9,12.1C4.8,14 7.5,14.5 9.8,13.6L18.9,22.7C19.3,23.1 19.9,23.1 20.3,22.7L22.6,20.4C23.1,20 23.1,19.3 22.7,19Z"/>
+          </svg>
+        </div>
+        <h3 class="card-title">工具箱</h3>
+        <p class="card-description">实用工具和开发辅助功能</p>
+        <div class="card-stats">
+          <span class="stat-item">工具数: {{ stats.toolsCount }}</span>
+          <span class="stat-item">常用: 8</span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -182,7 +197,8 @@ export default {
       totalNotes: 0,
       favoritesCount: 15,
       quickNotesCount: 0,
-      knowledgeDocsCount: 156
+      knowledgeDocsCount: 156,
+      toolsCount: 12
     })
 
     const navigateTo = (path) => {
@@ -343,6 +359,10 @@ export default {
 
 .wisdom-icon {
   background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+}
+
+.tools-icon {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 .card-title {
