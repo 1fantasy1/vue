@@ -32,7 +32,7 @@
               </div>
               
               <div class="signature-section">
-                <div class="signature-text">{{ userProfile.status }}</div>
+                <div class="signature-text">{{ userProfile.bio }}</div>
               </div>
             </div>
           </div>
@@ -952,10 +952,6 @@
             </div>
           </div>
           <div class="input-group full-width">
-            <label class="input-label">个性签名</label>
-            <input type="text" class="form-input" v-model="editProfile.status" placeholder="展示您的个性与态度">
-          </div>
-          <div class="input-group full-width">
             <label class="input-label">兴趣爱好</label>
             <textarea class="form-input" rows="2" v-model="editProfile.interests" placeholder="描述您的兴趣爱好（可选）"></textarea>
           </div>
@@ -1091,8 +1087,7 @@ export default {
       soft_skills: '软技能待完善',
       portfolio_link: '作品集链接待完善',
       preferred_role: '偏好角色待完善',
-      availability: '可用时间待完善',
-      status: '个性签名待设置 ✨'
+      availability: '可用时间待完善'
     })
 
     // 更新用户配置信息
@@ -1122,8 +1117,7 @@ export default {
           soft_skills: user.value.soft_skills || '软技能待完善',
           portfolio_link: user.value.portfolio_link || '作品集链接待完善',
           preferred_role: user.value.preferred_role || '偏好角色待完善',
-          availability: user.value.availability || '可用时间待完善',
-          status: user.value.status || '个性签名待设置 ✨'
+          availability: user.value.availability || '可用时间待完善'
         }
         
         console.log('用户配置信息已更新:', userProfile.value)
@@ -1143,8 +1137,7 @@ export default {
           soft_skills: userProfile.value.soft_skills,
           portfolio_link: userProfile.value.portfolio_link,
           preferred_role: userProfile.value.preferred_role,
-          availability: userProfile.value.availability,
-          status: userProfile.value.status
+          availability: userProfile.value.availability
         }
       }
     }
@@ -1163,8 +1156,7 @@ export default {
       soft_skills: '软技能待完善',
       portfolio_link: '作品集链接待完善',
       preferred_role: '偏好角色待完善',
-      availability: '可用时间待完善',
-      status: '个性签名待设置 ✨'
+      availability: '可用时间待完善'
     })
 
     // 保存原始数据用于取消编辑时恢复
@@ -1367,8 +1359,7 @@ export default {
         soft_skills: userProfile.value.soft_skills,
         portfolio_link: userProfile.value.portfolio_link,
         preferred_role: userProfile.value.preferred_role,
-        availability: userProfile.value.availability,
-        status: userProfile.value.status
+        availability: userProfile.value.availability
       }
       
       // 同步编辑表单数据
@@ -1386,8 +1377,7 @@ export default {
         soft_skills: userProfile.value.soft_skills,
         portfolio_link: userProfile.value.portfolio_link,
         preferred_role: userProfile.value.preferred_role,
-        availability: userProfile.value.availability,
-        status: userProfile.value.status
+        availability: userProfile.value.availability
       }
       
       isEditing.value = true
@@ -1442,8 +1432,7 @@ export default {
           soft_skills: editProfile.value.soft_skills,  // 软技能
           portfolio_link: editProfile.value.portfolio_link,  // 作品集链接
           preferred_role: editProfile.value.preferred_role,  // 偏好角色
-          availability: editProfile.value.availability,  // 可用时间
-          status: editProfile.value.status         // 个性签名
+          availability: editProfile.value.availability  // 可用时间
         }
 
         // 兴趣爱好可空，只有非空时才添加
@@ -1477,7 +1466,6 @@ export default {
         userProfile.value.portfolio_link = editProfile.value.portfolio_link
         userProfile.value.preferred_role = editProfile.value.preferred_role
         userProfile.value.availability = editProfile.value.availability
-        userProfile.value.status = editProfile.value.status
         
         isEditing.value = false
         ElMessage.success('个人信息保存成功！')
