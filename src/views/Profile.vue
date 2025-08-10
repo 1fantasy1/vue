@@ -18,7 +18,7 @@
                       <span class="btn-icon">✏️</span>
                       编辑资料
                     </button>
-                    <button class="refresh-btn-inline" @click="loadUserData" :disabled="userLoading">
+                    <button class="refresh-btn-inline" @click="loadUserData(true)" :disabled="userLoading">
                       <span class="btn-icon" :class="{ loading: userLoading }">🔄</span>
                       刷新
                     </button>
@@ -66,13 +66,15 @@
               </div>
               <div class="meta-item">
                 <span class="meta-icon">📧</span>
-                <span>{{ userProfile.email }}</span>
+                <span>{{ userProfile.email || '邮箱未设置' }}</span>
               </div>
               <div class="meta-item">
                 <span class="meta-icon">📱</span>
                 <span>{{ userProfile.phone || '手机号码未设置' }}</span>
               </div>
             </div>
+            <!-- 详细信息已隐藏，仅在编辑时可以修改 -->
+            <!--
             <div class="interests-section">
               <div class="interests-title">
                 <span class="meta-icon">❤️</span>
@@ -146,6 +148,7 @@
               </div>
               <div class="availability-content">{{ userProfile.availability }}</div>
             </div>
+            -->
             <div class="skills-section">
               <span class="tag" v-for="skill in userProfile.skills" :key="skill">{{ skill }}</span>
             </div>
@@ -1041,24 +1044,32 @@ export default {
       loadUserData()
     })
 
+    // 监听用户数据变化，实时更新界面
+    watch(user, (newUser) => {
+      if (newUser) {
+        updateUserProfile()
+      }
+    }, { immediate: true })
+
+    // 监听summary数据变化，实时更新统计
+    watch(summary, (newSummary) => {
+      if (newSummary) {
+        updateStatistics()
+      }
+    }, { immediate: true })
+
     // 加载用户数据
-    const loadUserData = async () => {
+    const loadUserData = async (forceRefresh = false) => {
       try {
+        if (forceRefresh) {
+          console.log('强制刷新用户数据')
+        }
+        
         await Promise.all([
-          getCurrentUser(),
+          getCurrentUser(forceRefresh),
           fetchSummary(),
           fetchProjects()
         ])
-        
-        // 更新用户配置信息
-        if (user.value) {
-          updateUserProfile()
-        }
-        
-        // 更新统计数据
-        if (summary.value) {
-          updateStatistics()
-        }
       } catch (error) {
         console.warn('加载用户数据失败:', error)
       }
@@ -1087,6 +1098,7 @@ export default {
     // 更新用户配置信息
     const updateUserProfile = () => {
       if (user.value) {
+        console.log('更新用户配置信息:', user.value)
         // 处理技能数据 - 可能是字符串或数组
         let skills = []
         if (typeof user.value.skills === 'string') {
@@ -1113,6 +1125,8 @@ export default {
           availability: user.value.availability || '可用时间待完善',
           status: user.value.status || '个性签名待设置 ✨'
         }
+        
+        console.log('用户配置信息已更新:', userProfile.value)
         
         // 更新编辑表单
         editProfile.value = {

@@ -56,12 +56,16 @@ export function useUserData() {
     ApiService.logout()
   }
 
-  const getCurrentUser = async () => {
-    if (!user.value) {
+  const getCurrentUser = async (forceRefresh = false) => {
+    if (!user.value || forceRefresh) {
       try {
+        console.log('获取用户信息...')
         const response = await ApiService.getUser('me')
         if (response.data.success) {
           user.value = response.data.data
+          console.log('用户信息获取成功:', user.value)
+        } else {
+          console.warn('获取用户信息失败:', response.data.message)
         }
       } catch (err) {
         console.warn('获取用户信息失败:', err)
