@@ -97,8 +97,8 @@
     </div>
 
     <!-- 忘记密码弹窗 -->
-    <div v-if="showForgotPassword" class="modal-overlay" @click="showForgotPassword = false">
-      <div class="modal-content" @click.stop>
+    <div v-if="showForgotPassword" class="modal-overlay" @mousedown.stop @mouseup.stop @mousemove.stop @click.stop>
+      <div class="modal-content" @mousedown.stop @mouseup.stop @mousemove.stop @click.stop>
         <div class="modal-header">
           <h3>重置密码</h3>
           <button class="close-btn" @click="showForgotPassword = false">×</button>
@@ -128,8 +128,8 @@
     </div>
 
     <!-- 注册弹窗 -->
-    <div v-if="showRegister" class="modal-overlay" @click="showRegister = false">
-      <div class="modal-content register-modal" @click.stop>
+    <div v-if="showRegister" class="modal-overlay" @mousedown.stop @mouseup.stop @mousemove.stop @click.stop>
+      <div class="modal-content register-modal" @mousedown.stop @mouseup.stop @mousemove.stop @click.stop>
         <div class="modal-header">
           <h3>用户注册</h3>
           <button class="close-btn" @click="showRegister = false">×</button>
@@ -184,7 +184,7 @@
               <label for="reg-phone">手机号</label>
               <input
                 id="reg-phone"
-                v-model="registerForm.phone"
+                v-model="registerForm.phone_number"
                 type="tel"
                 placeholder="请输入手机号码"
                 required
@@ -239,10 +239,28 @@
               <label for="reg-fullname">真实姓名</label>
               <input
                 id="reg-fullname"
-                v-model="registerForm.full_name"
+                v-model="registerForm.name"
                 type="text"
                 placeholder="请输入真实姓名"
                 required
+              />
+            </div>
+            <div class="form-group">
+              <label for="reg-school">学校</label>
+              <input
+                id="reg-school"
+                v-model="registerForm.school"
+                type="text"
+                placeholder="请输入学校名称（可选）"
+              />
+            </div>
+            <div class="form-group">
+              <label for="reg-major">专业</label>
+              <input
+                id="reg-major"
+                v-model="registerForm.major"
+                type="text"
+                placeholder="请输入专业名称（可选）"
               />
             </div>
             <div class="form-group">
@@ -253,24 +271,6 @@
                 placeholder="请简单介绍一下自己（可选）"
                 rows="3"
               ></textarea>
-            </div>
-            <div class="form-group">
-              <label for="reg-skills">技能</label>
-              <input
-                id="reg-skills"
-                v-model="registerForm.skills"
-                type="text"
-                placeholder="例如：Vue.js, Python, 数据分析"
-              />
-            </div>
-            <div class="form-group">
-              <label for="reg-interests">兴趣爱好</label>
-              <input
-                id="reg-interests"
-                v-model="registerForm.interests"
-                type="text"
-                placeholder="例如：前端开发, 机器学习, 阅读"
-              />
             </div>
             <button
               type="submit"
@@ -310,14 +310,22 @@ export default {
     const registerForm = reactive({
       username: '',
       email: '',
-      phone: '',
+      phone_number: '',  // 使用后端期望的字段名
       smsCode: '',
       password: '',
       confirmPassword: '',
-      full_name: '',
-      bio: '',
+      name: '',  // 后端使用 name 而不是 full_name
+      school: '',
+      major: '',
       skills: '',
-      interests: ''
+      interests: '',
+      bio: '',
+      awards_competitions: '',
+      academic_achievements: '',
+      soft_skills: '',
+      portfolio_link: '',
+      preferred_role: '',
+      availability: ''
     })
     
     // 状态控制
@@ -394,7 +402,7 @@ export default {
     // 处理注册
     const handleRegister = async () => {
       // 基本信息验证
-      if (!registerForm.username || !registerForm.password || !registerForm.full_name) {
+      if (!registerForm.username || !registerForm.password || !registerForm.name) {
         alert('请填写完整的注册信息（用户名、密码、真实姓名为必填项）')
         return
       }
@@ -411,7 +419,7 @@ export default {
           return
         }
       } else {
-        if (!registerForm.phone) {
+        if (!registerForm.phone_number) {
           alert('请输入手机号码')
           return
         }
@@ -420,7 +428,7 @@ export default {
           return
         }
         const phoneRegex = /^1[3-9]\d{9}$/
-        if (!phoneRegex.test(registerForm.phone)) {
+        if (!phoneRegex.test(registerForm.phone_number)) {
           alert('请输入正确的手机号码')
           return
         }
@@ -446,43 +454,64 @@ export default {
       isRegistering.value = true
       
       try {
-        // 处理技能和兴趣字符串
-        const skillsString = registerForm.skills ? registerForm.skills.trim() : ''
-        const interestsString = registerForm.interests ? registerForm.interests.trim() : ''
-        
-        // 构建请求数据，只包含非空字段
+        // 构建请求数据，包含后端API期望的字段
         const requestData = {
           username: registerForm.username,
           password: registerForm.password,
-          full_name: registerForm.full_name
+          name: registerForm.name
         }
         
         // 根据注册类型添加邮箱或手机号
         if (registerType.value === 'email') {
           requestData.email = registerForm.email
         } else {
-          requestData.phone_number = registerForm.phone  // 修正字段名为 phone_number
+          requestData.phone_number = registerForm.phone_number
           requestData.sms_code = registerForm.smsCode
         }
         
-        // 只有非空时才添加可选字段，并且作为字符串发送
-        if (registerForm.bio && registerForm.bio.trim()) {
+        // 添加可选字段（只有非空时才添加）
+        if (registerForm.school?.trim()) {
+          requestData.school = registerForm.school.trim()
+        }
+        if (registerForm.major?.trim()) {
+          requestData.major = registerForm.major.trim()
+        }
+        if (registerForm.bio?.trim()) {
           requestData.bio = registerForm.bio.trim()
         }
-        
-        if (skillsString) {
-          requestData.skills = skillsString  // 发送字符串而不是数组
+        if (registerForm.skills?.trim()) {
+          requestData.skills = registerForm.skills.trim()
         }
-        
-        if (interestsString) {
-          requestData.interests = interestsString  // 发送字符串而不是数组
+        if (registerForm.interests?.trim()) {
+          requestData.interests = registerForm.interests.trim()
+        }
+        if (registerForm.awards_competitions?.trim()) {
+          requestData.awards_competitions = registerForm.awards_competitions.trim()
+        }
+        if (registerForm.academic_achievements?.trim()) {
+          requestData.academic_achievements = registerForm.academic_achievements.trim()
+        }
+        if (registerForm.soft_skills?.trim()) {
+          requestData.soft_skills = registerForm.soft_skills.trim()
+        }
+        if (registerForm.portfolio_link?.trim()) {
+          requestData.portfolio_link = registerForm.portfolio_link.trim()
+        }
+        if (registerForm.preferred_role?.trim()) {
+          requestData.preferred_role = registerForm.preferred_role.trim()
+        }
+        if (registerForm.availability?.trim()) {
+          requestData.availability = registerForm.availability.trim()
         }
         
         console.log('发送注册数据:', requestData)
         console.log('requestData的完整JSON:', JSON.stringify(requestData, null, 2))
+        console.log('表单中的真实姓名:', registerForm.name)
+        console.log('请求数据中的真实姓名:', requestData.name)
         
         // 调用真正的注册API
         const response = await ApiService.register(requestData)
+        console.log('注册API响应:', response)
         
         if (response.data.success) {
           alert('注册成功！请登录')
@@ -492,14 +521,22 @@ export default {
           Object.assign(registerForm, {
             username: '',
             email: '',
-            phone: '',
+            phone_number: '',
             smsCode: '',
             password: '',
             confirmPassword: '',
-            full_name: '',
-            bio: '',
+            name: '',
+            school: '',
+            major: '',
             skills: '',
-            interests: ''
+            interests: '',
+            bio: '',
+            awards_competitions: '',
+            academic_achievements: '',
+            soft_skills: '',
+            portfolio_link: '',
+            preferred_role: '',
+            availability: ''
           })
         } else {
           console.error('注册失败详情:', response)
@@ -584,14 +621,14 @@ export default {
     
     // 发送短信验证码
     const sendSmsCode = async () => {
-      if (!registerForm.phone) {
+      if (!registerForm.phone_number) {
         alert('请先输入手机号码')
         return
       }
       
       // 验证手机号格式
       const phoneRegex = /^1[3-9]\d{9}$/
-      if (!phoneRegex.test(registerForm.phone)) {
+      if (!phoneRegex.test(registerForm.phone_number)) {
         alert('请输入正确的手机号码')
         return
       }
@@ -600,7 +637,7 @@ export default {
       
       try {
         // 调用发送短信验证码API
-        const response = await ApiService.sendSmsCode({ phone_number: registerForm.phone })  // 修正字段名为 phone_number
+        const response = await ApiService.sendSmsCode({ phone_number: registerForm.phone_number })
         
         if (response.data.success) {
           alert('验证码已发送，请注意查收')
