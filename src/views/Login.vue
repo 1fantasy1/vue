@@ -263,6 +263,45 @@
                 placeholder="请输入专业名称（可选）"
               />
             </div>
+            <!-- 技能列表（结构化：名称 + 熟练度） -->
+            <div class="form-group">
+              <label>技能列表（名称 + 熟练度）</label>
+              <div class="skills-wrapper">
+                <div
+                  class="skill-item"
+                  v-for="(skill, idx) in registerForm.skills"
+                  :key="idx"
+                >
+                  <input
+                    class="skill-name"
+                    v-model="skill.name"
+                    type="text"
+                    placeholder="技能名称 如：Python"
+                    maxlength="30"
+                  />
+                  <select v-model="skill.level" class="skill-level">
+                    <option disabled value="">熟练度</option>
+                    <option value="初窥门径">初窥门径</option>
+                    <option value="登堂入室">登堂入室</option>
+                    <option value="融会贯通">融会贯通</option>
+                    <option value="炉火纯青">炉火纯青</option>
+                  </select>
+                  <button
+                    type="button"
+                    class="remove-skill-btn"
+                    @click="removeSkill(idx)"
+                    v-if="registerForm.skills.length > 1"
+                  >×</button>
+                </div>
+                <button
+                  type="button"
+                  class="add-skill-btn"
+                  @click="addSkill"
+                  :disabled="registerForm.skills.length >= 20"
+                >+ 添加技能</button>
+                <small class="skill-hint">不填则为空数组；熟练度枚举：初窥门径 / 登堂入室 / 融会贯通 / 炉火纯青（默认 初窥门径）</small>
+              </div>
+            </div>
             <div class="form-group">
               <label for="reg-bio">个人简介</label>
               <textarea
@@ -317,7 +356,7 @@ export default {
       name: '',  // 后端使用 name 而不是 full_name
       school: '',
       major: '',
-      skills: '',
+  skills: [{ name: '', level: '初窥门径' }], // 数组形式，提交为 JSON 数组
       interests: '',
       bio: '',
       awards_competitions: '',
@@ -479,9 +518,16 @@ export default {
         if (registerForm.bio?.trim()) {
           requestData.bio = registerForm.bio.trim()
         }
-        if (registerForm.skills?.trim()) {
-          requestData.skills = registerForm.skills.trim()
-        }
+        // 组织技能数组：过滤空名称，默认熟练度
+        const allowedLevels = ['初窥门径','登堂入室','融会贯通','炉火纯青']
+        const cleanedSkills = (registerForm.skills || [])
+          .filter(s => s.name && s.name.trim())
+          .map(s => {
+            const level = s.level && allowedLevels.includes(s.level) ? s.level : '初窥门径'
+            return { name: s.name.trim(), level }
+          })
+  // 即使为空也发送，后端字段为 NOT NULL DEFAULT []
+  requestData.skills = cleanedSkills
         if (registerForm.interests?.trim()) {
           requestData.interests = registerForm.interests.trim()
         }
@@ -528,7 +574,7 @@ export default {
             name: '',
             school: '',
             major: '',
-            skills: '',
+            skills: [{ name: '', level: '初窥门径' }],
             interests: '',
             bio: '',
             awards_competitions: '',
@@ -682,7 +728,20 @@ export default {
       loginWithQQ,
       switchLoginType,
       switchRegisterType,
-      sendSmsCode
+      sendSmsCode,
+      addSkill: () => {
+        if (registerForm.skills.length >= 20) return
+        registerForm.skills.push({ name: '', level: '初窥门径' })
+      },
+      removeSkill: (idx) => {
+        if (registerForm.skills.length === 1) {
+          // 只剩一个则清空内容不删除行
+          registerForm.skills[0].name = ''
+          registerForm.skills[0].level = '初窥门径'
+        } else {
+          registerForm.skills.splice(idx, 1)
+        }
+      }
     }
   }
 }
@@ -817,6 +876,78 @@ export default {
 .form-group textarea:focus {
   outline: none;
   border-color: #667eea;
+}
+
+/* 技能列表 */
+.skills-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #fafbfc;
+  padding: 12px 14px;
+  border: 1px dashed #d0d7de;
+  border-radius: 8px;
+}
+
+.skill-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.skill-item input.skill-name {
+  flex: 2;
+  padding: 8px 10px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.skill-item select.skill-level {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #fff;
+}
+
+.add-skill-btn {
+  align-self: flex-start;
+  padding: 6px 12px;
+  background: #667eea;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.add-skill-btn:disabled {
+  background: #b5b9c7;
+  cursor: not-allowed;
+}
+
+.remove-skill-btn {
+  background: #ff4d4f;
+  color: #fff;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 50%;
+  font-size: 14px;
+  width: 28px;
+  height: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.remove-skill-btn:hover {
+  background: #e04445;
+}
+
+.skill-hint {
+  color: #888;
+  font-size: 12px;
 }
 
 /* 短信验证码输入组 */
