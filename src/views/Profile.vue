@@ -150,7 +150,28 @@
             </div>
             -->
             <div class="skills-section">
-              <span class="tag" v-for="skill in userProfile.skills" :key="skill">{{ skill }}</span>
+              <div 
+                v-for="skill in userProfile.skills" 
+                :key="typeof skill === 'string' ? skill : skill.name"
+                :class="{
+                  'skill-card': typeof skill === 'object',
+                  'tag': typeof skill === 'string'
+                }"
+              >
+                <div v-if="typeof skill === 'object'" class="skill-content">
+                  <span class="skill-name">{{ skill.name }}</span>
+                  <div v-if="skill.level" class="skill-level">
+                    <span class="level-text">{{ skill.level }}</span>
+                    <div class="level-indicator">
+                      <div 
+                        class="level-bar" 
+                        :style="{ width: getLevelWidth(skill.level) }"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+                <span v-else>{{ skill }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -585,9 +606,28 @@
               <label class="input-label">手机号码</label>
               <input type="tel" class="form-input" v-model="editProfile.phone" placeholder="请输入手机号码">
             </div>
-            <div class="input-group">
-              <label class="input-label">技能标签</label>
-              <input type="text" class="form-input" v-model="editProfile.skillsString" placeholder="用逗号分隔多个技能">
+          </div>
+
+          <div class="input-group full-width">
+            <label class="input-label">技能标签</label>
+            <div class="skill-edit-wrapper">
+              <div class="skill-edit-list">
+                <div class="skill-edit-item" v-for="(s,idx) in editProfile.skillsList" :key="idx">
+                  <input class="skill-name-input" v-model="s.name" placeholder="技能名称 如：Python" />
+                  <select class="skill-level-select" v-model="s.level">
+                    <option disabled value="">选择等级</option>
+                    <option v-for="lv in skillLevelOptions" :key="lv" :value="lv">{{ lv }}</option>
+                  </select>
+                  <div class="skill-level-bar">
+                    <div class="skill-level-bar-inner" :style="{ width: getLevelWidth(s.level) }"></div>
+                  </div>
+                  <button type="button" class="skill-remove-btn" @click="removeSkill(idx)">✕</button>
+                </div>
+                <div v-if="!editProfile.skillsList.length" class="skill-empty-hint">暂无技能，点击下方按钮添加</div>
+              </div>
+              <div class="skill-edit-actions">
+                <button type="button" class="skill-add-btn" @click="addSkill">+ 添加技能</button>
+              </div>
             </div>
           </div>
           <div class="input-group full-width">
@@ -711,7 +751,13 @@ export default {
       phone: '',
       major: '专业未设置',
       school: '学校未设置',
-      skills: ['技能待完善'],
+      skills: [
+        { name: 'Python', level: '初窥门径' },
+        { name: 'JavaScript', level: '融会贯通' },
+        { name: 'Vue.js', level: '登堂入室' },
+        { name: 'React', level: '初窥门径' },
+        { name: 'Node.js', level: '炉火纯青' }
+      ],
       interests: '',  // 兴趣爱好，可空
       bio: '欢迎使用本平台！',  // 个人简介，默认值
       awards_competitions: '奖项比赛待完善',
@@ -726,10 +772,21 @@ export default {
     const updateUserProfile = () => {
       if (user.value) {
         console.log('更新用户配置信息:', user.value)
-        // 处理技能数据 - 可能是字符串或数组
+        // 处理技能数据 - 可能是字符串、数组或对象数组
         let skills = []
         if (typeof user.value.skills === 'string') {
-          skills = user.value.skills.split(',').map(s => s.trim()).filter(s => s)
+          try {
+            // 尝试解析为JSON，支持对象数组格式
+            const parsed = JSON.parse(user.value.skills)
+            if (Array.isArray(parsed)) {
+              skills = parsed
+            } else {
+              skills = user.value.skills.split(',').map(s => s.trim()).filter(s => s)
+            }
+          } catch (e) {
+            // 如果解析失败，按逗号分割字符串
+            skills = user.value.skills.split(',').map(s => s.trim()).filter(s => s)
+          }
         } else if (Array.isArray(user.value.skills)) {
           skills = user.value.skills
         }
@@ -738,7 +795,7 @@ export default {
           name: user.value.name || user.value.username || '用户',
           username: user.value.username || user.value.email?.split('@')[0] || 'user',
           email: user.value.email || 'user@example.com',
-          phone: user.value.phone_number || '',  // 修正字段名为 phone_number
+          phone: /^\d{11}$/.test(user.value.phone_number || '') ? user.value.phone_number : '',  // 仅接受11位数字
           major: user.value.major || '专业未设置',
           school: user.value.school || '学校未设置', 
           skills: skills.length ? skills : ['技能待完善'],
@@ -780,7 +837,10 @@ export default {
       major: '专业未设置',
       school: '学校未设置',
       phone: '',
-      skillsString: '技能待完善',
+  // 兼容旧格式的字符串
+  skillsString: '技能待完善',
+  // 新的结构化技能数组 [{name:'Python', level:'初窥门径'}]
+  skillsList: [],
       interests: '',  // 兴趣爱好，可空
       bio: '欢迎使用本平台！',  // 个人简介，默认值
       awards_competitions: '奖项比赛待完善',
@@ -918,6 +978,17 @@ export default {
       })
     })
 
+    // 获取技能等级对应的进度条宽度
+    const getLevelWidth = (level) => {
+      const levelMap = {
+        '初窥门径': '25%',
+        '登堂入室': '50%', 
+        '融会贯通': '75%',
+        '炉火纯青': '100%'
+      }
+      return levelMap[level] || '25%'
+    }
+
     // 处理学术成就列表显示
     const academicAchievementsList = computed(() => {
       const achievements = userProfile.value.academic_achievements
@@ -1001,7 +1072,8 @@ export default {
         major: userProfile.value.major,
         school: userProfile.value.school,
         phone: userProfile.value.phone,
-        skillsString: userProfile.value.skills.join(', '),
+        skillsString: (Array.isArray(userProfile.value.skills) ? userProfile.value.skills.map(s => typeof s === 'string' ? s : s.name).join(', ') : ''),
+        skillsList: Array.isArray(userProfile.value.skills) ? userProfile.value.skills.filter(s => typeof s === 'object').map(s => ({ ...s })) : [],
         interests: userProfile.value.interests,
         bio: userProfile.value.bio,
         awards_competitions: userProfile.value.awards_competitions,
@@ -1035,7 +1107,8 @@ export default {
           major: originalProfile.value.major,
           school: originalProfile.value.school,
           phone: originalProfile.value.phone,
-          skillsString: originalProfile.value.skills.join(', '),
+          skillsString: Array.isArray(originalProfile.value.skills) ? originalProfile.value.skills.map(s => typeof s === 'string' ? s : s.name).join(', ') : '',
+          skillsList: Array.isArray(originalProfile.value.skills) ? originalProfile.value.skills.filter(s => typeof s === 'object').map(s => ({ ...s })) : [],
           interests: originalProfile.value.interests,
           bio: originalProfile.value.bio,
           awards_competitions: originalProfile.value.awards_competitions,
@@ -1053,18 +1126,37 @@ export default {
     const saveProfile = async () => {
       try {
         // 构建更新数据 - 根据后端API的字段要求
+        // 技能数据：直接发送数组格式，与注册时保持一致
+        const allowedLevels = ['初窥门径','登堂入室','融会贯通','炉火纯青']
+        const validSkills = editProfile.value.skillsList.filter(s => s.name && s.name.trim() && s.level)
+          .map(s => ({
+            name: s.name.trim(),
+            level: allowedLevels.includes(s.level) ? s.level : '初窥门径'
+          }))
+        
+        console.log('技能数据调试:', {
+          skillsList: editProfile.value.skillsList,
+          validSkills: validSkills,
+          '发送格式': '数组而非JSON字符串',
+          '等级验证': allowedLevels
+        })
+        
         const updateData = {
-          name: editProfile.value.name,
-          major: editProfile.value.major,
-          phone_number: editProfile.value.phone,  // 修正字段名为 phone_number
-          skills: editProfile.value.skillsString,  // 后端期望字符串格式
-          bio: editProfile.value.bio,              // 个人简介
-          awards_competitions: editProfile.value.awards_competitions,  // 奖项比赛
-          academic_achievements: editProfile.value.academic_achievements,  // 学术成就
-          soft_skills: editProfile.value.soft_skills,  // 软技能
-          portfolio_link: editProfile.value.portfolio_link,  // 作品集链接
-          preferred_role: editProfile.value.preferred_role,  // 偏好角色
-          availability: editProfile.value.availability  // 可用时间
+          name: editProfile.value.name?.trim() || '',
+          major: editProfile.value.major?.trim() || '',
+          skills: Array.isArray(validSkills) ? validSkills : [],
+          bio: editProfile.value.bio?.trim() || '',
+          awards_competitions: editProfile.value.awards_competitions?.trim() || '',
+          academic_achievements: editProfile.value.academic_achievements?.trim() || '',
+          soft_skills: editProfile.value.soft_skills?.trim() || '',
+          portfolio_link: editProfile.value.portfolio_link?.trim() || '',
+          preferred_role: editProfile.value.preferred_role?.trim() || '',
+          availability: editProfile.value.availability?.trim() || ''
+        }
+
+        // 仅当手机号为 11 位数字时包含
+        if (/^\d{11}$/.test(editProfile.value.phone || '')) {
+          updateData.phone_number = editProfile.value.phone
         }
 
         // 兴趣爱好可空，只有非空时才添加
@@ -1074,8 +1166,10 @@ export default {
 
         // 添加学校字段（如果需要）
         if (editProfile.value.school && editProfile.value.school !== '学校未设置') {
-          updateData.school = editProfile.value.school
+          updateData.school = editProfile.value.school.trim()
         }
+
+        console.log('字段长度检查:', Object.fromEntries(Object.entries(updateData).map(([k,v]) => [k, typeof v === 'string' ? v.length : Array.isArray(v) ? `array(${v.length})` : typeof v])))
 
         console.log('准备更新的用户数据:', updateData)
 
@@ -1088,8 +1182,10 @@ export default {
         userProfile.value.username = editProfile.value.username
         userProfile.value.major = editProfile.value.major
         userProfile.value.school = editProfile.value.school
-        userProfile.value.phone = editProfile.value.phone
-        userProfile.value.skills = editProfile.value.skillsString.split(',').map(s => s.trim()).filter(s => s)
+        if (/^\d{11}$/.test(editProfile.value.phone || '')) {
+          userProfile.value.phone = editProfile.value.phone
+        }
+        userProfile.value.skills = validSkills  // 直接使用数组格式
         userProfile.value.interests = editProfile.value.interests
         userProfile.value.bio = editProfile.value.bio
         userProfile.value.awards_competitions = editProfile.value.awards_competitions
@@ -1105,6 +1201,21 @@ export default {
         console.error('保存个人信息失败:', error)
         ElMessage.error('保存失败: ' + (error.message || '未知错误'))
       }
+    }
+
+    // 技能等级选项 - 与注册页面保持一致
+    const skillLevelOptions = [
+      '初窥门径','登堂入室','融会贯通','炉火纯青'
+    ]
+
+    // 添加技能
+    const addSkill = () => {
+      editProfile.value.skillsList.push({ name: '', level: '初窥门径' })
+    }
+
+    // 移除技能
+    const removeSkill = (index) => {
+      editProfile.value.skillsList.splice(index, 1)
     }
 
     const toggleSettings = () => {
@@ -1156,6 +1267,7 @@ export default {
       settings,
       themeColors,
       userInitial,
+      getLevelWidth,
       toggleFeature,
       selectColor,
       startEdit,
@@ -1171,7 +1283,11 @@ export default {
       userLoading,
       loadUserData,
       updateUserProfile,
-      updateStatistics
+  updateStatistics,
+  // 技能编辑相关
+  skillLevelOptions,
+  addSkill,
+  removeSkill
     }
   }
 }
@@ -1529,9 +1645,115 @@ export default {
 }
 
 .skills-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.skill-card {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 20px 24px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.skill-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.skill-card:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 
+    0 16px 32px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.skill-card:hover::before {
+  opacity: 1;
+}
+
+.skill-content {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skill-name {
+  color: white;
+  font-size: 18px;
+  font-weight: 700;
+  text-transform: capitalize;
+  letter-spacing: 0.5px;
+}
+
+.skill-level {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.level-text {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.level-text::before {
+  content: '🎯';
+  font-size: 12px;
+}
+
+.level-indicator {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.level-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  border-radius: 3px;
+  transition: width 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+}
+
+.level-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent 30%, rgba(255,255,255,0.4) 50%, transparent 70%);
+  animation: shimmer 3s infinite ease-in-out;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(100%); }
+  100% { transform: translateX(100%); }
 }
 
 /* 兴趣爱好区域样式 */
@@ -2962,6 +3184,28 @@ export default {
     border-radius: 14px;
   }
   
+  .skills-section {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  
+  .skill-card {
+    padding: 18px 20px;
+    border-radius: 16px;
+  }
+  
+  .skill-name {
+    font-size: 16px;
+  }
+  
+  .level-text {
+    font-size: 13px;
+  }
+
+  .level-indicator {
+    height: 5px;
+  }
+
   .tag {
     font-size: 12px;
     padding: 8px 14px;
@@ -3228,6 +3472,49 @@ textarea.form-input {
 .save-btn:hover {
   transform: translateY(-3px);
   box-shadow: 0 12px 35px rgba(102, 126, 234, 0.5);
+}
+
+/* 结构化技能编辑器样式 */
+.skill-edit-wrapper { 
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(255,255,255,0.4);
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.6);
+}
+.skill-edit-list { display: flex; flex-direction: column; gap: 10px; }
+.skill-edit-item { display: grid; grid-template-columns: 140px 150px 1fr 40px; gap: 10px; align-items: center; }
+.skill-name-input, .skill-level-select { width:100%; padding:8px 10px; border:1px solid #cbd5e0; border-radius:8px; font-size:13px; background:rgba(255,255,255,0.9); }
+.skill-name-input:focus, .skill-level-select:focus { outline:none; border-color:#667eea; box-shadow:0 0 0 3px rgba(102,126,234,0.25); }
+.skill-level-bar { height:6px; background:rgba(0,0,0,0.1); border-radius:3px; overflow:hidden; position:relative; }
+.skill-level-bar-inner { height:100%; background:linear-gradient(90deg,#667eea,#764ba2,#f093fb); transition:width .6s ease; box-shadow:0 0 6px rgba(102,126,234,.6) inset; }
+.skill-remove-btn { background:#fff; border:1px solid #e2e8f0; height:34px; width:34px; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:14px; color:#718096; transition:.25s; }
+.skill-remove-btn:hover { background:#fee2e2; color:#e53e3e; border-color:#fecaca; }
+.skill-edit-actions { display:flex; gap:10px; }
+.skill-add-btn { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border:none; padding:8px 14px; font-size:12px; font-weight:600; border-radius:10px; cursor:pointer; letter-spacing:.5px; box-shadow:0 4px 12px rgba(102,126,234,.4); transition:.3s; }
+.skill-add-btn:hover { transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,0.25); }
+.skill-empty-hint { font-size:12px; color:#4a5568; background:rgba(255,255,255,.6); padding:8px 10px; border-radius:8px; text-align:center; }
+@media (max-width: 768px){
+  .skill-edit-item { 
+    grid-template-columns: 1fr 90px 42px; 
+    grid-template-rows: auto auto auto; 
+    gap: 8px 8px; 
+    padding:10px 12px; 
+    background:rgba(255,255,255,0.7); 
+    border:1px solid #e2e8f0; 
+    border-radius:12px;
+  }
+  .skill-name-input { grid-column:1/4; }
+  .skill-level-select { grid-column:1/2; }
+  .skill-remove-btn { grid-column:3/4; justify-self:end; height:32px; width:32px; }
+  .skill-level-bar { grid-column:1/4; margin-top:2px; }
+  .skill-level-bar-inner { height:6px; }
+  .skill-edit-item input, .skill-edit-item select { font-size:13px; }
+  .skill-edit-wrapper { gap:14px; }
+  .skill-edit-actions { flex-wrap:wrap; }
+  .skill-add-btn { width:100%; text-align:center; }
 }
 
 </style>
