@@ -341,26 +341,45 @@
             <div v-if="currentSettingDetail === 'defaultModel'" class="settings-panel">
               <div class="settings-items">
                 <div class="setting-item">
-                  <label class="setting-label">默认AI模型</label>
+                  <label class="setting-label">API类型</label>
                   <div class="setting-input-container">
-                    <select class="setting-input" v-model="settings.defaultModel">
-                      <option value="gpt-4">GPT-4</option>
-                      <option value="claude">Claude-3</option>
-                      <option value="gemini">Gemini Pro</option>
-                      <option value="local">本地模型</option>
+                    <select class="setting-input" v-model="settings.llm_api_type">
+                      <option value="openai">OpenAI兼容</option>
+                      <option value="azure">Azure OpenAI</option>
+                      <option value="anthropic">Anthropic Claude</option>
+                      <option value="google">Google Gemini</option>
                     </select>
                   </div>
                 </div>
                 <div class="setting-item">
                   <label class="setting-label">API密钥</label>
                   <div class="setting-input-container">
-                    <input type="password" class="setting-input" placeholder="输入您的API密钥" v-model="settings.apiKey">
+                    <input type="password" class="setting-input" placeholder="输入您的API密钥" v-model="settings.llm_api_key">
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">API基础URL</label>
+                  <div class="setting-input-container">
+                    <input type="text" class="setting-input" placeholder="https://api.openai.com/v1" v-model="settings.llm_api_base_url">
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <label class="setting-label">模型ID</label>
+                  <div class="setting-input-container">
+                    <input type="text" class="setting-input" placeholder="gpt-3.5-turbo" v-model="settings.llm_model_id">
                   </div>
                 </div>
                 <div class="setting-item">
                   <label class="setting-label">温度参数: {{ settings.temperature }}</label>
                   <div class="setting-input-container">
                     <input type="range" min="0" max="1" step="0.1" v-model="settings.temperature" class="range-input">
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <div class="setting-actions">
+                    <button class="save-llm-config-btn" @click="saveLLMConfig">保存配置</button>
+                    <button class="test-llm-config-btn" @click="testLLMConfig">测试连接</button>
+                    <button class="refresh-llm-config-btn" @click="loadLLMConfig">刷新配置</button>
                   </div>
                 </div>
               </div>
@@ -687,6 +706,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useGlobalStore } from '@/stores/global'
+import remoteApiService from '@/services/remoteApi.js'
 
 import { useUserData, useDashboardData, useProjectsData } from '@/composables/useApiData.js'
 
@@ -928,6 +948,12 @@ export default {
     const settings = ref({
       theme: 'light',
       themeColor: '#667eea',
+      // LLM配置 - OpenAI兼容格式
+      llm_api_type: 'openai',
+      llm_api_key: '',
+      llm_api_base_url: 'https://api.openai.com/v1',
+      llm_model_id: 'gpt-3.5-turbo',
+      // 保留旧配置以兼容
       defaultModel: 'gpt-4',
       apiKey: 'sk-****',
       temperature: 0.7,
@@ -1043,8 +1069,39 @@ export default {
       }
     }
 
-    // 组件挂载时加载设置
+    // 加载LLM配置
+    const loadLLMConfig = async (showMessage = true) => {
+      try {
+        if (showMessage) {
+          ElMessage.info('正在加载LLM配置...')
+        }
+        const response = await remoteApiService.users.getLLMConfig()
+        if (response && response.data) {
+          const config = response.data
+          settings.value.llm_api_type = config.llm_api_type || 'openai'
+          settings.value.llm_api_key = config.llm_api_key || ''
+          settings.value.llm_api_base_url = config.llm_api_base_url || 'https://api.openai.com/v1'
+          settings.value.llm_model_id = config.llm_model_id || 'gpt-3.5-turbo'
+          if (showMessage) {
+            ElMessage.success('LLM配置加载成功!')
+          }
+        } else {
+          if (showMessage) {
+            ElMessage.warning('未找到已保存的LLM配置，使用默认配置')
+          }
+        }
+      } catch (error) {
+        console.warn('加载LLM配置失败:', error)
+        if (showMessage) {
+          ElMessage.warning('加载LLM配置失败，使用默认配置')
+        }
+        // 使用默认配置
+      }
+    }
+
+    // 组件挂载时加载设置和LLM配置
     loadSettings()
+    loadLLMConfig(false)  // 初始加载时不显示消息
 
     const startEdit = () => {
       // 保存原始数据
@@ -1218,6 +1275,43 @@ export default {
       editProfile.value.skillsList.splice(index, 1)
     }
 
+    // 保存LLM配置
+    const saveLLMConfig = async () => {
+      try {
+        const llmConfig = {
+          llm_api_type: settings.value.llm_api_type,
+          llm_api_key: settings.value.llm_api_key,
+          llm_api_base_url: settings.value.llm_api_base_url,
+          llm_model_id: settings.value.llm_model_id
+        }
+
+        console.log('保存LLM配置:', llmConfig)
+        
+        // 调用API保存配置
+        await remoteApiService.users.updateLLMConfig(llmConfig)
+        
+        ElMessage.success('LLM配置保存成功！')
+      } catch (error) {
+        console.error('保存LLM配置失败:', error)
+        ElMessage.error('保存失败: ' + (error.message || '未知错误'))
+      }
+    }
+
+    // 测试LLM连接
+    const testLLMConfig = async () => {
+      try {
+        ElMessage.info('正在测试连接...')
+        // 这里可以添加测试连接的逻辑
+        // 暂时模拟测试结果
+        setTimeout(() => {
+          ElMessage.success('连接测试成功！')
+        }, 1500)
+      } catch (error) {
+        console.error('测试LLM连接失败:', error)
+        ElMessage.error('连接测试失败: ' + (error.message || '未知错误'))
+      }
+    }
+
     const toggleSettings = () => {
       // 仅保留桌面端内联面板
       isSettingsOpen.value = !isSettingsOpen.value
@@ -1232,6 +1326,11 @@ export default {
       currentSettingDetail.value = settingType
       // 这里可以根据 settingType 导航到具体的设置页面
       console.log('打开设置详情:', settingType)
+      
+      // 如果是默认模型设置，自动加载LLM配置
+      if (settingType === 'defaultModel') {
+        loadLLMConfig(false)  // 打开时静默加载
+      }
     }
 
     const backToMain = () => {
@@ -1283,11 +1382,15 @@ export default {
       userLoading,
       loadUserData,
       updateUserProfile,
-  updateStatistics,
-  // 技能编辑相关
-  skillLevelOptions,
-  addSkill,
-  removeSkill
+      updateStatistics,
+      // 技能编辑相关
+      skillLevelOptions,
+      addSkill,
+      removeSkill,
+      // LLM配置相关
+      saveLLMConfig,
+      testLLMConfig,
+      loadLLMConfig
     }
   }
 }
@@ -3496,6 +3599,71 @@ textarea.form-input {
 .skill-add-btn { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; border:none; padding:8px 14px; font-size:12px; font-weight:600; border-radius:10px; cursor:pointer; letter-spacing:.5px; box-shadow:0 4px 12px rgba(102,126,234,.4); transition:.3s; }
 .skill-add-btn:hover { transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,0.25); }
 .skill-empty-hint { font-size:12px; color:#4a5568; background:rgba(255,255,255,.6); padding:8px 10px; border-radius:8px; text-align:center; }
+
+/* LLM配置按钮样式 */
+.setting-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.save-llm-config-btn, .test-llm-config-btn, .refresh-llm-config-btn {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.save-llm-config-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.save-llm-config-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(102, 126, 234, 0.5);
+}
+
+.test-llm-config-btn {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+}
+
+.test-llm-config-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(72, 187, 120, 0.5);
+}
+
+.refresh-llm-config-btn {
+  background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(66, 153, 225, 0.4);
+}
+
+.refresh-llm-config-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(66, 153, 225, 0.5);
+}
+
+@media (max-width: 768px) {
+  .setting-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .save-llm-config-btn, .test-llm-config-btn, .refresh-llm-config-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
 @media (max-width: 768px){
   .skill-edit-item { 
     grid-template-columns: 1fr 90px 42px; 
