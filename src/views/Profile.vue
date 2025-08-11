@@ -755,6 +755,14 @@ export default {
       }
     }, { immediate: true })
 
+    // 监听用户数据变化，实时更新统计（特别是积分信息）
+    watch(user, (newUser) => {
+      if (newUser) {
+        updateStatistics()
+        updateUserProfile()
+      }
+    }, { immediate: true })
+
     // 加载用户数据
     const loadUserData = async (forceRefresh = false) => {
       try {
@@ -893,13 +901,12 @@ export default {
 
     // 更新统计数据
     const updateStatistics = () => {
-      if (summary.value) {
-        statistics.value = {
-          projects: (summary.value.active_projects_count || 0) + (summary.value.completed_projects_count || 0),
-          courses: (summary.value.learning_courses_count || 0) + (summary.value.completed_courses_count || 0),
-          recommendations: summary.value.recommendations_received_count || 0,
-          points: (summary.value.total_points || 0).toLocaleString()
-        }
+      statistics.value = {
+        projects: summary.value ? (summary.value.active_projects_count || 0) + (summary.value.completed_projects_count || 0) : 0,
+        courses: summary.value ? (summary.value.learning_courses_count || 0) + (summary.value.completed_courses_count || 0) : 0,
+        recommendations: summary.value ? (summary.value.recommendations_received_count || 0) : 0,
+        // 积分数据从用户信息中获取，而不是从dashboard summary获取
+        points: user.value?.total_points ? user.value.total_points.toLocaleString() : '0'
       }
     }
 
