@@ -339,50 +339,59 @@
 
             <!-- 默认模型详情 -->
             <div v-if="currentSettingDetail === 'defaultModel'" class="settings-panel">
-              <div class="settings-items">
-                <div class="setting-item">
-                  <label class="setting-label">API类型</label>
-                  <div class="setting-input-container">
-                    <select class="setting-input" v-model="settings.llm_api_type">
-                      <option value="openai">OpenAI兼容</option>
-                      <option value="azure">Azure OpenAI</option>
-                      <option value="anthropic">Anthropic Claude</option>
-                      <option value="google">Google Gemini</option>
-                    </select>
+              <form class="settings-form">
+                <div class="settings-items">
+                  <div class="setting-item">
+                    <label class="setting-label">API类型</label>
+                    <div class="setting-input-container">
+                      <select class="setting-input" v-model="settings.llm_api_type">
+                        <option value="openai">OpenAI兼容</option>
+                        <option value="azure">Azure OpenAI</option>
+                        <option value="anthropic">Anthropic Claude</option>
+                        <option value="google">Google Gemini</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="setting-item">
+                    <label class="setting-label">API密钥</label>
+                    <div class="setting-input-container">
+                      <input type="password" class="setting-input" 
+                             placeholder="输入您的API密钥" 
+                             v-model="settings.llm_api_key"
+                             autocomplete="new-password"
+                             :title="settings.llm_api_key && settings.llm_api_key.length > 20 ? '当前显示的是加密后的密钥，重新输入可更新' : ''">
+                      <small class="input-hint" v-if="settings.llm_api_key && settings.llm_api_key.length > 20">
+                        当前显示加密密钥，重新输入可更新
+                      </small>
+                    </div>
+                  </div>
+                  <div class="setting-item">
+                    <label class="setting-label">API基础URL</label>
+                    <div class="setting-input-container">
+                      <input type="text" class="setting-input" placeholder="https://api.openai.com/v1" v-model="settings.llm_api_base_url">
+                    </div>
+                  </div>
+                  <div class="setting-item">
+                    <label class="setting-label">模型ID</label>
+                    <div class="setting-input-container">
+                      <input type="text" class="setting-input" placeholder="gpt-3.5-turbo" v-model="settings.llm_model_id">
+                    </div>
+                  </div>
+                  <div class="setting-item">
+                    <label class="setting-label">温度参数: {{ settings.temperature }}</label>
+                    <div class="setting-input-container">
+                      <input type="range" min="0" max="1" step="0.1" v-model="settings.temperature" class="range-input">
+                    </div>
+                  </div>
+                  <div class="setting-item">
+                    <div class="setting-actions">
+                      <button type="button" class="save-llm-config-btn" @click="saveLLMConfig">保存配置</button>
+                      <button type="button" class="test-llm-config-btn" @click="testLLMConfig">测试连接</button>
+                      <button type="button" class="refresh-llm-config-btn" @click="loadLLMConfig">刷新配置</button>
+                    </div>
                   </div>
                 </div>
-                <div class="setting-item">
-                  <label class="setting-label">API密钥</label>
-                  <div class="setting-input-container">
-                    <input type="password" class="setting-input" placeholder="输入您的API密钥" v-model="settings.llm_api_key">
-                  </div>
-                </div>
-                <div class="setting-item">
-                  <label class="setting-label">API基础URL</label>
-                  <div class="setting-input-container">
-                    <input type="text" class="setting-input" placeholder="https://api.openai.com/v1" v-model="settings.llm_api_base_url">
-                  </div>
-                </div>
-                <div class="setting-item">
-                  <label class="setting-label">模型ID</label>
-                  <div class="setting-input-container">
-                    <input type="text" class="setting-input" placeholder="gpt-3.5-turbo" v-model="settings.llm_model_id">
-                  </div>
-                </div>
-                <div class="setting-item">
-                  <label class="setting-label">温度参数: {{ settings.temperature }}</label>
-                  <div class="setting-input-container">
-                    <input type="range" min="0" max="1" step="0.1" v-model="settings.temperature" class="range-input">
-                  </div>
-                </div>
-                <div class="setting-item">
-                  <div class="setting-actions">
-                    <button class="save-llm-config-btn" @click="saveLLMConfig">保存配置</button>
-                    <button class="test-llm-config-btn" @click="testLLMConfig">测试连接</button>
-                    <button class="refresh-llm-config-btn" @click="loadLLMConfig">刷新配置</button>
-                  </div>
-                </div>
-              </div>
+              </form>
             </div>
 
             <!-- 搜索服务详情 -->
@@ -1075,27 +1084,33 @@ export default {
         if (showMessage) {
           ElMessage.info('正在加载LLM配置...')
         }
-        const response = await remoteApiService.users.getLLMConfig()
-        if (response && response.data) {
-          const config = response.data
-          settings.value.llm_api_type = config.llm_api_type || 'openai'
-          settings.value.llm_api_key = config.llm_api_key || ''
-          settings.value.llm_api_base_url = config.llm_api_base_url || 'https://api.openai.com/v1'
-          settings.value.llm_model_id = config.llm_model_id || 'gpt-3.5-turbo'
-          if (showMessage) {
-            ElMessage.success('LLM配置加载成功!')
-          }
-        } else {
-          if (showMessage) {
-            ElMessage.warning('未找到已保存的LLM配置，使用默认配置')
-          }
+        
+        // 使用全局store加载配置
+        const config = await globalStore.loadLLMConfig(true) // 从服务器加载
+        
+        console.log('=== LLM配置加载调试 ===')
+        console.log('加载的配置:', config)
+        
+        // 同步到本地settings
+        settings.value.llm_api_type = config.llm_api_type
+        settings.value.llm_api_key = config.llm_api_key
+        settings.value.llm_api_base_url = config.llm_api_base_url
+        settings.value.llm_model_id = config.llm_model_id
+        
+        console.log('已设置的配置值:')
+        console.log('- type:', settings.value.llm_api_type)
+        console.log('- key:', settings.value.llm_api_key ? '已设置' : '未设置')
+        console.log('- base_url:', settings.value.llm_api_base_url)
+        console.log('- model_id:', settings.value.llm_model_id)
+        
+        if (showMessage) {
+          ElMessage.success('LLM配置加载成功!')
         }
       } catch (error) {
-        console.warn('加载LLM配置失败:', error)
+        console.error('加载LLM配置异常:', error)
         if (showMessage) {
-          ElMessage.warning('加载LLM配置失败，使用默认配置')
+          ElMessage.error('加载LLM配置失败: ' + (error.message || '未知错误'))
         }
-        // 使用默认配置
       }
     }
 
@@ -1280,7 +1295,7 @@ export default {
       try {
         const llmConfig = {
           llm_api_type: settings.value.llm_api_type,
-          llm_api_key: settings.value.llm_api_key,
+          llm_api_key: settings.value.llm_api_key, // 保存时使用原始字段名
           llm_api_base_url: settings.value.llm_api_base_url,
           llm_model_id: settings.value.llm_model_id
         }
@@ -1289,6 +1304,12 @@ export default {
         
         // 调用API保存配置
         await remoteApiService.users.updateLLMConfig(llmConfig)
+        
+        // 同步更新全局store
+        globalStore.updateLLMConfig({
+          ...llmConfig,
+          temperature: settings.value.temperature
+        })
         
         ElMessage.success('LLM配置保存成功！')
       } catch (error) {
@@ -3663,6 +3684,15 @@ textarea.form-input {
     width: 100%;
     justify-content: center;
   }
+}
+
+/* API密钥输入提示样式 */
+.input-hint {
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+  font-style: italic;
 }
 @media (max-width: 768px){
   .skill-edit-item { 

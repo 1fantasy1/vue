@@ -24,6 +24,16 @@ export const useGlobalStore = defineStore('global', () => {
     notifications: true
   })
 
+  // LLM配置
+  const llmConfig = ref({
+    llm_api_type: 'openai',
+    llm_api_key: '',
+    llm_api_base_url: 'https://api.openai.com/v1',
+    llm_model_id: 'gpt-3.5-turbo',
+    temperature: 0.7,
+    isConfigured: false // 标记是否已配置
+  })
+
   // 当前活动状态
   const currentPage = ref('home')
 
@@ -92,6 +102,64 @@ export const useGlobalStore = defineStore('global', () => {
     Object.assign(settings.value, settingsData)
   }
 
+  // 更新LLM配置
+  const updateLLMConfig = (configData) => {
+    Object.assign(llmConfig.value, configData)
+    llmConfig.value.isConfigured = !!(configData.llm_api_key && configData.llm_api_base_url)
+    
+    // 保存到localStorage作为备份
+    localStorage.setItem('llm_config', JSON.stringify(llmConfig.value))
+  }
+
+  // 加载LLM配置（从localStorage或服务器）
+  const loadLLMConfig = async (fromServer = false) => {
+    if (fromServer) {
+      try {
+        const remoteApiService = await import('@/services/remoteApi.js')
+        const userData = await remoteApiService.default.users.getMe()
+        
+        if (userData) {
+          const serverConfig = {
+            llm_api_type: userData.llm_api_type || 'openai',
+            llm_api_key: userData.llm_api_key_encrypted || '',
+            llm_api_base_url: userData.llm_api_base_url || 'https://api.openai.com/v1',
+            llm_model_id: userData.llm_model_id || 'gpt-3.5-turbo'
+          }
+          updateLLMConfig(serverConfig)
+          return serverConfig
+        }
+      } catch (error) {
+        console.warn('从服务器加载LLM配置失败:', error)
+      }
+    } else {
+      // 从localStorage加载
+      const savedConfig = localStorage.getItem('llm_config')
+      if (savedConfig) {
+        try {
+          const parsed = JSON.parse(savedConfig)
+          Object.assign(llmConfig.value, parsed)
+        } catch (error) {
+          console.error('解析本地LLM配置失败:', error)
+        }
+      }
+    }
+    return llmConfig.value
+  }
+
+  // 检查LLM是否已配置
+  const isLLMConfigured = () => {
+    return llmConfig.value.isConfigured && 
+           llmConfig.value.llm_api_key && 
+           llmConfig.value.llm_api_base_url
+  }
+
+  // 获取当前LLM配置（用于API调用）
+  const getLLMConfig = () => {
+    return {
+      ...llmConfig.value
+    }
+  }
+
   // 设置当前页面
   const setCurrentPage = (page) => {
     currentPage.value = page
@@ -108,6 +176,7 @@ export const useGlobalStore = defineStore('global', () => {
     token,
     user,
     settings,
+    llmConfig,
     currentPage,
     
     // 方法
@@ -116,6 +185,10 @@ export const useGlobalStore = defineStore('global', () => {
     logout,
     updateUser,
     updateSettings,
+    updateLLMConfig,
+    loadLLMConfig,
+    isLLMConfigured,
+    getLLMConfig,
     setCurrentPage,
     checkAuth
   }

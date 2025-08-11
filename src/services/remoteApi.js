@@ -110,10 +110,6 @@ export class UsersAPI extends BaseAPI {
     return await this.request('PUT', '/me', userData)
   }
 
-  async getLLMConfig() {
-    return await this.request('GET', '/me/llm-config')
-  }
-
   async updateLLMConfig(config) {
     return await this.request('PUT', '/me/llm-config', config)
   }
