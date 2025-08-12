@@ -277,6 +277,7 @@
 
 <script>
 import { ref, computed, nextTick, onMounted } from 'vue'
+import { ApiService } from '@/services/api.js'
 
 export default {
   name: 'KnowledgeHub',
@@ -502,8 +503,8 @@ export default {
       })
     }
 
-    // 发送消息
-    const sendMessage = async () => {
+  // 发送消息（对接后端 /ai/qa）
+  const sendMessage = async () => {
       if (!currentMessage.value.trim() || isTyping.value) return
 
       const userMessage = currentMessage.value.trim()
@@ -521,29 +522,76 @@ export default {
       isTyping.value = true
       scrollToBottom()
       dailyUsage.value++
+      
+      // 组装 AI 选项
+      const preferredTools = []
+      if (enabledTools.value.includes('knowledge')) preferredTools.push('rag')
+      if (enabledTools.value.includes('web')) preferredTools.push('web_search')
+      if (enabledTools.value.includes('mcp')) preferredTools.push('mcp_tool')
 
-      // 模拟AI回复
-      setTimeout(() => {
-        const responses = [
-          '这是一个非常有趣的问题！让我基于知识库为您分析...',
-          '根据我的理解，这个问题可以从几个角度来看：<br><br>1. 首先考虑基本原理<br>2. 然后分析实际应用<br>3. 最后提供具体建议',
-          '我建议您可以尝试以下方法来解决这个问题...',
-          '这个话题确实值得深入探讨。基于相关研究和实践经验...'
-        ]
-        
-        const randomResponse = responses[Math.floor(Math.random() * responses.length)]
-        
+      // use_tools 主要控制 web_search/mcp 等外部工具
+      const useTools = enabledTools.value.includes('web') || enabledTools.value.includes('mcp')
+
+      // 若后端未要求强制指定模型，这里传 null 使用用户默认；保留 UI 下拉但不强绑 ID
+      const llmModelId = null
+
+      try {
+        const res = await ApiService.aiQA(userMessage, {
+          kbIds: null, // 可后续在界面添加选择后传入数组
+          noteIds: null,
+          useTools,
+          preferredTools: preferredTools.length ? preferredTools : null,
+          llmModelId
+        })
+
+        const payload = res?.data
+        if (!payload?.success) {
+          const errMsg = payload?.message || 'AI 服务暂不可用，请稍后重试。'
+          chatHistory.value.push({
+            id: Date.now(),
+            type: 'ai',
+            content: `❗${errMsg}`,
+            timestamp: new Date(),
+            model: selectedModel.value
+          })
+        } else {
+          const ai = payload.data || {}
+          const answer = ai.answer || '（无内容）'
+          const usedModel = ai.llm_model_used || selectedModel.value
+          const mode = ai.answer_mode
+
+          // 附带少量元信息（模式/来源/搜索）
+          const sources = Array.isArray(ai.source_articles) ? ai.source_articles : []
+          const searches = Array.isArray(ai.search_results) ? ai.search_results : []
+          const tools = Array.isArray(ai.tool_calls) ? ai.tool_calls : []
+
+          const metaParts = []
+          if (mode) metaParts.push(`模式：${mode}`)
+          if (sources.length) metaParts.push(`来源：${sources.length}`)
+          if (searches.length) metaParts.push(`搜索：${searches.length}`)
+          if (tools.length) metaParts.push(`工具：${tools.length}`)
+          const metaLine = metaParts.length ? `<br><div style="color:#6b7280;font-size:12px;">${metaParts.join(' ｜ ')}</div>` : ''
+
+          chatHistory.value.push({
+            id: Date.now(),
+            type: 'ai',
+            content: `${answer}${metaLine}`,
+            timestamp: new Date(),
+            model: usedModel
+          })
+        }
+      } catch (err) {
         chatHistory.value.push({
           id: Date.now(),
           type: 'ai',
-          content: `${randomResponse}<br><br>针对您的问题"${userMessage}"，我认为需要从多个维度来分析。如果您需要更详细的解释，请随时告诉我！`,
+          content: `❗请求失败：${err?.message || '未知错误'}`,
           timestamp: new Date(),
           model: selectedModel.value
         })
-        
+      } finally {
         isTyping.value = false
         scrollToBottom()
-      }, 1500 + Math.random() * 1000)
+      }
     }
 
     // 处理输入键盘事件
