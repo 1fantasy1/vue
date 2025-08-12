@@ -210,8 +210,17 @@ export class ApiService {
 
   static async createProject(projectData) {
     try {
-      // 注意：根据API文档，项目创建可能需要特定权限
-      return createResponse(null, false, '项目创建功能暂未开放')
+      const response = await remoteApiService.projects.createProject(projectData)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async updateProject(projectId, projectData) {
+    try {
+      const response = await remoteApiService.projects.updateProject(projectId, projectData)
+      return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
     }

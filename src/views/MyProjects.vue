@@ -15,7 +15,7 @@
           </div>
         </div>
         <div class="header-right">
-          <button class="create-btn" @click="createProject">
+          <button class="create-btn" @click="openCreateForm">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
             </svg>
@@ -92,6 +92,14 @@
         </select>
       </div>
     </div>
+
+    <!-- 创建/编辑弹窗 -->
+    <ProjectForm
+      v-if="showForm"
+      :project="editingProject"
+      @cancel="closeForm"
+      @success="onFormSuccess"
+    />
 
     <!-- 项目列表 -->
     <div class="projects-section">
@@ -249,11 +257,14 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ApiService } from '@/services/api.js'
+import ProjectForm from '@/components/ProjectForm.vue'
 
 export default {
   name: 'MyProjects',
+  components: { ProjectForm },
   setup() {
     const router = useRouter()
     
@@ -262,114 +273,11 @@ export default {
     const activeFilter = ref('all')
     const sortBy = ref('lastUpdate')
     
-    // 项目数据
-    const projects = ref([
-      {
-        id: 1,
-        title: '智能教育平台',
-        description: '基于AI的个性化学习推荐系统，为学生提供定制化的学习路径和智能辅导。',
-        status: 'active',
-        progress: 85,
-        role: '前端开发工程师',
-        priority: 'high',
-        deadline: '2024-12-15',
-        lastUpdate: '2小时前',
-        isFavorite: true,
-        team: [
-          { id: 1, name: '张小明', avatar: null },
-          { id: 2, name: '李华', avatar: null },
-          { id: 3, name: '王芳', avatar: null },
-          { id: 4, name: '刘强', avatar: null },
-          { id: 5, name: '陈雪', avatar: null }
-        ]
-      },
-      {
-        id: 2,
-        title: '电商移动应用',
-        description: '跨平台购物应用开发，支持多端同步、智能推荐和一键支付功能。',
-        status: 'active',
-        progress: 60,
-        role: '项目经理',
-        priority: 'high',
-        deadline: '2024-11-30',
-        lastUpdate: '1天前',
-        isFavorite: false,
-        team: [
-          { id: 6, name: '赵敏', avatar: null },
-          { id: 7, name: '孙涛', avatar: null },
-          { id: 8, name: '周杰', avatar: null }
-        ]
-      },
-      {
-        id: 3,
-        title: '数据可视化仪表板',
-        description: '企业级商业智能平台，提供实时数据分析、图表展示和决策支持。',
-        status: 'completed',
-        progress: 100,
-        role: '数据分析师',
-        priority: 'medium',
-        deadline: '2024-10-20',
-        lastUpdate: '1周前',
-        isFavorite: true,
-        team: [
-          { id: 9, name: '吴梅', avatar: null },
-          { id: 10, name: '郑飞', avatar: null }
-        ]
-      },
-      {
-        id: 4,
-        title: '协作办公系统',
-        description: '团队协作和项目管理一体化解决方案，提升工作效率和沟通质量。',
-        status: 'active',
-        progress: 40,
-        role: 'UI/UX设计师',
-        priority: 'medium',
-        deadline: '2025-01-15',
-        lastUpdate: '3天前',
-        isFavorite: false,
-        team: [
-          { id: 11, name: '黄磊', avatar: null },
-          { id: 12, name: '徐静', avatar: null },
-          { id: 13, name: '马超', avatar: null },
-          { id: 14, name: '林娜', avatar: null },
-          { id: 15, name: '何伟', avatar: null },
-          { id: 16, name: '宋丽', avatar: null }
-        ]
-      },
-      {
-        id: 5,
-        title: '智能家居控制中心',
-        description: '物联网家居设备统一管理平台，支持语音控制和自动化场景设置。',
-        status: 'completed',
-        progress: 100,
-        role: '后端开发工程师',
-        priority: 'low',
-        deadline: '2024-09-30',
-        lastUpdate: '2周前',
-        isFavorite: false,
-        team: [
-          { id: 17, name: '江涛', avatar: null },
-          { id: 18, name: '钱丽丽', avatar: null },
-          { id: 19, name: '罗峰', avatar: null }
-        ]
-      },
-      {
-        id: 6,
-        title: '区块链金融应用',
-        description: '基于区块链技术的去中心化金融平台，提供安全可靠的数字资产管理。',
-        status: 'planning',
-        progress: 15,
-        role: '技术负责人',
-        priority: 'high',
-        deadline: '2025-03-20',
-        lastUpdate: '5天前',
-        isFavorite: true,
-        team: [
-          { id: 20, name: '谢军', avatar: null },
-          { id: 21, name: '邓磊', avatar: null }
-        ]
-      }
-    ])
+  // 列表与表单状态
+  const projects = ref([])
+  const loading = ref(false)
+  const showForm = ref(false)
+  const editingProject = ref(null)
 
     // 筛选配置
     const filters = ref([
@@ -435,7 +343,7 @@ export default {
             const priorityOrder = { high: 3, medium: 2, low: 1 }
             return priorityOrder[b.priority] - priorityOrder[a.priority]
           default: // lastUpdate
-            return new Date(b.lastUpdate) - new Date(a.lastUpdate)
+            return new Date(b.updated_at || b.lastUpdate || 0) - new Date(a.updated_at || a.lastUpdate || 0)
         }
       })
 
@@ -595,10 +503,48 @@ export default {
       // router.push(`/projects/${projectId}/files`)
     }
 
-    const createProject = () => {
-      console.log('创建新项目')
-      // router.push('/projects/create')
+    const openCreateForm = () => { showForm.value = true; editingProject.value = null }
+    const closeForm = () => { showForm.value = false; editingProject.value = null }
+    const mapProject = (p) => ({
+      id: p.id,
+      title: p.title,
+      description: p.description,
+      status: p.project_status || 'active',
+      progress: p.progress ?? 0,
+      role: p.my_role || '成员',
+      priority: p.priority || 'medium',
+      deadline: p.end_date || null,
+      lastUpdate: p.updated_at || '',
+      isFavorite: p.is_favorite || false,
+      team: p.team || []
+    })
+
+    const onFormSuccess = (created) => {
+      // 将新项目加入列表并关闭弹窗
+      if (created) {
+        projects.value.unshift(mapProject(created))
+      }
+      closeForm()
     }
+
+    const loadProjects = async () => {
+      loading.value = true
+      try {
+        const res = await ApiService.getProjects()
+        if (res?.data?.success) {
+          // 后端返回 schemas.ProjectResponse[]
+          projects.value = (res.data.data || []).map(mapProject)
+        } else {
+          console.warn(res?.data?.message || '获取项目失败')
+        }
+      } catch (e) {
+        console.error('获取项目失败', e)
+      } finally {
+        loading.value = false
+      }
+    }
+
+    onMounted(loadProjects)
 
     return {
       // 响应式数据
@@ -631,7 +577,11 @@ export default {
       openChat,
       viewTasks,
       viewFiles,
-      createProject
+  openCreateForm,
+  closeForm,
+  onFormSuccess,
+  showForm,
+  editingProject
     }
   }
 }

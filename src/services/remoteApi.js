@@ -27,7 +27,12 @@ class BaseAPI {
     if (error.response?.data?.detail) {
       if (Array.isArray(error.response.data.detail)) {
         // 处理验证错误
-        const validationErrors = error.response.data.detail.map(err => err.msg).join(', ')
+        const validationErrors = error.response.data.detail
+          .map(err => {
+            const loc = Array.isArray(err.loc) ? err.loc.join('.') : err.loc || 'field'
+            return `${loc}: ${err.msg}`
+          })
+          .join('; ')
         return new Error(`请求参数错误: ${validationErrors}`)
       } else {
         return new Error(error.response.data.detail)
@@ -142,6 +147,14 @@ export class ProjectsAPI extends BaseAPI {
 
   async getProjectById(projectId) {
     return await this.request('GET', `/${projectId}`)
+  }
+
+  async createProject(projectData) {
+    return await this.request('POST', '/', projectData)
+  }
+
+  async updateProject(projectId, projectData) {
+    return await this.request('PUT', `/${projectId}`, projectData)
   }
 
   async matchStudents(projectId, initialK = 50, finalK = 3) {
