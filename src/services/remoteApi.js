@@ -618,6 +618,10 @@ export class McpConfigsAPI extends BaseAPI {
   async deleteConfig(configId) {
     return await this.request('DELETE', `/${configId}`)
   }
+
+  async checkStatus(configId) {
+    return await this.request('POST', `/${configId}/check-status`)
+  }
 }
 
 // TTS配置API

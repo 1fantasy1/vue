@@ -807,49 +807,189 @@
 
             <!-- MCP服务详情 -->
             <div v-if="currentSettingDetail === 'mcp'" class="settings-panel">
-              <div class="settings-items">
-                <div class="setting-item">
-                  <label class="setting-label">MCP服务器地址</label>
-                  <div class="setting-input-container">
-                    <input type="text" class="setting-input" placeholder="ws://localhost:3001" v-model="settings.mcpServerUrl">
+              <div class="mcp-config-management">
+                <!-- 配置列表头部 -->
+                <div class="config-header">
+                  <h4>MCP服务配置</h4>
+                  <div class="header-actions">
+                    <button 
+                      class="refresh-configs-btn" 
+                      @click="loadMcpConfigs"
+                      :disabled="mcpConfigsLoading"
+                    >
+                      <span :class="{ loading: mcpConfigsLoading }">🔄</span>
+                      刷新
+                    </button>
+                    <button class="add-config-btn" @click="showAddMcpConfigForm">
+                      <span>➕</span>
+                      添加配置
+                    </button>
                   </div>
                 </div>
-                <div class="setting-item">
-                  <label class="setting-label">连接协议</label>
-                  <div class="setting-input-container">
-                    <select class="setting-input" v-model="settings.mcpProtocol">
-                      <option value="websocket">WebSocket</option>
-                      <option value="stdio">Standard I/O</option>
-                      <option value="sse">Server-Sent Events</option>
-                    </select>
+
+                <!-- 加载状态 -->
+                <div v-if="mcpConfigsLoading" class="loading-state">
+                  <span>⏳ 加载MCP配置中...</span>
+                </div>
+
+                <!-- 配置列表 -->
+                <div v-else class="config-list">
+                  <div v-if="mcpConfigs.length === 0" class="empty-state">
+                    <p>🔧 还没有配置MCP服务</p>
+                    <p class="empty-hint">点击"添加配置"开始设置您的MCP服务</p>
+                  </div>
+                  
+                  <div 
+                    v-for="config in mcpConfigs" 
+                    :key="config.id"
+                    class="config-item"
+                    :class="{ active: config.is_active }"
+                  >
+                    <div class="config-info">
+                      <div class="config-title">
+                        <span class="config-name">{{ config.name }}</span>
+                        <span class="config-type" :class="`type-${config.mcp_type || 'custom'}`">
+                          {{ getMcpTypeLabel(config.mcp_type) }}
+                        </span>
+                        <span v-if="config.is_active" class="active-badge">激活</span>
+                      </div>
+                      <div class="config-meta">
+                        <span class="config-description">{{ config.description || '无描述' }}</span>
+                        <span class="config-protocol">{{ getProtocolLabel(config.protocol_type) }}</span>
+                        <span class="config-api-status" :class="getMcpConfigStatus(config.id)">
+                          {{ getStatusLabel(getMcpConfigStatus(config.id)) }}
+                        </span>
+                      </div>
+                      <div class="config-url">{{ config.base_url }}</div>
+                    </div>
+                    
+                    <div class="config-actions">
+                      <button 
+                        class="test-config-btn"
+                        @click="testMcpConfig(config.id)"
+                        :disabled="testingMcpConfigs.has(config.id)"
+                      >
+                        <span v-if="testingMcpConfigs.has(config.id)">⏳</span>
+                        <span v-else>🔗</span>
+                        测试
+                      </button>
+                      <button 
+                        class="edit-config-btn"
+                        @click="editMcpConfig(config)"
+                      >
+                        ✏️ 编辑
+                      </button>
+                      <button
+                        v-if="!config.is_active"
+                        class="activate-config-btn"
+                        @click="activateMcpConfig(config.id)"
+                        :disabled="activatingMcpConfigs.has(config.id)"
+                      >
+                        <span v-if="activatingMcpConfigs.has(config.id)">⏳</span>
+                        <span v-else>✅</span>
+                        设为激活
+                      </button>
+                      <button 
+                        class="delete-config-btn"
+                        @click="deleteMcpConfig(config.id, config.name)"
+                        :disabled="config.is_active"
+                        :title="config.is_active ? '激活的配置不能删除，请先设置其他配置为激活' : '删除配置'"
+                      >
+                        🗑️ 删除
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div class="setting-item">
-                  <label class="setting-label">认证令牌</label>
-                  <div class="setting-input-container">
-                    <input type="password" class="setting-input" placeholder="输入MCP认证令牌" v-model="settings.mcpAuthToken">
+
+                <!-- MCP配置表单弹窗（与搜索/TTS一致，使用 Teleport + 统一样式） -->
+                <teleport to="body">
+                  <div v-if="showMcpConfigForm" class="config-form-modal" @click.self="closeMcpConfigForm">
+                    <div class="config-form-content">
+                      <div class="form-header">
+                        <h4>{{ editingMcpConfig ? '编辑MCP配置' : '添加MCP配置' }}</h4>
+                        <button class="close-form-btn" @click="closeMcpConfigForm">✕</button>
+                      </div>
+                      <div class="config-form">
+                        <form @submit.prevent="saveMcpConfig">
+                          <div class="form-group">
+                            <label>配置名称 *</label>
+                            <input 
+                              type="text" 
+                              v-model="mcpConfigForm.name" 
+                              placeholder="输入配置名称"
+                              required
+                            >
+                          </div>
+                          
+                          <div class="form-group">
+                            <label>MCP类型</label>
+                            <select v-model="mcpConfigForm.mcp_type">
+                              <option value="">选择类型</option>
+                              <option value="modelscope_community">ModelScope社区</option>
+                              <option value="custom_mcp">自定义MCP</option>
+                            </select>
+                          </div>
+
+                          <div class="form-group">
+                            <label>基础URL *</label>
+                            <input 
+                              type="url" 
+                              v-model="mcpConfigForm.base_url" 
+                              placeholder="https://api.example.com"
+                              required
+                            >
+                          </div>
+
+                          <div class="form-group">
+                            <label>协议类型</label>
+                            <select v-model="mcpConfigForm.protocol_type">
+                              <option value="http_rest">HTTP REST</option>
+                              <option value="sse">Server-Sent Events</option>
+                              <option value="websocket">WebSocket</option>
+                            </select>
+                          </div>
+
+                          <div class="form-group">
+                            <label>API密钥</label>
+                            <input 
+                              type="password" 
+                              v-model="mcpConfigForm.api_key" 
+                              placeholder="输入API密钥（可选）"
+                            >
+                            <small class="form-hint">密钥会被加密存储</small>
+                          </div>
+
+                          <div class="form-group">
+                            <label>描述</label>
+                            <textarea 
+                              v-model="mcpConfigForm.description" 
+                              placeholder="输入配置描述（可选）"
+                              rows="3"
+                            ></textarea>
+                          </div>
+
+                          <div class="form-group checkbox-group">
+                            <label class="checkbox-label">
+                              <input type="checkbox" v-model="mcpConfigForm.is_active">
+                              <span class="checkmark"></span>
+                              <span>设为激活配置</span>
+                            </label>
+                            <small class="form-hint">激活的配置将用于MCP服务调用</small>
+                          </div>
+
+                          <div class="form-actions">
+                            <button type="button" class="cancel-btn" @click="closeMcpConfigForm">
+                              取消
+                            </button>
+                            <button type="submit" class="save-btn" :disabled="savingMcpConfig">
+                              {{ savingMcpConfig ? '保存中...' : (editingMcpConfig ? '更新' : '创建') }}
+                            </button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div class="setting-item">
-                  <label class="setting-label">连接超时 (秒): {{ settings.mcpTimeout }}</label>
-                  <div class="setting-input-container">
-                    <input type="range" min="5" max="60" step="5" v-model="settings.mcpTimeout" class="range-input">
-                  </div>
-                </div>
-                <div class="setting-item checkbox-item">
-                  <label class="checkbox-label">
-                    <input type="checkbox" v-model="settings.mcpAutoReconnect">
-                    <span class="checkmark"></span>
-                    <span>自动重连</span>
-                  </label>
-                </div>
-                <div class="setting-item checkbox-item">
-                  <label class="checkbox-label">
-                    <input type="checkbox" v-model="settings.mcpVerboseLogging">
-                    <span class="checkmark"></span>
-                    <span>详细日志记录</span>
-                  </label>
-                </div>
+                </teleport>
               </div>
             </div>
 
@@ -1325,13 +1465,6 @@ export default {
       defaultVoice: 'zh-CN-XiaoxiaoNeural',
       speechRate: 1.0,
       autoPlay: false,
-      // MCP 服务配置
-      mcpServerUrl: 'ws://localhost:3001',
-      mcpProtocol: 'websocket',
-      mcpAuthToken: '',
-      mcpTimeout: 30,
-      mcpAutoReconnect: true,
-      mcpVerboseLogging: false,
       // 数据备份设置
       autoBackup: 'weekly',
       backupPath: '/Users/用户名/Documents/App备份',
@@ -1343,6 +1476,41 @@ export default {
       maxStorageSize: 10,
       compressOldChats: true
     })
+
+    // MCP配置管理
+    const mcpConfigs = ref([])
+    const mcpConfigsLoading = ref(false)
+    const showMcpConfigForm = ref(false)
+    const editingMcpConfig = ref(null)
+    const savingMcpConfig = ref(false)
+    const testingMcpConfigs = ref(new Set())
+    const activatingMcpConfigs = ref(new Set())
+    const mcpTestedStatus = ref({})
+
+    // MCP配置表单数据
+    const mcpConfigForm = ref({
+      name: '',
+      mcp_type: '',
+      base_url: '',
+      protocol_type: 'http_rest',
+      api_key: '',
+      is_active: false,
+      description: ''
+    })
+
+    // 重置MCP配置表单
+    const resetMcpConfigForm = () => {
+      mcpConfigForm.value = {
+        name: '',
+        mcp_type: '',
+        base_url: '',
+        protocol_type: 'http_rest',
+        api_key: '',
+        is_active: false,
+        description: ''
+      }
+      editingMcpConfig.value = null
+    }
 
     // 搜索引擎配置管理
     const searchEngineConfigs = ref([])
@@ -2183,6 +2351,218 @@ export default {
       if (settingType === 'voice') {
         loadTTSConfigs(false) // 打开时静默加载
       }
+      
+      // 如果是MCP设置，自动加载MCP配置
+      if (settingType === 'mcp') {
+        loadMcpConfigs(false) // 打开时静默加载
+      }
+    }
+
+    // ===========================================
+    // MCP配置管理方法
+    // ===========================================
+
+    // 获取MCP类型标签
+    const getMcpTypeLabel = (mcpType) => {
+      const labels = {
+        'modelscope_community': 'ModelScope社区',
+        'custom_mcp': '自定义MCP',
+      }
+      return labels[mcpType] || '自定义'
+    }
+
+    // 获取协议标签
+    const getProtocolLabel = (protocolType) => {
+      const labels = {
+        'http_rest': 'HTTP REST',
+        'sse': 'Server-Sent Events',
+        'websocket': 'WebSocket'
+      }
+      return labels[protocolType] || 'HTTP REST'
+    }
+
+    // 加载MCP配置
+    const loadMcpConfigs = async (showMessage = true) => {
+      try {
+        mcpConfigsLoading.value = true
+        if (showMessage) {
+          ElMessage.info('加载MCP配置...')
+        }
+        
+        const configs = await remoteApiService.mcpConfigs.getAllConfigs()
+        mcpConfigs.value = configs || []
+        
+        if (showMessage) {
+          ElMessage.success(`加载完成，共${configs.length}个配置`)
+        }
+        
+        console.log('MCP配置:', configs)
+      } catch (error) {
+        console.error('加载MCP配置失败:', error)
+        if (showMessage) {
+          ElMessage.error('加载失败: ' + (error.message || '未知错误'))
+        }
+      } finally {
+        mcpConfigsLoading.value = false
+      }
+    }
+
+    // 显示添加MCP配置表单
+    const showAddMcpConfigForm = () => {
+      resetMcpConfigForm()
+      showMcpConfigForm.value = true
+    }
+
+    // 编辑MCP配置
+    const editMcpConfig = (config) => {
+      editingMcpConfig.value = config
+      mcpConfigForm.value = {
+        name: config.name,
+        mcp_type: config.mcp_type || '',
+        base_url: config.base_url || '',
+        protocol_type: config.protocol_type || 'http_rest',
+        api_key: '', // 编辑时不显示现有密钥
+        is_active: config.is_active || false,
+        description: config.description || ''
+      }
+      showMcpConfigForm.value = true
+    }
+
+    // 关闭MCP配置表单
+    const closeMcpConfigForm = () => {
+      showMcpConfigForm.value = false
+      resetMcpConfigForm()
+    }
+
+    // 保存MCP配置
+    const saveMcpConfig = async () => {
+      try {
+        savingMcpConfig.value = true
+        
+        // 验证必填字段
+        if (!mcpConfigForm.value.name.trim()) {
+          ElMessage.error('请输入配置名称')
+          return
+        }
+        if (!mcpConfigForm.value.base_url.trim()) {
+          ElMessage.error('请输入基础URL')
+          return
+        }
+
+        const configData = {
+          name: mcpConfigForm.value.name.trim(),
+          mcp_type: mcpConfigForm.value.mcp_type || null,
+          base_url: mcpConfigForm.value.base_url.trim(),
+          protocol_type: mcpConfigForm.value.protocol_type || 'http_rest',
+          is_active: mcpConfigForm.value.is_active,
+          description: mcpConfigForm.value.description.trim() || null
+        }
+
+        // 只有在填写了API密钥时才添加
+        if (mcpConfigForm.value.api_key && mcpConfigForm.value.api_key.trim()) {
+          configData.api_key = mcpConfigForm.value.api_key.trim()
+        }
+
+        let result
+        if (editingMcpConfig.value) {
+          // 编辑现有配置
+          result = await remoteApiService.mcpConfigs.updateConfig(editingMcpConfig.value.id, configData)
+          ElMessage.success('MCP配置更新成功！')
+        } else {
+          // 创建新配置
+          result = await remoteApiService.mcpConfigs.createConfig(configData)
+          ElMessage.success('MCP配置创建成功！')
+        }
+        
+        console.log('MCP配置保存结果:', result)
+        
+        // 关闭表单
+        closeMcpConfigForm()
+        
+        // 重新加载配置列表
+        await loadMcpConfigs(false)
+        
+      } catch (error) {
+        console.error('保存MCP配置失败:', error)
+        ElMessage.error('保存失败: ' + (error.message || '未知错误'))
+      } finally {
+        savingMcpConfig.value = false
+      }
+    }
+
+    // 测试MCP配置
+    const testMcpConfig = async (configId) => {
+      try {
+        testingMcpConfigs.value.add(configId)
+        ElMessage.info('正在测试MCP连接...')
+        
+        const result = await remoteApiService.mcpConfigs.checkStatus(configId)
+        
+        // 更新本地测试状态
+        mcpTestedStatus.value[configId] = result.status
+        
+        if (result.status === 'success') {
+          ElMessage.success(`MCP连接测试成功！${result.message || ''}`)
+        } else {
+          ElMessage.warning(`MCP连接测试失败: ${result.message || '未知错误'}`)
+        }
+        
+        console.log('MCP测试结果:', result)
+      } catch (error) {
+        console.error('MCP连接测试失败:', error)
+        mcpTestedStatus.value[configId] = 'failure'
+        ElMessage.error('测试失败: ' + (error.message || '未知错误'))
+      } finally {
+        testingMcpConfigs.value.delete(configId)
+      }
+    }
+
+    // 激活MCP配置
+    const activateMcpConfig = async (configId) => {
+      try {
+        activatingMcpConfigs.value.add(configId)
+        ElMessage.info('正在激活MCP配置...')
+        
+        await remoteApiService.mcpConfigs.updateConfig(configId, { is_active: true })
+        ElMessage.success('MCP配置已激活！')
+        
+        // 重新加载配置列表
+        await loadMcpConfigs(false)
+        
+      } catch (error) {
+        console.error('激活MCP配置失败:', error)
+        ElMessage.error('激活失败: ' + (error.message || '未知错误'))
+      } finally {
+        activatingMcpConfigs.value.delete(configId)
+      }
+    }
+
+    // 删除MCP配置
+    const deleteMcpConfig = async (configId, configName) => {
+      const confirmed = confirm(`确定要删除MCP配置"${configName}"吗？此操作不可撤销。`)
+      if (!confirmed) return
+
+      try {
+        ElMessage.info('正在删除配置...')
+        
+        await remoteApiService.mcpConfigs.deleteConfig(configId)
+        ElMessage.success('MCP配置删除成功！')
+        
+        // 重新加载配置列表
+        await loadMcpConfigs(false)
+        
+        // 清除本地测试状态
+        delete mcpTestedStatus.value[configId]
+        
+      } catch (error) {
+        console.error('删除MCP配置失败:', error)
+        ElMessage.error('删除失败: ' + (error.message || '未知错误'))
+      }
+    }
+
+    // 获取MCP配置状态
+    const getMcpConfigStatus = (configId) => {
+      return mcpTestedStatus.value[configId] || 'unknown'
     }
 
     const backToMain = () => {
@@ -2285,7 +2665,29 @@ export default {
   getConfigStatus,
   getStatusLabel,
   activatingConfigs,
-  deactivatingConfigs
+  deactivatingConfigs,
+  // MCP配置相关
+  mcpConfigs,
+  mcpConfigsLoading,
+  showMcpConfigForm,
+  editingMcpConfig,
+  savingMcpConfig,
+  testingMcpConfigs,
+  activatingMcpConfigs,
+  mcpTestedStatus,
+  mcpConfigForm,
+  getMcpTypeLabel,
+  getProtocolLabel,
+  loadMcpConfigs,
+  showAddMcpConfigForm,
+  editMcpConfig,
+  closeMcpConfigForm,
+  saveMcpConfig,
+  testMcpConfig,
+  activateMcpConfig,
+  deleteMcpConfig,
+  getMcpConfigStatus,
+  resetMcpConfigForm
     }
   }
 }
@@ -4589,8 +4991,9 @@ textarea.form-input {
   .skill-add-btn { width:100%; text-align:center; }
 }
 
-/* 搜索引擎配置管理样式 */
-.search-engine-management {
+/* 搜索引擎和MCP配置管理样式 */
+.search-engine-management,
+.mcp-config-management {
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -5179,5 +5582,12 @@ textarea.form-input {
     justify-content: center;
   }
 }
+
+/* MCP配置项样式（保留，与上方通用模态样式不冲突） */
+.config-item .config-type { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+.config-type.type-modelscope_community { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+.config-type.type-custom_mcp { background: linear-gradient(135deg, #f093fb, #f5576c); color: white; }
+.config-type.type-custom { background: linear-gradient(135deg, #4facfe, #00f2fe); color: white; }
+.config-url { font-size: 12px; color: #6b7280; font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; margin-top: 4px; }
 
 </style>
