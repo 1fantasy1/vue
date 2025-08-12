@@ -394,27 +394,198 @@
               </form>
             </div>
 
-            <!-- 搜索服务详情 -->
+            <!-- 搜索引擎配置详情 -->
             <div v-if="currentSettingDetail === 'search'" class="settings-panel">
-              <div class="settings-items">
-                <div class="setting-item">
-                  <label class="setting-label">搜索引擎</label>
-                  <div class="setting-input-container">
-                    <select class="setting-input" v-model="settings.searchEngine">
-                      <option value="google">Google</option>
-                      <option value="bing">Bing</option>
-                      <option value="baidu">百度</option>
-                      <option value="duckduckgo">DuckDuckGo</option>
-                    </select>
+              <div class="search-engine-management">
+                <!-- 配置列表头部 -->
+                <div class="config-header">
+                  <h4>搜索引擎配置</h4>
+                  <div class="header-actions">
+                    <button 
+                      class="refresh-configs-btn" 
+                      @click="loadSearchEngineConfigs"
+                      :disabled="searchConfigsLoading"
+                    >
+                      <span :class="{ loading: searchConfigsLoading }">🔄</span>
+                      刷新
+                    </button>
+                    <button class="add-config-btn" @click="showAddConfigForm">
+                      <span>➕</span>
+                      添加配置
+                    </button>
                   </div>
                 </div>
-                <div class="setting-item checkbox-item">
-                  <label class="checkbox-label">
-                    <input type="checkbox" v-model="settings.realtimeSearch">
-                    <span class="checkmark"></span>
-                    <span>启用实时搜索</span>
-                  </label>
+
+                <!-- 加载状态 -->
+                <div v-if="searchConfigsLoading" class="loading-state">
+                  <span>⏳ 加载搜索引擎配置中...</span>
                 </div>
+
+                <!-- 配置列表 -->
+                <div v-else class="config-list">
+                  <div v-if="searchEngineConfigs.length === 0" class="empty-state">
+                    <p>🔍 还没有配置搜索引擎</p>
+                    <p class="empty-hint">点击"添加配置"开始设置您的搜索引擎</p>
+                  </div>
+                  
+                  <div 
+                    v-for="config in searchEngineConfigs" 
+                    :key="config.id"
+                    class="config-item"
+                    :class="{ active: config.is_active }"
+                  >
+                    <div class="config-info">
+                      <div class="config-title">
+                        <span class="config-name">{{ config.name }}</span>
+                        <span class="config-type" :class="`type-${config.engine_type}`">
+                          {{ getEngineTypeLabel(config.engine_type) }}
+                        </span>
+                        <span v-if="config.is_active" class="active-badge">激活</span>
+                      </div>
+                      <div class="config-meta">
+                        <span class="config-description">{{ config.description || '无描述' }}</span>
+                        <span class="config-api-status" :class="getConfigStatus(config.id)">
+                          {{ getStatusLabel(getConfigStatus(config.id)) }}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div class="config-actions">
+                      <button 
+                        class="test-config-btn"
+                        @click="testSearchConfig(config.id)"
+                        :disabled="testingConfigs.has(config.id)"
+                      >
+                        <span v-if="testingConfigs.has(config.id)">⏳</span>
+                        <span v-else>🔗</span>
+                        测试
+                      </button>
+                      <button 
+                        class="edit-config-btn"
+                        @click="editSearchConfig(config)"
+                      >
+                        ✏️ 编辑
+                      </button>
+                      <button
+                        v-if="!config.is_active"
+                        class="activate-config-btn"
+                        @click="activateSearchConfig(config.id)"
+                        :disabled="activatingConfigs.has(config.id)"
+                      >
+                        <span v-if="activatingConfigs.has(config.id)">⏳</span>
+                        <span v-else>✅</span>
+                        设为激活
+                      </button>
+                      <button
+                        v-if="config.is_active"
+                        class="deactivate-config-btn"
+                        @click="deactivateSearchConfig(config.id)"
+                        :disabled="deactivatingConfigs.has(config.id)"
+                        :title="'取消当前激活状态'"
+                      >
+                        <span v-if="deactivatingConfigs.has(config.id)">⏳</span>
+                        <span v-else>🚫</span>
+                        取消激活
+                      </button>
+                      <button 
+                        class="delete-config-btn"
+                        @click="deleteSearchConfig(config.id, config.name)"
+                        :disabled="config.is_active"
+                        :title="config.is_active ? '激活的配置不能删除' : '删除配置'"
+                      >
+                        🗑️ 删除
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 添加/编辑配置表单（使用 Teleport 防止被父容器裁切） -->
+                <teleport to="body">
+                  <div v-if="showConfigForm" class="config-form-modal">
+                    <div class="config-form-content">
+                      <div class="form-header">
+                        <h4>{{ editingConfig ? '编辑' : '添加' }}搜索引擎配置</h4>
+                        <button class="close-form-btn" @click="closeConfigForm">✕</button>
+                      </div>
+                      
+                      <form @submit.prevent="saveSearchConfig" class="config-form">
+                        <div class="form-group">
+                          <label>配置名称 *</label>
+                          <input 
+                            type="text" 
+                            v-model="configForm.name" 
+                            placeholder="例如：我的Google搜索"
+                            required
+                          >
+                        </div>
+                        
+                        <div class="form-group">
+                          <label>搜索引擎类型 *</label>
+                          <select v-model="configForm.engine_type" required>
+                            <option value="">选择搜索引擎</option>
+                            <option value="bing">Bing</option>
+                            <option value="tavily">Tavily</option>
+                            <option value="baidu">百度</option>
+                            <option value="google_cse">Google CSE</option>
+                            <option value="custom">自定义</option>
+                          </select>
+                          <small class="form-hint">仅用于提供基础URL示例，不会自动修改任何字段</small>
+                        </div>
+                        
+                        <div class="form-group">
+                          <label>API密钥</label>
+                          <input 
+                            type="password" 
+                            v-model="configForm.api_key" 
+                            :placeholder="editingConfig ? '留空则保持现有密钥不变' : '输入API密钥'"
+                            autocomplete="new-password"
+                          >
+                          <small class="form-hint">密钥将被加密存储</small>
+                        </div>
+                        
+                        <div class="form-group">
+                          <label>基础URL</label>
+                          <div class="setting-input-container">
+                            <input 
+                              type="url" 
+                              v-model="configForm.base_url" 
+                              :placeholder="exampleBaseUrl || '搜索引擎API基础URL（可选）'"
+                            >
+                            <div style="display:flex; gap:8px; align-items:center;">
+                              <small class="form-hint" style="flex:1;">示例：{{ exampleBaseUrl || '选择类型查看示例' }}</small>
+                              <button type="button" class="example-fill-btn" @click="fillExampleBaseUrl" :disabled="!exampleBaseUrl">使用示例URL</button>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div class="form-group">
+                          <label>描述</label>
+                          <textarea 
+                            v-model="configForm.description" 
+                            rows="2" 
+                            placeholder="配置说明（可选）"
+                          ></textarea>
+                        </div>
+                        
+                        
+                        
+                        <div class="form-actions">
+                          <button type="button" class="cancel-btn" @click="closeConfigForm">
+                            取消
+                          </button>
+                          <button 
+                            type="submit" 
+                            class="save-btn"
+                            :disabled="savingConfig"
+                          >
+                            <span v-if="savingConfig">💾 保存中...</span>
+                            <span v-else>💾 保存配置</span>
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </teleport>
               </div>
             </div>
 
@@ -973,6 +1144,7 @@ export default {
       defaultModel: 'gpt-4',
       apiKey: 'sk-****',
       temperature: 0.7,
+      // 搜索引擎配置移至专门的管理
       searchEngine: 'google',
       realtimeSearch: true,
       // TTS 语言合成设置
@@ -998,6 +1170,285 @@ export default {
       maxStorageSize: 10,
       compressOldChats: true
     })
+
+    // 搜索引擎配置管理
+    const searchEngineConfigs = ref([])
+    const searchConfigsLoading = ref(false)
+    const showConfigForm = ref(false)
+    const editingConfig = ref(null)
+    const savingConfig = ref(false)
+  const testingConfigs = ref(new Set())
+  const activatingConfigs = ref(new Set())
+  const deactivatingConfigs = ref(new Set())
+  // 本地测试状态映射：{ [configId]: 'success' | 'failure' | 'timeout' | 'unknown' }
+  const testedStatus = ref({})
+    
+    // 配置表单数据
+    const configForm = ref({
+      name: '',
+      engine_type: '',
+      api_key: '',
+      base_url: '',
+      description: ''
+    })
+
+    // 重置配置表单
+    const resetConfigForm = () => {
+      configForm.value = {
+        name: '',
+        engine_type: '',
+        api_key: '',
+        base_url: '',
+        description: ''
+      }
+      editingConfig.value = null
+    }
+
+    // 获取搜索引擎类型标签
+    const getEngineTypeLabel = (engineType) => {
+      const labels = {
+        'bing': 'Bing',
+        'tavily': 'Tavily',
+        'baidu': '百度',
+        'google_cse': 'Google CSE',
+        'custom': '自定义'
+      }
+      return labels[engineType] || engineType
+    }
+
+    // 按类型提供基础URL示例（不自动填充）
+    const engineBaseUrlExamples = {
+      bing: 'https://api.bing.microsoft.com/v7.0/search',
+      tavily: 'https://api.tavily.com/search',
+      baidu: 'https://api.baidu.com/baidu_search_api',
+      google_cse: 'https://www.googleapis.com/customsearch/v1',
+      custom: ''
+    }
+
+    const exampleBaseUrl = computed(() => {
+      return engineBaseUrlExamples[configForm.value.engine_type || 'custom'] || ''
+    })
+
+    const fillExampleBaseUrl = () => {
+      if (!exampleBaseUrl.value) return
+      // 仅在用户点击时填充示例
+      if (!configForm.value.base_url) {
+        configForm.value.base_url = exampleBaseUrl.value
+      } else {
+        // 若已有内容，提示是否覆盖
+        if (confirm('基础URL已填写，是否用示例覆盖？')) {
+          configForm.value.base_url = exampleBaseUrl.value
+        }
+      }
+    }
+
+    // 加载搜索引擎配置
+    const loadSearchEngineConfigs = async (showMessage = true) => {
+      try {
+        searchConfigsLoading.value = true
+        if (showMessage) {
+          ElMessage.info('加载搜索引擎配置...')
+        }
+        
+        const configs = await remoteApiService.searchEngineConfigs.getAllConfigs()
+        searchEngineConfigs.value = configs || []
+        
+        if (showMessage) {
+          ElMessage.success(`加载完成，共${configs.length}个配置`)
+        }
+        
+        console.log('搜索引擎配置:', configs)
+      } catch (error) {
+        console.error('加载搜索引擎配置失败:', error)
+        if (showMessage) {
+          ElMessage.error('加载失败: ' + (error.message || '未知错误'))
+        }
+      } finally {
+        searchConfigsLoading.value = false
+      }
+    }
+
+    // 显示添加配置表单
+    const showAddConfigForm = () => {
+      resetConfigForm()
+      showConfigForm.value = true
+    }
+
+    // 编辑搜索配置
+    const editSearchConfig = (config) => {
+      editingConfig.value = config
+      configForm.value = {
+        name: config.name,
+        engine_type: config.engine_type,
+        api_key: '', // 编辑时不显示现有密钥
+        base_url: config.base_url || '',
+        description: config.description || ''
+      }
+      showConfigForm.value = true
+    }
+
+    // 关闭配置表单
+    const closeConfigForm = () => {
+      showConfigForm.value = false
+      resetConfigForm()
+    }
+
+    // 保存搜索配置
+    const saveSearchConfig = async () => {
+      try {
+        savingConfig.value = true
+        
+        // 验证必填字段
+        if (!configForm.value.name.trim()) {
+          ElMessage.error('请输入配置名称')
+          return
+        }
+        if (!configForm.value.engine_type) {
+          ElMessage.error('请选择搜索引擎类型')
+          return
+        }
+
+  const configData = {
+          name: configForm.value.name.trim(),
+          engine_type: configForm.value.engine_type,
+          description: configForm.value.description.trim() || undefined,
+          base_url: configForm.value.base_url.trim() || undefined
+        }
+
+        // 只有在有输入时才包含API密钥
+        if (configForm.value.api_key.trim()) {
+          configData.api_key = configForm.value.api_key.trim()
+        }
+
+        let result
+        if (editingConfig.value) {
+          // 更新配置
+          result = await remoteApiService.searchEngineConfigs.updateConfig(
+            editingConfig.value.id, 
+            configData
+          )
+          ElMessage.success('搜索引擎配置更新成功！')
+        } else {
+          // 创建新配置
+          result = await remoteApiService.searchEngineConfigs.createConfig(configData)
+          ElMessage.success('搜索引擎配置创建成功！')
+        }
+
+        console.log('配置保存结果:', result)
+        
+        // 重新加载配置列表
+        await loadSearchEngineConfigs(false)
+        closeConfigForm()
+        
+      } catch (error) {
+        console.error('保存搜索配置失败:', error)
+        ElMessage.error('保存失败: ' + (error.message || '未知错误'))
+      } finally {
+        savingConfig.value = false
+      }
+    }
+
+    // 设为激活配置（在列表中操作）
+    const activateSearchConfig = async (configId) => {
+      try {
+        activatingConfigs.value.add(configId)
+        ElMessage.info('正在设为激活配置...')
+
+        await remoteApiService.searchEngineConfigs.updateConfig(configId, { is_active: true })
+        ElMessage.success('已设为激活配置')
+
+        // 重新加载配置，确保唯一激活状态正确
+        await loadSearchEngineConfigs(false)
+      } catch (error) {
+        console.error('设为激活配置失败:', error)
+        const msg = error?.message || ''
+        // 简单处理可能的唯一约束冲突
+        if (String(msg).includes('409') || String(msg).includes('冲突')) {
+          ElMessage.error('激活失败：已存在其他激活配置，请先取消或切换。')
+        } else {
+          ElMessage.error('激活失败: ' + (msg || '未知错误'))
+        }
+      } finally {
+        activatingConfigs.value.delete(configId)
+      }
+    }
+
+    // 取消激活配置
+    const deactivateSearchConfig = async (configId) => {
+      try {
+        deactivatingConfigs.value.add(configId)
+        ElMessage.info('正在取消激活...')
+
+        await remoteApiService.searchEngineConfigs.updateConfig(configId, { is_active: false })
+        ElMessage.success('已取消激活')
+
+        await loadSearchEngineConfigs(false)
+      } catch (error) {
+        console.error('取消激活失败:', error)
+        ElMessage.error('取消激活失败: ' + (error?.message || '未知错误'))
+      } finally {
+        deactivatingConfigs.value.delete(configId)
+      }
+    }
+
+    // 测试搜索配置
+    const testSearchConfig = async (configId) => {
+      try {
+        testingConfigs.value.add(configId)
+        ElMessage.info('正在测试连接...')
+        
+        const result = await remoteApiService.searchEngineConfigs.checkStatus(configId)
+        
+        if (result.status === 'success') {
+          ElMessage.success(`连接测试成功！${result.message || ''}`)
+        } else {
+          ElMessage.warning(`连接测试失败：${result.message || '未知错误'}`)
+        }
+        
+        console.log('连接测试结果:', result)
+  // 记录本地状态，立即更新UI
+  testedStatus.value = { ...testedStatus.value, [configId]: result.status || 'unknown' }
+  // 可选：如需刷新列表，保留本地状态不丢失
+  // await loadSearchEngineConfigs(false)
+        
+      } catch (error) {
+        console.error('测试搜索配置失败:', error)
+        ElMessage.error('测试失败: ' + (error.message || '未知错误'))
+      } finally {
+        testingConfigs.value.delete(configId)
+      }
+    }
+
+    // 获取配置的显示状态（优先使用本地测试结果）
+    const getConfigStatus = (configId) => {
+      return testedStatus.value[configId] || 'unknown'
+    }
+    const getStatusLabel = (status) => {
+      if (status === 'success') return '✅ 正常'
+      if (status === 'failure') return '❌ 异常'
+      if (status === 'timeout') return '⏱️ 超时'
+      return '❓ 未测试'
+    }
+
+    // 删除搜索配置
+    const deleteSearchConfig = async (configId, configName) => {
+      const confirmed = confirm(`确定要删除搜索引擎配置"${configName}"吗？此操作不可撤销。`)
+      if (!confirmed) return
+
+      try {
+        ElMessage.info('正在删除配置...')
+        
+        await remoteApiService.searchEngineConfigs.deleteConfig(configId)
+        ElMessage.success('搜索引擎配置删除成功！')
+        
+        // 重新加载配置列表
+        await loadSearchEngineConfigs(false)
+        
+      } catch (error) {
+        console.error('删除搜索配置失败:', error)
+        ElMessage.error('删除失败: ' + (error.message || '未知错误'))
+      }
+    }
 
     const themeColors = ref([
       { name: 'blue', value: '#667eea' },
@@ -1359,6 +1810,11 @@ export default {
       if (settingType === 'defaultModel') {
         loadLLMConfig(false)  // 打开时静默加载
       }
+      
+      // 如果是搜索设置，自动加载搜索引擎配置
+      if (settingType === 'search') {
+        loadSearchEngineConfigs(false) // 打开时静默加载
+      }
     }
 
     const backToMain = () => {
@@ -1418,7 +1874,33 @@ export default {
       // LLM配置相关
       saveLLMConfig,
       testLLMConfig,
-      loadLLMConfig
+      loadLLMConfig,
+      // 搜索引擎配置相关
+      searchEngineConfigs,
+      searchConfigsLoading,
+      showConfigForm,
+      editingConfig,
+      savingConfig,
+      testingConfigs,
+      configForm,
+      getEngineTypeLabel,
+      loadSearchEngineConfigs,
+      showAddConfigForm,
+      editSearchConfig,
+      closeConfigForm,
+      saveSearchConfig,
+      testSearchConfig,
+  deleteSearchConfig,
+  activateSearchConfig,
+  deactivateSearchConfig,
+  // 示例URL联动
+  exampleBaseUrl,
+  fillExampleBaseUrl,
+  // 测试状态联动
+  getConfigStatus,
+  getStatusLabel,
+  activatingConfigs,
+  deactivatingConfigs
     }
   }
 }
@@ -3720,6 +4202,494 @@ textarea.form-input {
   .skill-edit-wrapper { gap:14px; }
   .skill-edit-actions { flex-wrap:wrap; }
   .skill-add-btn { width:100%; text-align:center; }
+}
+
+/* 搜索引擎配置管理样式 */
+.search-engine-management {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.config-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.config-header h4 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.refresh-configs-btn, .add-config-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.refresh-configs-btn {
+  background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(66, 153, 225, 0.4);
+}
+
+.refresh-configs-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(66, 153, 225, 0.5);
+}
+
+.refresh-configs-btn .loading {
+  animation: spin 1s linear infinite;
+}
+
+.add-config-btn {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+}
+
+.add-config-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(72, 187, 120, 0.5);
+}
+
+.loading-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.config-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+}
+
+.empty-state p {
+  margin-bottom: 8px;
+}
+
+.empty-hint {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.config-item {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.config-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  border-color: #c7d2fe;
+}
+
+.config-item.active {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.config-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.config-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.config-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.config-type {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+}
+
+.type-bing {
+  background: linear-gradient(135deg, #0078d4 0%, #106ebe 100%);
+}
+
+.type-tavily {
+  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+}
+
+.type-baidu {
+  background: linear-gradient(135deg, #2932e1 0%, #2563eb 100%);
+}
+
+.type-google_cse {
+  background: linear-gradient(135deg, #34a853 0%, #137333 100%);
+}
+
+.type-custom {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+}
+
+.active-badge {
+  padding: 4px 8px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.config-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.config-description {
+  color: #6b7280;
+  font-size: 14px;
+  flex: 1;
+}
+
+.config-api-status {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.config-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.test-config-btn, .edit-config-btn, .delete-config-btn, .activate-config-btn, .deactivate-config-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.test-config-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+}
+
+.test-config-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.edit-config-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+}
+
+.edit-config-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
+.activate-config-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.activate-config-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.deactivate-config-btn {
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  color: white;
+}
+
+.deactivate-config-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(107, 114, 128, 0.4);
+}
+
+.delete-config-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+}
+
+.delete-config-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+.delete-config-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* 配置表单模态框样式 */
+.config-form-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+
+.config-form-content {
+  background: white;
+  border-radius: 16px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: 1000;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.form-header h4 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2d3748;
+  margin: 0;
+}
+
+.close-form-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+.close-form-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.config-form {
+  padding: 20px 24px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 10px 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  background: #f9fafb;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-hint {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+.checkbox-group {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: normal;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+  .example-fill-btn {
+    padding: 6px 10px;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+  .example-fill-btn:disabled { opacity: .5; cursor: not-allowed; }
+  .example-fill-btn:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(66,153,225,.35); }
+
+.cancel-btn, .save-btn {
+  flex: 1;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.cancel-btn {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.cancel-btn:hover {
+  background: #e5e7eb;
+  transform: translateY(-1px);
+}
+
+.save-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.save-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(102, 126, 234, 0.5);
+}
+
+.save-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .config-item {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .config-actions {
+    justify-content: flex-end;
+  }
+  
+  .config-form-content {
+    width: 95%;
+    margin: 20px;
+  }
+  
+  .config-form {
+    padding: 16px 20px 20px;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .header-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .refresh-configs-btn, .add-config-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 </style>
