@@ -618,6 +618,43 @@ export class McpConfigsAPI extends BaseAPI {
   async deleteConfig(configId) {
     return await this.request('DELETE', `/${configId}`)
   }
+}
+
+// TTS配置API
+export class TTSConfigsAPI extends BaseAPI {
+  constructor() {
+    super('/users/me/tts_configs')
+  }
+
+  // 获取所有TTS配置
+  async getAllConfigs() {
+    return await this.request('GET', '')
+  }
+
+  // 获取指定TTS配置详情
+  async getConfigById(configId) {
+    return await this.request('GET', `/${configId}`)
+  }
+
+  // 创建新的TTS配置
+  async createConfig(configData) {
+    return await this.request('POST', '', configData)
+  }
+
+  // 更新TTS配置
+  async updateConfig(configId, configData) {
+    return await this.request('PUT', `/${configId}`, configData)
+  }
+
+  // 删除TTS配置
+  async deleteConfig(configId) {
+    return await this.request('DELETE', `/${configId}`)
+  }
+
+  // 设置TTS配置为激活状态
+  async setActive(configId) {
+    return await this.request('PUT', `/${configId}/set_active`)
+  }
 
   async checkStatus(configId) {
     return await this.request('POST', `/${configId}/check-status`)
@@ -682,6 +719,7 @@ export class RemoteApiService {
     this.forum = new ForumAPI()
     this.searchEngineConfigs = new SearchEngineConfigsAPI()
     this.mcpConfigs = new McpConfigsAPI()
+    this.ttsConfigs = new TTSConfigsAPI()
     this.llm = new LLMAPI()
     this.audio = new AudioAPI()
     this.health = new HealthAPI()

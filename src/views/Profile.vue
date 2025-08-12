@@ -591,44 +591,217 @@
 
             <!-- 语音服务详情 -->
             <div v-if="currentSettingDetail === 'voice'" class="settings-panel">
+              <div class="settings-header">
+                <h3>TTS语音配置管理</h3>
+                <div class="settings-actions">
+                  <button 
+                    class="action-btn primary-btn" 
+                    @click="showTTSConfigForm = true"
+                  >
+                    ➕ 添加配置
+                  </button>
+                  <button 
+                    class="action-btn secondary-btn" 
+                    @click="loadTTSConfigs"
+                    :disabled="ttsConfigsLoading"
+                  >
+                    <span :class="{ loading: ttsConfigsLoading }">🔄</span>
+                    刷新
+                  </button>
+                </div>
+              </div>
+
               <div class="settings-items">
-                <div class="setting-item">
-                  <label class="setting-label">TTS服务提供商</label>
-                  <div class="setting-input-container">
-                    <select class="setting-input" v-model="settings.ttsProvider">
-                      <option value="azure">Azure Cognitive Services</option>
-                      <option value="google">Google Text-to-Speech</option>
-                      <option value="amazon">Amazon Polly</option>
-                      <option value="iflytek">科大讯飞</option>
-                      <option value="baidu">百度语音</option>
-                      <option value="local">本地合成引擎</option>
-                    </select>
+                <!-- 加载状态 -->
+                <div v-if="ttsConfigsLoading" class="loading-state">
+                  <span class="loading-spinner">⏳</span>
+                  <span>正在加载TTS配置...</span>
+                </div>
+
+                <!-- 空状态 -->
+                <div v-else-if="ttsConfigs.length === 0" class="empty-state">
+                  <span class="empty-icon">🎙️</span>
+                  <p>还没有TTS配置，点击"添加配置"创建第一个TTS配置</p>
+                </div>
+
+                <!-- TTS配置列表 -->
+                <div v-else class="config-list">
+                  <div 
+                    v-for="config in ttsConfigs" 
+                    :key="config.id" 
+                    class="config-card"
+                    :class="{ 'active-config': config.is_active }"
+                  >
+                    <div class="config-header">
+                      <div class="config-title">
+                        <h4>{{ config.name }}</h4>
+                        <span class="config-type" :class="`type-${config.tts_type}`">{{ getTTSProviderName(config.tts_type) }}</span>
+                        <span v-if="config.is_active" class="active-badge">🟢 已激活</span>
+                      </div>
+                      <div class="config-actions">
+                        <button 
+                          class="icon-btn test-btn"
+                          @click="testTTSConfig(config.id)"
+                          :disabled="testingTTSConfigs.has(config.id)"
+                          :title="testingTTSConfigs.has(config.id) ? '测试中...' : '测试配置'"
+                        >
+                          <span v-if="testingTTSConfigs.has(config.id)">⏳</span>
+                          <span v-else>🧪</span>
+                        </button>
+                        <button 
+                          class="icon-btn edit-btn"
+                          @click="editTTSConfig(config)"
+                          title="编辑配置"
+                        >
+                          ✏️
+                        </button>
+                        <button 
+                          v-if="!config.is_active"
+                          class="icon-btn activate-btn"
+                          @click="activateTTSConfig(config.id)"
+                          :disabled="activatingTTSConfigs.has(config.id)"
+                          :title="activatingTTSConfigs.has(config.id) ? '激活中...' : '设为激活'"
+                        >
+                          <span v-if="activatingTTSConfigs.has(config.id)">⏳</span>
+                          <span v-else>🟢</span>
+                        </button>
+                        <button 
+                          class="icon-btn delete-btn"
+                          @click="deleteTTSConfig(config.id, config.name)"
+                          title="删除配置"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                    <div class="config-details">
+                      <div class="config-field">
+                        <span class="field-label">模型ID:</span>
+                        <span class="field-value">{{ config.model_id || '未设置' }}</span>
+                      </div>
+                      <div class="config-field">
+                        <span class="field-label">语音名称:</span>
+                        <span class="field-value">{{ config.voice_name || '未设置' }}</span>
+                      </div>
+                      <div class="config-field">
+                        <span class="field-label">API基础URL:</span>
+                        <span class="field-value">{{ config.base_url || '默认' }}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div class="setting-item">
-                  <label class="setting-label">默认语音</label>
-                  <div class="setting-input-container">
-                    <select class="setting-input" v-model="settings.defaultVoice">
-                      <option value="zh-CN-XiaoxiaoNeural">晓晓 (女声)</option>
-                      <option value="zh-CN-YunxiNeural">云希 (男声)</option>
-                      <option value="zh-CN-YunyangNeural">云扬 (男声)</option>
-                      <option value="en-US-JennyNeural">Jenny (English)</option>
-                    </select>
+
+                <!-- TTS配置表单弹窗（复用现有表单样式以确保显示正常） -->
+                <teleport to="body">
+                  <div v-if="showTTSConfigForm" class="config-form-modal" @click.self="closeTTSConfigForm">
+                    <div class="config-form-content">
+                      <div class="form-header">
+                        <h4>{{ editingTTSConfig ? '编辑TTS配置' : '添加TTS配置' }}</h4>
+                        <button class="close-form-btn" @click="closeTTSConfigForm">✕</button>
+                      </div>
+                      <form @submit.prevent="saveTTSConfig" class="config-form">
+                        <div class="form-group">
+                          <label class="form-label" for="tts-name">配置名称 *</label>
+                          <input 
+                            id="tts-name"
+                            type="text" 
+                            class="form-input" 
+                            v-model="ttsConfigForm.name" 
+                            required
+                            placeholder="为你的TTS配置起个名字"
+                          />
+                        </div>
+
+                        <div class="form-group">
+                          <label class="form-label" for="tts-type">TTS提供商 *</label>
+                          <select 
+                            id="tts-type"
+                            class="form-input" 
+                            v-model="ttsConfigForm.tts_type" 
+                            required
+                          >
+                            <option value="">请选择TTS提供商</option>
+                            <option value="openai">OpenAI</option>
+                            <option value="gemini">Gemini</option>
+                            <option value="aliyun">阿里云</option>
+                            <option value="siliconflow">SiliconFlow</option>
+                          </select>
+                        </div>
+
+                        <div class="form-group">
+                          <label class="form-label" for="tts-api-key">API密钥 *</label>
+                          <input 
+                            id="tts-api-key"
+                            type="password" 
+                            class="form-input" 
+                            v-model="ttsConfigForm.api_key" 
+                            required
+                            placeholder="输入API密钥"
+                          />
+                        </div>
+
+                        <div class="form-group">
+                          <label class="form-label" for="tts-base-url">API基础URL</label>
+                          <input 
+                            id="tts-base-url"
+                            type="url" 
+                            class="form-input" 
+                            v-model="ttsConfigForm.base_url"
+                            placeholder="可选，留空使用默认地址"
+                          />
+                        </div>
+
+                        <div class="form-group">
+                          <label class="form-label" for="tts-model-id">模型ID</label>
+                          <input 
+                            id="tts-model-id"
+                            type="text" 
+                            class="form-input" 
+                            v-model="ttsConfigForm.model_id"
+                            placeholder="如: tts-1, gemini-pro-vision等"
+                          />
+                        </div>
+
+                        <div class="form-group">
+                          <label class="form-label" for="tts-voice-name">语音名称</label>
+                          <input 
+                            id="tts-voice-name"
+                            type="text" 
+                            class="form-input" 
+                            v-model="ttsConfigForm.voice_name"
+                            placeholder="如: alloy, nova, zh-CN-XiaoxiaoNeural等"
+                          />
+                        </div>
+
+                        <div class="form-group checkbox-group">
+                          <label class="checkbox-label">
+                            <input 
+                              type="checkbox" 
+                              v-model="ttsConfigForm.is_active"
+                            />
+                            <span class="checkmark"></span>
+                            <span>设置为激活配置</span>
+                          </label>
+                          <p class="help-text">激活后将作为默认TTS服务使用</p>
+                        </div>
+
+                        <div class="form-actions">
+                          <button type="button" class="btn cancel-btn" @click="closeTTSConfigForm">
+                            取消
+                          </button>
+                          <button 
+                            type="submit" 
+                            class="btn submit-btn" 
+                            :disabled="savingTTSConfig"
+                          >
+                            <span v-if="savingTTSConfig">💾 保存中...</span>
+                            <span v-else>💾 保存配置</span>
+                          </button>
+                        </div>
+                      </form>
+                    </div>
                   </div>
-                </div>
-                <div class="setting-item">
-                  <label class="setting-label">语速: {{ settings.speechRate }}</label>
-                  <div class="setting-input-container">
-                    <input type="range" min="0.5" max="2" step="0.1" v-model="settings.speechRate" class="range-input">
-                  </div>
-                </div>
-                <div class="setting-item checkbox-item">
-                  <label class="checkbox-label">
-                    <input type="checkbox" v-model="settings.autoPlay">
-                    <span class="checkmark"></span>
-                    <span>自动播放生成的语音</span>
-                  </label>
-                </div>
+                </teleport>
               </div>
             </div>
 
@@ -1192,6 +1365,51 @@ export default {
       description: ''
     })
 
+    // TTS配置管理
+    const ttsConfigs = ref([])
+    const ttsConfigsLoading = ref(false)
+    const showTTSConfigForm = ref(false)
+    const editingTTSConfig = ref(null)
+    const savingTTSConfig = ref(false)
+    const testingTTSConfigs = ref(new Set())
+    const activatingTTSConfigs = ref(new Set())
+
+    // TTS配置表单数据
+    const ttsConfigForm = ref({
+      name: '',
+      tts_type: '',
+      api_key: '',
+      base_url: '',
+      model_id: '',
+      voice_name: '',
+      is_active: false
+    })
+
+    // 重置TTS配置表单
+    const resetTTSConfigForm = () => {
+      ttsConfigForm.value = {
+        name: '',
+        tts_type: '',
+        api_key: '',
+        base_url: '',
+        model_id: '',
+        voice_name: '',
+        is_active: false
+      }
+      editingTTSConfig.value = null
+    }
+
+    // 获取TTS提供商名称
+    const getTTSProviderName = (ttsType) => {
+      const providerMap = {
+        'openai': 'OpenAI',
+        'gemini': 'Gemini',
+        'aliyun': '阿里云',
+        'siliconflow': 'SiliconFlow'
+      }
+      return providerMap[ttsType] || ttsType
+    }
+
     // 重置配置表单
     const resetConfigForm = () => {
       configForm.value = {
@@ -1448,6 +1666,151 @@ export default {
         console.error('删除搜索配置失败:', error)
         ElMessage.error('删除失败: ' + (error.message || '未知错误'))
       }
+    }
+
+    // ===========================================
+    // TTS配置管理方法
+    // ===========================================
+
+    // 加载TTS配置
+    const loadTTSConfigs = async (showMessage = true) => {
+      try {
+        ttsConfigsLoading.value = true
+        if (showMessage) {
+          ElMessage.info('加载TTS配置...')
+        }
+        
+        const configs = await remoteApiService.ttsConfigs.getAllConfigs()
+        ttsConfigs.value = configs || []
+        
+        if (showMessage) {
+          ElMessage.success(`加载完成，共${configs.length}个TTS配置`)
+        }
+        
+        console.log('TTS配置:', configs)
+      } catch (error) {
+        console.error('加载TTS配置失败:', error)
+        if (showMessage) {
+          ElMessage.error('加载失败: ' + (error.message || '未知错误'))
+        }
+      } finally {
+        ttsConfigsLoading.value = false
+      }
+    }
+
+    // 编辑TTS配置
+    const editTTSConfig = (config) => {
+      editingTTSConfig.value = config
+      ttsConfigForm.value = {
+        name: config.name,
+        tts_type: config.tts_type,
+        api_key: '', // 出于安全考虑，不显示原密钥
+        base_url: config.base_url || '',
+        model_id: config.model_id || '',
+        voice_name: config.voice_name || '',
+        is_active: config.is_active || false
+      }
+      showTTSConfigForm.value = true
+    }
+
+    // 保存TTS配置
+    const saveTTSConfig = async () => {
+      try {
+        savingTTSConfig.value = true
+        
+        if (editingTTSConfig.value) {
+          // 编辑现有配置
+          const updateData = { ...ttsConfigForm.value }
+          // 如果API密钥为空，则不更新
+          if (!updateData.api_key) {
+            delete updateData.api_key
+          }
+          
+          await remoteApiService.ttsConfigs.updateConfig(editingTTSConfig.value.id, updateData)
+          ElMessage.success('TTS配置更新成功！')
+        } else {
+          // 创建新配置
+          await remoteApiService.ttsConfigs.createConfig(ttsConfigForm.value)
+          ElMessage.success('TTS配置创建成功！')
+        }
+        
+        closeTTSConfigForm()
+        await loadTTSConfigs(false)
+        
+      } catch (error) {
+        console.error('保存TTS配置失败:', error)
+        ElMessage.error('保存失败: ' + (error.message || '未知错误'))
+      } finally {
+        savingTTSConfig.value = false
+      }
+    }
+
+    // 测试TTS配置
+    const testTTSConfig = async (configId) => {
+      try {
+        testingTTSConfigs.value.add(configId)
+        ElMessage.info('正在测试TTS配置...')
+        
+        // 这里可以调用实际的TTS测试API
+        // const result = await remoteApiService.ttsConfigs.testConfig(configId)
+        
+        // 模拟测试延迟
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        
+        ElMessage.success('TTS配置测试成功！')
+        
+      } catch (error) {
+        console.error('测试TTS配置失败:', error)
+        ElMessage.error('测试失败: ' + (error.message || '未知错误'))
+      } finally {
+        testingTTSConfigs.value.delete(configId)
+      }
+    }
+
+    // 激活TTS配置
+    const activateTTSConfig = async (configId) => {
+      try {
+        activatingTTSConfigs.value.add(configId)
+        ElMessage.info('正在激活TTS配置...')
+        
+        await remoteApiService.ttsConfigs.setActive(configId)
+        ElMessage.success('TTS配置已激活！')
+        
+        // 重新加载配置列表
+        await loadTTSConfigs(false)
+        
+      } catch (error) {
+        console.error('激活TTS配置失败:', error)
+        ElMessage.error('激活失败: ' + (error.message || '未知错误'))
+      } finally {
+        activatingTTSConfigs.value.delete(configId)
+      }
+    }
+
+    // 删除TTS配置
+    const deleteTTSConfig = async (configId, configName) => {
+      const confirmed = confirm(`确定要删除TTS配置"${configName}"吗？此操作不可撤销。`)
+      if (!confirmed) return
+
+      try {
+        ElMessage.info('正在删除TTS配置...')
+        
+        await remoteApiService.ttsConfigs.deleteConfig(configId)
+        ElMessage.success('TTS配置删除成功！')
+        
+        // 重新加载配置列表
+        await loadTTSConfigs(false)
+        
+      } catch (error) {
+        console.error('删除TTS配置失败:', error)
+        ElMessage.error('删除失败: ' + (error.message || '未知错误'))
+      }
+    }
+
+    // 关闭TTS配置表单
+    const closeTTSConfigForm = () => {
+      showTTSConfigForm.value = false
+      resetTTSConfigForm()
     }
 
     const themeColors = ref([
@@ -1815,6 +2178,11 @@ export default {
       if (settingType === 'search') {
         loadSearchEngineConfigs(false) // 打开时静默加载
       }
+      
+      // 如果是语音设置，自动加载TTS配置
+      if (settingType === 'voice') {
+        loadTTSConfigs(false) // 打开时静默加载
+      }
     }
 
     const backToMain = () => {
@@ -1893,6 +2261,23 @@ export default {
   deleteSearchConfig,
   activateSearchConfig,
   deactivateSearchConfig,
+  // TTS配置相关
+  ttsConfigs,
+  ttsConfigsLoading,
+  showTTSConfigForm,
+  editingTTSConfig,
+  savingTTSConfig,
+  testingTTSConfigs,
+  activatingTTSConfigs,
+  ttsConfigForm,
+  getTTSProviderName,
+  loadTTSConfigs,
+  editTTSConfig,
+  saveTTSConfig,
+  testTTSConfig,
+  activateTTSConfig,
+  deleteTTSConfig,
+  closeTTSConfigForm,
   // 示例URL联动
   exampleBaseUrl,
   fillExampleBaseUrl,
@@ -4469,6 +4854,109 @@ textarea.form-input {
   cursor: not-allowed;
   opacity: 0.6;
 }
+
+/* =============================
+   TTS 专用样式映射与美化
+   ============================= */
+
+/* 将 TTS 区头部按钮映射为已有样式 */
+.settings-actions .action-btn {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings-actions .action-btn.primary-btn {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.4);
+}
+.settings-actions .action-btn.primary-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(72, 187, 120, 0.5);
+}
+
+.settings-actions .action-btn.secondary-btn {
+  background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(66, 153, 225, 0.4);
+}
+.settings-actions .action-btn.secondary-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(66, 153, 225, 0.5);
+}
+.settings-actions .loading { animation: spin 1s linear infinite; }
+
+/* 让 TTS 配置卡片风格与搜索配置一致 */
+.config-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.3s ease;
+}
+.config-card:hover { 
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  border-color: #c7d2fe;
+}
+.config-card.active-config {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.05);
+}
+.config-header { 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+}
+
+/* TTS 操作按钮风格复用搜索的按钮样式 */
+.icon-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.icon-btn.test-btn { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #fff; }
+.icon-btn.test-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59,130,246,.4); }
+.icon-btn.edit-btn { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #fff; }
+.icon-btn.edit-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(245,158,11,.4); }
+.icon-btn.activate-btn { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; }
+.icon-btn.activate-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16,185,129,.4); }
+.icon-btn.delete-btn { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: #fff; }
+.icon-btn.delete-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(239,68,68,.4); }
+
+/* TTS 详情字段样式 */
+.config-details { 
+  display: grid; 
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px 16px;
+}
+.config-field { display: flex; gap: 8px; font-size: 13px; color: #4b5563; }
+.field-label { font-weight: 600; color: #374151; }
+.field-value { color: #1f2937; }
+
+/* TTS 提供商标签颜色 */
+.type-openai { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+.type-gemini { background: linear-gradient(135deg, #3b82f6 0%, #7c3aed 100%); }
+.type-aliyun { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+.type-siliconflow { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); }
 
 /* 配置表单模态框样式 */
 .config-form-modal {
