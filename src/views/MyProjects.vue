@@ -153,11 +153,24 @@
                     <path d="M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5 2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z"/>
                   </svg>
                 </button>
-                <button class="action-btn" @click.stop="openProjectMenu(project.id)">
+                <div class="menu-wrapper">
+                  <button class="action-btn" @click.stop="openProjectMenu(project.id)" :title="openMenuId === project.id ? '关闭菜单' : '更多操作'">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12,16A2,2 0 0,1 14,18A2,2 0 0,1 12,20A2,2 0 0,1 10,18A2,2 0 0,1 12,16M12,10A2,2 0 0,1 14,12A2,2 0 0,1 12,14A2,2 0 0,1 10,12A2,2 0 0,1 12,10M12,4A2,2 0 0,1 14,6A2,2 0 0,1 12,8A2,2 0 0,1 10,6A2,2 0 0,1 12,4Z"/>
                   </svg>
-                </button>
+                  </button>
+                  <div v-if="openMenuId === project.id" class="project-menu" @click.stop>
+                    <button class="menu-item" @click="openEditForm(project)">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 8px;">
+                        <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
+                      </svg>
+                      编辑项目
+                    </button>
+                    <!-- 预留更多项
+                    <button class="menu-item" @click="viewProject(project)">查看详情</button>
+                    -->
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -257,7 +270,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiService } from '@/services/api.js'
 import ProjectForm from '@/components/ProjectForm.vue'
@@ -278,6 +291,7 @@ export default {
   const loading = ref(false)
   const showForm = ref(false)
   const editingProject = ref(null)
+  const openMenuId = ref(null)
 
     // 筛选配置
     const filters = ref([
@@ -342,7 +356,7 @@ export default {
           case 'priority':
             const priorityOrder = { high: 3, medium: 2, low: 1 }
             return priorityOrder[b.priority] - priorityOrder[a.priority]
-          default: // lastUpdate
+      default: // lastUpdate
             return new Date(b.updated_at || b.lastUpdate || 0) - new Date(a.updated_at || a.lastUpdate || 0)
         }
       })
@@ -479,13 +493,13 @@ export default {
     }
 
     const openProjectMenu = (projectId) => {
-      console.log(`打开项目 ${projectId} 菜单`)
-      // 这里可以实现项目菜单功能
+      openMenuId.value = openMenuId.value === projectId ? null : projectId
     }
 
+    const closeMenus = () => { openMenuId.value = null }
+
     const viewProject = (project) => {
-      console.log(`查看项目详情:`, project)
-      // router.push(`/projects/${project.id}`)
+      router.push(`/projects/${project.id}`)
     }
 
     const openChat = (projectId) => {
@@ -503,7 +517,7 @@ export default {
       // router.push(`/projects/${projectId}/files`)
     }
 
-    const openCreateForm = () => { showForm.value = true; editingProject.value = null }
+  const openCreateForm = () => { showForm.value = true; editingProject.value = null }
     const closeForm = () => { showForm.value = false; editingProject.value = null }
     const mapProject = (p) => ({
       id: p.id,
@@ -519,10 +533,13 @@ export default {
       team: p.team || []
     })
 
-    const onFormSuccess = (created) => {
+    const onFormSuccess = (createdOrUpdated) => {
       // 将新项目加入列表并关闭弹窗
-      if (created) {
-        projects.value.unshift(mapProject(created))
+      if (editingProject.value) {
+        const idx = projects.value.findIndex(p => p.id === editingProject.value.id)
+        if (idx !== -1) projects.value[idx] = mapProject(createdOrUpdated)
+      } else if (createdOrUpdated) {
+        projects.value.unshift(mapProject(createdOrUpdated))
       }
       closeForm()
     }
@@ -545,6 +562,24 @@ export default {
     }
 
     onMounted(loadProjects)
+    onMounted(() => window.addEventListener('click', closeMenus))
+    onUnmounted(() => window.removeEventListener('click', closeMenus))
+
+    const openEditForm = async (project) => {
+      closeMenus()
+      try {
+        const res = await ApiService.getProject(project.id)
+        if (res?.data?.success && res.data.data) {
+          editingProject.value = res.data.data
+        } else {
+          // 回退：使用卡片数据
+          editingProject.value = project
+        }
+      } catch {
+        editingProject.value = project
+      }
+      showForm.value = true
+    }
 
     return {
       // 响应式数据
@@ -581,7 +616,10 @@ export default {
   closeForm,
   onFormSuccess,
   showForm,
-  editingProject
+  editingProject,
+  openMenuId,
+  openProjectMenu,
+  openEditForm
     }
   }
 }
@@ -1032,20 +1070,95 @@ export default {
   background: #f8f9fa;
   border: 1px solid #e9ecef;
   border-radius: 8px;
-  padding: 8px;
+  padding: 10px;
   color: #666;
   cursor: pointer;
   transition: all 0.3s ease;
+  min-width: 36px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .action-btn:hover {
   background: #e9ecef;
   color: #333;
   border-color: #dee2e6;
+  transform: translateY(-1px);
+}
+
+.action-btn:focus {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+.action-btn:active {
+  transform: translateY(0);
 }
 
 .action-btn.active {
   color: #f87171;
+}
+
+.menu-wrapper { position: relative; display: inline-block; }
+.project-menu {
+  position: absolute;
+  right: 0;
+  top: 36px;
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 10px;
+  min-width: 160px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  padding: 8px;
+  z-index: 10;
+  backdrop-filter: blur(8px);
+  animation: menuFadeIn 0.2s ease-out;
+}
+
+@keyframes menuFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.menu-item {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 8px;
+  color: #333;
+  cursor: pointer;
+  font-size: 14px;
+  display: block;
+  line-height: 1.4;
+  min-height: 44px; /* 确保足够的点击区域 */
+  display: flex;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.menu-item:focus {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+  background: #f5f7ff;
+}
+.menu-item:hover { 
+  background: #f5f7ff; 
+  color: #667eea;
+  transform: translateX(2px);
+}
+
+.menu-item:active {
+  background: #e9ecef;
+  transform: translateX(1px);
 }
 
 /* 项目内容 */
@@ -1467,6 +1580,24 @@ export default {
 
   .project-actions {
     margin-left: auto;
+  }
+
+  /* 移动设备菜单优化 */
+  .action-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 12px;
+  }
+
+  .project-menu {
+    min-width: 180px;
+    padding: 10px;
+  }
+
+  .menu-item {
+    padding: 14px 18px;
+    font-size: 15px;
+    min-height: 48px;
   }
 
   .project-footer {

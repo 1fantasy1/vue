@@ -1,4 +1,5 @@
 <template>
+	<teleport to="body">
 	<div class="pf-wrapper">
 		<div class="pf-card">
 			<div class="pf-header">
@@ -108,7 +109,8 @@
 				</div>
 			</form>
 		</div>
-	</div>
+		</div>
+		</teleport>
 </template>
 
 <script>
@@ -273,7 +275,7 @@ export default {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	z-index: 1000;
+	z-index: 20000;
 }
 .pf-card {
 	width: min(880px, 92vw);

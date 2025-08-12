@@ -7,6 +7,7 @@ import KnowledgeBase from '../views/KnowledgeBase.vue'
 import Plaza from '../views/Plaza.vue'
 import Profile from '../views/Profile.vue'
 import MyProjects from '../views/MyProjects.vue'
+import ProjectDetail from '../views/ProjectDetail.vue'
 import MyCourses from '../views/MyCourses.vue'
 import ChatRooms from '../views/ChatRooms.vue'
 import CourseNotes from '../views/CourseNotes.vue'
@@ -53,6 +54,12 @@ const routes = [
     path: '/my-projects',
     name: 'MyProjects',
     component: MyProjects,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/projects/:id',
+    name: 'ProjectDetail',
+    component: ProjectDetail,
     meta: { requiresAuth: true }
   },
   {
