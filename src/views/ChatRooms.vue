@@ -3,86 +3,69 @@
     <div class="header">
       <button class="back-btn" @click="goBack">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z"/>
+          <path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" />
         </svg>
         返回首页
       </button>
-      <h1 class="page-title">聊天室</h1>
       <div class="header-actions">
         <button class="primary-btn" @click="openCreateRoomModal">新建聊天室</button>
-  <button class="btn" @click="openApplyByIdModal">按ID申请加入</button>
       </div>
     </div>
 
     <div class="chat-layout">
       <div class="sidebar">
         <div class="search-box">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
-          </svg>
-          <input type="text" placeholder="搜索聊天室..." v-model="searchQuery">
-        </div>
-        <div v-if="roomsError" class="error" style="margin-bottom:8px;">加载失败：{{ roomsError }}</div>
-        <div style="margin-bottom:8px; display:flex; gap:8px;">
-          <button class="btn" @click="loadRooms">刷新列表</button>
+          <el-input v-model="searchQuery" placeholder="搜索聊天室..." clearable>
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </el-input>
         </div>
 
-        <div class="chat-tabs">
-          <button 
-            class="tab-btn" 
-            :class="{ active: activeTab === 'all' }"
-            @click="changeTab('all')"
-          >
-            全部
-          </button>
-          <button 
-            class="tab-btn" 
-            :class="{ active: activeTab === 'project_group' }"
-            @click="changeTab('project_group')"
-          >
-            项目群
-          </button>
-          <button 
-            class="tab-btn" 
-            :class="{ active: activeTab === 'course_group' }"
-            @click="changeTab('course_group')"
-          >
-            课程群
-          </button>
-        </div>
+        <el-tabs v-model="activeTab" class="elevated-tabs">
+          <el-tab-pane label="全部" name="all" />
+          <el-tab-pane label="项目群" name="project_group" />
+          <el-tab-pane label="课程群" name="course_group" />
+        </el-tabs>
 
         <div class="room-list">
-          <div 
-            class="room-item" 
-            v-for="room in filteredRooms" 
-            :key="room.id"
-            :class="{ active: selectedRoom?.id === room.id }"
-            @click="selectRoom(room)"
-          >
-            <div class="room-avatar">
-              <div class="avatar-icon" :style="{ background: room.color || '#8aa1ff' }">
-                {{ (room.name || '?').charAt(0) }}
+          <template v-if="loading">
+            <el-skeleton :rows="5" animated style="padding:8px" />
+          </template>
+          <template v-else>
+            <div
+              class="room-item"
+              v-for="room in filteredRooms"
+              :key="room.id"
+              :class="{ active: selectedRoom?.id === room.id }"
+              @click="selectRoom(room)"
+            >
+              <div class="room-avatar">
+                <el-badge :value="room.unread_messages_count" :hidden="!(room.unread_messages_count > 0)">
+                  <div class="avatar-icon" :style="{ background: room.color || '#8aa1ff' }">
+                    {{ (room.name || '?').charAt(0) }}
+                  </div>
+                </el-badge>
+                <div class="online-indicator" v-if="(room.online_members_count || 0) > 0"></div>
               </div>
-              <div class="online-indicator" v-if="(room.online_members_count || 0) > 0"></div>
+              <div class="room-info">
+                <div class="room-header">
+                  <h4 class="room-name">{{ room.name }}</h4>
+                  <span class="room-time">{{ formatTime(room.last_message?.sent_at) }}</span>
+                </div>
+                <div class="room-message">
+                  <span class="message-sender" v-if="room.last_message?.sender_name">{{ room.last_message.sender_name }}:</span>
+                  {{ room.last_message?.content_text || '暂无消息' }}
+                </div>
+              </div>
             </div>
-            <div class="room-info">
-              <div class="room-header">
-                <h4 class="room-name">{{ room.name }}</h4>
-                <span class="room-time">{{ formatTime(room.last_message?.sent_at) }}</span>
-              </div>
-              <div class="room-message">
-                <span class="message-sender" v-if="room.last_message?.sender_name">{{ room.last_message.sender_name }}:</span>
-                {{ room.last_message?.content_text || '暂无消息' }}
-              </div>
-              <div class="unread-badge" v-if="(room.unread_messages_count || 0) > 0">{{ room.unread_messages_count }}</div>
+            <el-empty description="暂无聊天室" v-if="filteredRooms.length === 0" />
+            <div class="empty-rooms" v-if="filteredRooms.length === 0" style="font-size:12px;">
+              你可以 <a href="javascript:void(0)" @click="openCreateRoomModal">创建一个</a>
+              或 <a href="javascript:void(0)" @click="openApplyByIdModal">按ID申请加入</a>
             </div>
-          </div>
-          <div class="empty-rooms" v-if="!loading && filteredRooms.length === 0">暂无聊天室</div>
-          <div class="empty-rooms" v-if="!loading && filteredRooms.length === 0" style="font-size:12px;">
-            你可以 <a href="javascript:void(0)" @click="openCreateRoomModal">创建一个</a>
-            或 <a href="javascript:void(0)" @click="openApplyByIdModal">按ID申请加入</a>
-          </div>
-          <div class="loading" v-if="loading">加载中...</div>
+            <div class="error" v-if="roomsError">{{ roomsError }}</div>
+          </template>
         </div>
       </div>
 
@@ -98,24 +81,24 @@
             </div>
           </div>
           <div class="chat-actions">
-            <button class="action-btn" @click="viewMembers">
+            <button class="action-btn" @click="viewMembers" title="成员列表">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M16,4C18.11,4 19.99,5.89 19.99,8C19.99,10.11 18.11,12 16,12C13.89,12 12,10.11 12,8C12,5.89 13.89,4 16,4M16,14C20.42,14 24,15.79 24,18V20H8V18C8,15.79 11.58,14 16,14Z"/>
+                <path d="M16,4C18.11,4 19.99,5.89 19.99,8C19.99,10.11 18.11,12 16,12C13.89,12 12,10.11 12,8C12,5.89 13.89,4 16,4M16,14C20.42,14 24,15.79 24,18V20H8V18C8,15.79 11.58,14 16,14Z" />
               </svg>
             </button>
             <button class="action-btn" @click="openApplyModal" title="申请加入">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M10,17L15,12L10,7V17Z"/>
+                <path d="M10,17L15,12L10,7V17Z" />
               </svg>
             </button>
             <button class="action-btn" @click="openJoinRequestsModal" title="入群申请">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12,2A10,10 0 1,0 22,12A10,10 0 0,0 12,2M7,9H17V11H7V9M7,13H14V15H7V13Z"/>
+                <path d="M12,2A10,10 0 1,0 22,12A10,10 0 0,0 12,2M7,9H17V11H7V9M7,13H14V15H7V13Z" />
               </svg>
             </button>
             <button class="action-btn" @click="openUpdateRoomModal" title="房间设置">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
+                <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" />
               </svg>
             </button>
             <button class="action-btn" @click="deleteRoom" title="删除聊天室">
@@ -126,7 +109,7 @@
           </div>
         </div>
 
-        <div class="messages-container" v-if="selectedRoom">
+        <div class="messages-container" v-if="selectedRoom" ref="messagesContainer">
           <div class="message" v-for="message in messages" :key="message.id" :class="{ own: message.isOwn }">
             <div class="message-avatar" v-if="!message.isOwn">
               {{ (message.sender || '?').charAt(0) }}
@@ -147,29 +130,26 @@
 
         <div class="chat-input" v-if="selectedRoom">
           <div class="input-container">
-            <button class="attach-btn">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M16.5,6V17.5A4,4 0 0,1 12.5,21.5A4,4 0 0,1 8.5,17.5V5A2.5,2.5 0 0,1 11,2.5A2.5,2.5 0 0,1 13.5,5V15.5A1,1 0 0,1 12.5,16.5A1,1 0 0,1 11.5,15.5V6H10V15.5A2.5,2.5 0 0,0 12.5,18A2.5,2.5 0 0,0 15,15.5V5A4,4 0 0,0 11,1A4,4 0 0,0 7,5V17.5A5.5,5.5 0 0,0 12.5,23A5.5,5.5 0 0,0 18,17.5V6H16.5Z"/>
-              </svg>
-            </button>
-            <input 
-              type="text" 
-              placeholder="输入消息..." 
+            <el-button class="attach-btn" circle :disabled="true">
+              <el-icon><Paperclip /></el-icon>
+            </el-button>
+            <el-input
               v-model="newMessage"
+              placeholder="输入消息..."
               @keyup.enter="sendMessage"
-            >
-            <button class="send-btn" @click="sendMessage" :disabled="!newMessage.trim() || sending">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z"/>
-              </svg>
-            </button>
+              clearable
+            />
+            <el-button type="primary" :loading="sending" :disabled="!newMessage.trim()" @click="sendMessage">
+              <el-icon><Position /></el-icon>
+              发送
+            </el-button>
           </div>
           <div class="error" v-if="errorMsg">{{ errorMsg }}</div>
         </div>
 
         <div class="empty-state" v-else>
           <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor" opacity="0.3">
-            <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4l4 4 4-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+            <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4l4 4 4-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
           </svg>
           <h3>选择一个聊天室开始对话</h3>
           <p>点击左侧的聊天室开始与团队成员交流</p>
@@ -177,156 +157,141 @@
       </div>
     </div>
 
-    <!-- 创建聊天室 Modal -->
-  <div v-if="showCreateModal" class="modal-overlay" @click.self="closeCreateRoomModal">
-      <div class="modal">
-    <h3>{{ editMode ? '编辑聊天室' : '新建聊天室' }}</h3>
-        <div class="form-row">
-          <label>名称</label>
-          <input v-model="createForm.name" placeholder="请输入聊天室名称" />
-        </div>
-        <div class="form-row">
-          <label>类型</label>
-          <select v-model="createForm.type">
-            <option value="general">普通群</option>
-            <option value="project_group">项目群</option>
-            <option value="course_group">课程群</option>
-            <option value="private">私密群</option>
-          </select>
-        </div>
+    <!-- 创建/编辑聊天室 Dialog -->
+    <el-dialog v-model="showCreateModal" :title="editMode ? '编辑聊天室' : '新建聊天室'" width="520px">
+      <el-form label-width="80px">
+        <el-form-item label="名称">
+          <el-input v-model="createForm.name" placeholder="请输入聊天室名称" />
+        </el-form-item>
+        <el-form-item label="类型">
+          <el-select v-model="createForm.type" placeholder="请选择类型" style="width:100%">
+            <el-option label="普通群" value="general" />
+            <el-option label="项目群" value="project_group" />
+            <el-option label="课程群" value="course_group" />
+            <el-option label="私密群" value="private" />
+          </el-select>
+        </el-form-item>
         <div class="form-two">
-          <div class="form-row">
-            <label>项目ID</label>
-            <input v-model.number="createForm.project_id" type="number" placeholder="可选" />
-          </div>
-          <div class="form-row">
-            <label>课程ID</label>
-            <input v-model.number="createForm.course_id" type="number" placeholder="可选" />
-          </div>
+          <el-form-item label="项目ID">
+            <el-input v-model.number="createForm.project_id" placeholder="可选" />
+          </el-form-item>
+          <el-form-item label="课程ID">
+            <el-input v-model.number="createForm.course_id" placeholder="可选" />
+          </el-form-item>
         </div>
-        <div class="form-row">
-          <label>颜色</label>
-          <input v-model="createForm.color" placeholder="#4facfe" />
-        </div>
-        <div class="modal-actions">
-          <button class="btn" @click="closeCreateRoomModal">取消</button>
-          <button class="primary-btn" :disabled="creating" @click="submitRoom">{{ creating ? (editMode ? '保存中...' : '创建中...') : (editMode ? '保存' : '创建') }}</button>
-        </div>
-        <div class="error" v-if="modalError">{{ modalError }}</div>
-      </div>
-    </div>
+        <el-form-item label="颜色">
+          <el-input v-model="createForm.color" placeholder="#4facfe" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="closeCreateRoomModal">取消</el-button>
+        <el-button type="primary" :loading="creating" @click="submitRoom">{{ editMode ? '保存' : '创建' }}</el-button>
+      </template>
+      <div class="error" v-if="modalError">{{ modalError }}</div>
+    </el-dialog>
 
     <!-- 成员列表 Modal -->
-    <div v-if="showMembersModal" class="modal-overlay" @click.self="closeMembersModal">
-      <div class="modal large">
-        <h3>成员列表（{{ members.length }}）</h3>
-        <div class="members-list">
-          <div class="member-item" v-for="m in members" :key="m.id">
-            <div class="member-left">
-              <div class="avatar">{{ (m.member_name || String(m.member_id)).charAt(0) }}</div>
-              <div>
-                <div class="name">{{ m.member_name || '用户' + m.member_id }}</div>
-                <div class="desc">角色：{{ m.role }} · 状态：{{ m.status }} · 加入：{{ formatTime(m.joined_at) }}</div>
-              </div>
-            </div>
-            <div class="member-actions">
-              <select v-model="memberRoleEdit[m.member_id]" @change="changeMemberRole(m)">
-                <option value="member">member</option>
-                <option value="admin">admin</option>
-              </select>
-              <button class="danger-btn" @click="removeMember(m)">移除</button>
+    <el-dialog v-model="showMembersModal" title="成员列表" width="720px">
+      <div class="members-list">
+        <div class="member-item" v-for="m in members" :key="m.id">
+          <div class="member-left">
+            <el-avatar :style="{ background: '#8aa1ff', color: '#fff' }">{{ (m.member_name || String(m.member_id)).charAt(0) }}</el-avatar>
+            <div>
+              <div class="name">{{ m.member_name || '用户' + m.member_id }}</div>
+              <div class="desc">角色：<el-tag size="small">{{ m.role }}</el-tag> · 状态：{{ m.status }} · 加入：{{ formatTime(m.joined_at) }}</div>
             </div>
           </div>
+          <div class="member-actions">
+            <el-select v-model="memberRoleEdit[m.member_id]" size="small" @change="changeMemberRole(m)">
+              <el-option label="member" value="member" />
+              <el-option label="admin" value="admin" />
+            </el-select>
+            <el-button type="danger" size="small" @click="removeMember(m)">移除</el-button>
+          </div>
         </div>
-        <div class="modal-actions">
-          <button class="btn" @click="closeMembersModal">关闭</button>
-        </div>
-        <div class="error" v-if="modalError">{{ modalError }}</div>
       </div>
-    </div>
+      <template #footer>
+        <el-button @click="closeMembersModal">关闭</el-button>
+      </template>
+      <div class="error" v-if="modalError">{{ modalError }}</div>
+    </el-dialog>
 
     <!-- 入群申请 Modal -->
-    <div v-if="showJoinModal" class="modal-overlay" @click.self="closeJoinRequestsModal">
-      <div class="modal large">
-        <h3>入群申请</h3>
-        <div class="filter-row">
-          <label>状态筛选</label>
-          <select v-model="joinStatusFilter" @change="loadJoinRequests()">
-            <option value="">全部</option>
-            <option value="pending">待处理</option>
-            <option value="approved">已通过</option>
-            <option value="rejected">已拒绝</option>
-          </select>
-        </div>
-        <div class="members-list">
-          <div class="member-item" v-for="jr in joinRequests" :key="jr.id">
-            <div class="member-left">
-              <div class="avatar">{{ String(jr.requester_id).charAt(0) }}</div>
-              <div>
-                <div class="name">申请人：{{ jr.requester_id }}</div>
-                <div class="desc">理由：{{ jr.reason || '无' }} · 状态：{{ jr.status }} · 时间：{{ formatTime(jr.requested_at) }}</div>
-              </div>
-            </div>
-            <div class="member-actions" v-if="jr.status === 'pending'">
-              <button class="primary-btn" @click="processJoin(jr, 'approved')">通过</button>
-              <button class="danger-btn" @click="processJoin(jr, 'rejected')">拒绝</button>
+    <el-dialog v-model="showJoinModal" title="入群申请" width="720px">
+      <div class="filter-row">
+        <span>状态筛选</span>
+        <el-select v-model="joinStatusFilter" size="small" style="width:160px" @change="loadJoinRequests">
+          <el-option label="全部" value="" />
+          <el-option label="待处理" value="pending" />
+          <el-option label="已通过" value="approved" />
+          <el-option label="已拒绝" value="rejected" />
+        </el-select>
+      </div>
+      <div class="members-list">
+        <div class="member-item" v-for="jr in joinRequests" :key="jr.id">
+          <div class="member-left">
+            <el-avatar>{{ String(jr.requester_id).charAt(0) }}</el-avatar>
+            <div>
+              <div class="name">申请人：{{ jr.requester_id }}</div>
+              <div class="desc">理由：{{ jr.reason || '无' }} · 状态：<el-tag size="small">{{ jr.status }}</el-tag> · 时间：{{ formatTime(jr.requested_at) }}</div>
             </div>
           </div>
-          <div v-if="joinLoading" class="loading">加载中...</div>
-          <div v-if="!joinLoading && joinRequests.length === 0" class="empty-rooms">暂无申请</div>
+          <div class="member-actions" v-if="jr.status === 'pending'">
+            <el-button type="primary" size="small" @click="processJoin(jr, 'approved')">通过</el-button>
+            <el-button type="danger" size="small" @click="processJoin(jr, 'rejected')">拒绝</el-button>
+          </div>
         </div>
-        <div class="modal-actions">
-          <button class="btn" @click="closeJoinRequestsModal">关闭</button>
-        </div>
-        <div class="error" v-if="modalError">{{ modalError }}</div>
+        <el-empty description="暂无申请" v-if="!joinLoading && joinRequests.length === 0" />
+        <el-skeleton :rows="3" animated v-if="joinLoading" />
       </div>
-    </div>
+      <template #footer>
+        <el-button @click="closeJoinRequestsModal">关闭</el-button>
+      </template>
+      <div class="error" v-if="modalError">{{ modalError }}</div>
+    </el-dialog>
 
     <!-- 申请加入 Modal -->
-    <div v-if="showApplyModal" class="modal-overlay" @click.self="closeApplyModal">
-      <div class="modal">
-        <h3>申请加入：{{ selectedRoom?.name }}</h3>
-        <div class="form-row">
-          <label>申请理由（可选）</label>
-          <input v-model="applyReason" placeholder="简单说明加入理由" />
-        </div>
-        <div class="modal-actions">
-          <button class="btn" @click="closeApplyModal">取消</button>
-          <button class="primary-btn" :disabled="applying" @click="submitApply">{{ applying ? '提交中...' : '提交申请' }}</button>
-        </div>
-        <div class="error" v-if="modalError">{{ modalError }}</div>
-      </div>
-    </div>
+    <el-dialog v-model="showApplyModal" :title="`申请加入：${selectedRoom?.name || ''}`" width="520px">
+      <el-form label-width="100px">
+        <el-form-item label="申请理由">
+          <el-input v-model="applyReason" placeholder="简单说明加入理由" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="closeApplyModal">取消</el-button>
+        <el-button type="primary" :loading="applying" @click="submitApply">提交申请</el-button>
+      </template>
+      <div class="error" v-if="modalError">{{ modalError }}</div>
+    </el-dialog>
 
     <!-- 按ID申请加入 Modal -->
-    <div v-if="showApplyByIdModal" class="modal-overlay" @click.self="closeApplyByIdModal">
-      <div class="modal">
-        <h3>按ID申请加入聊天室</h3>
-        <div class="form-row">
-          <label>聊天室ID</label>
-          <input v-model.number="applyByIdRoomId" type="number" placeholder="请输入房间ID" />
-        </div>
-        <div class="form-row">
-          <label>申请理由（可选）</label>
-          <input v-model="applyByIdReason" placeholder="简单说明加入理由" />
-        </div>
-        <div class="modal-actions">
-          <button class="btn" @click="closeApplyByIdModal">取消</button>
-          <button class="primary-btn" :disabled="applying || !applyByIdRoomId" @click="submitApplyById">{{ applying ? '提交中...' : '提交申请' }}</button>
-        </div>
-        <div class="error" v-if="modalError">{{ modalError }}</div>
-      </div>
-    </div>
+    <el-dialog v-model="showApplyByIdModal" title="按ID申请加入聊天室" width="520px">
+      <el-form label-width="100px">
+        <el-form-item label="聊天室ID">
+          <el-input v-model.number="applyByIdRoomId" type="number" placeholder="请输入房间ID" />
+        </el-form-item>
+        <el-form-item label="申请理由">
+          <el-input v-model="applyByIdReason" placeholder="简单说明加入理由" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="closeApplyByIdModal">取消</el-button>
+        <el-button type="primary" :loading="applying" :disabled="!applyByIdRoomId" @click="submitApplyById">提交申请</el-button>
+      </template>
+      <div class="error" v-if="modalError">{{ modalError }}</div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 import { useRouter } from 'vue-router'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { Search, Paperclip, Position } from '@element-plus/icons-vue'
 import { ApiService } from '@/services/api.js'
 
 export default {
   name: 'ChatRooms',
+  components: { Search, Paperclip, Position },
   setup() {
     const router = useRouter()
     const activeTab = ref('all')
@@ -340,9 +305,12 @@ export default {
     const errorMsg = ref('')
     const modalError = ref('')
     const rooms = ref([])
-    const messages = ref([])
+  const messages = ref([])
+  const messagesContainer = ref(null)
     const currentUser = ref(null)
     const currentUserId = ref(null)
+  // 权限标记（若外层或模板存在引用，避免未定义告警）
+  const noAccess = ref(false)
 
     // Modals state
   const showCreateModal = ref(false)
@@ -497,12 +465,20 @@ export default {
       }
     }
 
+    const scrollToBottom = () => {
+      nextTick(() => {
+        const el = messagesContainer.value
+        if (el) el.scrollTop = el.scrollHeight
+      })
+    }
+
     const loadMessages = async (roomId) => {
       messagesLoading.value = true
       try {
         const resp = await ApiService.getChatRoomMessages(roomId, 50, 0)
         const data = resp?.data?.data || []
         messages.value = data.map(mapMessageToView)
+        scrollToBottom()
       } catch (e) {
         errorMsg.value = e.message || '消息加载失败'
       } finally {
@@ -629,7 +605,7 @@ export default {
 
     const closeMembersModal = () => { showMembersModal.value = false }
 
-    onMounted(async () => {
+  onMounted(async () => {
       try {
         // 当前用户用于标识自己消息
         const me = JSON.parse(localStorage.getItem('currentUser') || 'null')
@@ -641,13 +617,19 @@ export default {
       await loadRooms()
     })
 
+  // 监听 activeTab 切换自动刷新
+  watch(activeTab, async () => { await loadRooms() })
+  // 监听消息变化滚动到底部
+  watch(messages, () => { scrollToBottom() })
+
     return {
       activeTab,
       searchQuery,
       selectedRoom,
       newMessage,
       rooms,
-      messages,
+  messages,
+  messagesContainer,
       loading,
       messagesLoading,
       errorMsg,
@@ -685,6 +667,8 @@ export default {
       changeTab,
   openUpdateRoomModal,
   deleteRoom,
+  // 权限
+  noAccess,
   // apply join
   showApplyModal,
   openApplyModal,
@@ -800,44 +784,12 @@ export default {
   color: #6c757d;
 }
 
-.search-box input {
-  width: 100%;
-  padding: 12px 12px 12px 36px;
+.search-box :deep(.el-input__wrapper){
+  box-shadow: none;
   border: 2px solid #e9ecef;
-  border-radius: 8px;
-  font-size: 14px;
 }
 
-.search-box input:focus {
-  outline: none;
-  border-color: #4facfe;
-}
-
-.chat-tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 16px;
-  background: #f8f9fa;
-  padding: 4px;
-  border-radius: 8px;
-}
-
-.tab-btn {
-  flex: 1;
-  padding: 8px 12px;
-  border: none;
-  background: transparent;
-  color: #6c757d;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.3s ease;
-}
-
-.tab-btn.active {
-  background: #4facfe;
-  color: white;
-}
+.elevated-tabs{ margin-bottom: 8px; }
 
 .room-list {
   flex: 1;
@@ -936,18 +888,7 @@ export default {
   font-weight: 500;
 }
 
-.unread-badge {
-  position: absolute;
-  top: 0;
-  right: 0;
-  background: #dc3545;
-  color: white;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 10px;
-  min-width: 16px;
-  text-align: center;
-}
+/* unread badge交由 el-badge 渲染 */
 
 .chat-area {
   background: white;
