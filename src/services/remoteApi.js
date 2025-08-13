@@ -461,40 +461,79 @@ export class CollectionsAPI extends BaseAPI {
 // 聊天室API
 export class ChatRoomsAPI extends BaseAPI {
   constructor() {
+    // 不同端点前缀混用：读取走 /chatrooms，管理/创建走 /chat-rooms
     super('/chatrooms')
+    this.baseRooms = '/chatrooms'
+    this.baseMgmt = '/chat-rooms'
   }
 
+  async requestTo(base, method, path, data = null, params = null) {
+    try {
+      const cfg = { method, url: `${base}${path}` }
+      if (data) cfg.data = data
+      if (params) cfg.params = params
+      const resp = await httpClient(cfg)
+      return resp.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  }
+
+  // 列表/详情/更新/删除：/chatrooms
   async getAllChatRooms(roomType = null) {
-    return await this.request('GET', '/', null,
+    return await this.requestTo(this.baseRooms, 'GET', '/', null,
       roomType ? { room_type: roomType } : null
     )
   }
 
   async getChatRoomById(roomId) {
-    return await this.request('GET', `/${roomId}`)
-  }
-
-  async createChatRoom(roomData) {
-    return await this.request('POST', '/', roomData)
+    return await this.requestTo(this.baseRooms, 'GET', `/${roomId}`)
   }
 
   async updateChatRoom(roomId, roomData) {
-    return await this.request('PUT', `/${roomId}`, roomData)
+  return await this.requestTo(this.baseRooms, 'PUT', `/${roomId}/`, roomData)
   }
 
   async deleteChatRoom(roomId) {
-    return await this.request('DELETE', `/${roomId}`)
+    return await this.requestTo(this.baseRooms, 'DELETE', `/${roomId}`)
   }
 
   async getMessages(roomId, limit = 50, offset = 0) {
-    return await this.request('GET', `/${roomId}/messages/`, null, {
-      limit,
-      offset
-    })
+    return await this.requestTo(this.baseRooms, 'GET', `/${roomId}/messages/`, null, { limit, offset })
   }
 
   async sendMessage(roomId, messageData) {
-    return await this.request('POST', `/${roomId}/messages/`, messageData)
+    return await this.requestTo(this.baseRooms, 'POST', `/${roomId}/messages/`, messageData)
+  }
+
+  async getMembers(roomId) {
+    return await this.requestTo(this.baseRooms, 'GET', `/${roomId}/members`)
+  }
+
+  // 创建/角色/入群申请：/chat-rooms
+  async createChatRoom(roomData) {
+    return await this.requestTo(this.baseMgmt, 'POST', '/', roomData)
+  }
+
+  async setMemberRole(roomId, memberId, role) {
+    return await this.requestTo(this.baseMgmt, 'PUT', `/${roomId}/members/${memberId}/set-role`, { role })
+  }
+
+  async removeMember(roomId, memberId) {
+    return await this.requestTo(this.baseMgmt, 'DELETE', `/${roomId}/members/${memberId}`)
+  }
+
+  async createJoinRequest(roomId, requestData) {
+    return await this.requestTo(this.baseMgmt, 'POST', `/${roomId}/join-request`, requestData)
+  }
+
+  async getJoinRequests(roomId, statusFilter = null) {
+    const params = statusFilter ? { status_filter: statusFilter } : null
+    return await this.requestTo(this.baseMgmt, 'GET', `/${roomId}/join-requests`, null, params)
+  }
+
+  async processJoinRequest(requestId, status) {
+    return await this.requestTo(this.baseMgmt, 'POST', `/join-requests/${requestId}/process`, { status })
   }
 }
 

@@ -514,7 +514,28 @@ export class ApiService {
   static async getChatRooms(roomType = null) {
     try {
       const response = await remoteApiService.chatRooms.getAllChatRooms(roomType)
-      return createResponse(response)
+      const pickArrayDeep = (obj) => {
+        if (Array.isArray(obj)) return obj
+        if (!obj || typeof obj !== 'object') return []
+        const candidates = [
+          obj.data,
+          obj.results,
+          obj.items,
+          obj.rooms,
+          obj.room_list,
+          obj.chatrooms,
+          obj.chat_rooms
+        ]
+        for (const c of candidates) if (Array.isArray(c)) return c
+        // 再深入一层 data
+        if (obj.data && typeof obj.data === 'object') {
+          const deep = pickArrayDeep(obj.data)
+          if (Array.isArray(deep)) return deep
+        }
+        return []
+      }
+      const list = pickArrayDeep(response)
+      return createResponse(list)
     } catch (error) {
       return createResponse(null, false, error.message)
     }
@@ -523,6 +544,129 @@ export class ApiService {
   static async createChatRoom(roomData) {
     try {
       const response = await remoteApiService.chatRooms.createChatRoom(roomData)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async getChatRoom(roomId) {
+    try {
+      const response = await remoteApiService.chatRooms.getChatRoomById(roomId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async updateChatRoom(roomId, roomData) {
+    try {
+      const response = await remoteApiService.chatRooms.updateChatRoom(roomId, roomData)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async deleteChatRoom(roomId) {
+    try {
+      const response = await remoteApiService.chatRooms.deleteChatRoom(roomId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async getChatRoomMembers(roomId) {
+    try {
+      const response = await remoteApiService.chatRooms.getMembers(roomId)
+      const list = (function pick(obj){
+        if (Array.isArray(obj)) return obj
+        if (!obj || typeof obj !== 'object') return []
+        if (Array.isArray(obj.data)) return obj.data
+        if (Array.isArray(obj.results)) return obj.results
+        if (obj.data && typeof obj.data === 'object') return pick(obj.data)
+        return []
+      })(response)
+      return createResponse(list)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async setChatRoomMemberRole(roomId, memberId, role) {
+    try {
+      const response = await remoteApiService.chatRooms.setMemberRole(roomId, memberId, role)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async removeChatRoomMember(roomId, memberId) {
+    try {
+      const response = await remoteApiService.chatRooms.removeMember(roomId, memberId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async createJoinRequest(roomId, requestData) {
+    try {
+      const response = await remoteApiService.chatRooms.createJoinRequest(roomId, requestData)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async getJoinRequests(roomId, statusFilter = null) {
+    try {
+      const response = await remoteApiService.chatRooms.getJoinRequests(roomId, statusFilter)
+      const list = (function pick(obj){
+        if (Array.isArray(obj)) return obj
+        if (!obj || typeof obj !== 'object') return []
+        if (Array.isArray(obj.data)) return obj.data
+        if (Array.isArray(obj.results)) return obj.results
+        if (obj.data && typeof obj.data === 'object') return pick(obj.data)
+        return []
+      })(response)
+      return createResponse(list)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async processJoinRequest(requestId, status) {
+    try {
+      const response = await remoteApiService.chatRooms.processJoinRequest(requestId, status)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async getChatRoomMessages(roomId, limit = 50, offset = 0) {
+    try {
+      const response = await remoteApiService.chatRooms.getMessages(roomId, limit, offset)
+      const list = (function pick(obj){
+        if (Array.isArray(obj)) return obj
+        if (!obj || typeof obj !== 'object') return []
+        if (Array.isArray(obj.data)) return obj.data
+        if (Array.isArray(obj.results)) return obj.results
+        if (obj.data && typeof obj.data === 'object') return pick(obj.data)
+        return []
+      })(response)
+      return createResponse(list)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async sendChatRoomMessage(roomId, messageData) {
+    try {
+      const response = await remoteApiService.chatRooms.sendMessage(roomId, messageData)
       return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
