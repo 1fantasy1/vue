@@ -483,6 +483,33 @@ export class ApiService {
     }
   }
 
+  static async getDailyRecord(recordId) {
+    try {
+      const response = await remoteApiService.dailyRecords.getRecordById(recordId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async updateDailyRecord(recordId, recordData) {
+    try {
+      const response = await remoteApiService.dailyRecords.updateRecord(recordId, recordData)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async deleteDailyRecord(recordId) {
+    try {
+      const response = await remoteApiService.dailyRecords.deleteRecord(recordId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
   // ========== 聊天室相关API ==========
   static async getChatRooms(roomType = null) {
     try {

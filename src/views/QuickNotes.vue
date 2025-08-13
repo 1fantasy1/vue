@@ -24,7 +24,21 @@
           placeholder="记录你的想法、灵感或待办事项..."
           class="quick-input"
           @keydown.ctrl.enter="addQuickNote"
+          :disabled="loading"
         ></textarea>
+        
+        <!-- 标签输入 -->
+        <div class="tags-input-section">
+          <label for="tags-input">标签（可选）：</label>
+          <input 
+            id="tags-input"
+            v-model="newNoteTags" 
+            placeholder="用空格或逗号分隔多个标签，如：学习 编程 Vue3"
+            class="tags-input"
+            :disabled="loading"
+          >
+        </div>
+        
         <div class="add-actions">
           <div class="mood-selector">
             <button 
@@ -34,13 +48,19 @@
               :class="{ active: selectedMood === mood.value }"
               @click="selectedMood = mood.value"
               :title="mood.label"
+              :disabled="loading"
             >
               {{ mood.emoji }}
             </button>
           </div>
-          <button class="add-btn" @click="addQuickNote" :disabled="!newNote.trim()">
-            添加记录
+          <button class="add-btn" @click="addQuickNote" :disabled="!newNote.trim() || loading">
+            {{ loading ? '添加中...' : '添加记录' }}
           </button>
+        </div>
+        
+        <!-- 错误提示 -->
+        <div v-if="error" class="error-message">
+          {{ error }}
         </div>
       </div>
     </div>
@@ -51,10 +71,15 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
             <path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
           </svg>
-          <input type="text" placeholder="搜索记录..." v-model="searchQuery">
+          <input 
+            type="text" 
+            placeholder="搜索记录..." 
+            v-model="searchQuery"
+            @input="onSearchChange"
+          >
         </div>
         
-        <select v-model="filterMood" class="mood-filter">
+        <select v-model="filterMood" class="mood-filter" @change="onFilterChange">
           <option value="">所有心情</option>
           <option v-for="mood in moods" :key="mood.value" :value="mood.value">
             {{ mood.emoji }} {{ mood.label }}
@@ -87,19 +112,32 @@
     </div>
 
     <div class="notes-container" :class="viewMode">
-      <div class="note-item" v-for="note in filteredNotes" :key="note.id">
+      <!-- 加载状态 -->
+      <div v-if="loading && notes.length === 0" class="loading-message">
+        正在加载记录...
+      </div>
+      
+      <!-- 空状态 -->
+      <div v-else-if="!loading && notes.length === 0" class="empty-message">
+        <div class="empty-icon">📝</div>
+        <p>还没有任何记录</p>
+        <p class="empty-hint">快来记录你的想法和灵感吧！</p>
+      </div>
+      
+      <!-- 记录列表 -->
+      <div v-else class="note-item" v-for="note in filteredNotes" :key="note.id">
         <div class="note-header">
           <div class="note-info">
             <span class="note-mood">{{ getMoodEmoji(note.mood) }}</span>
-            <span class="note-time">{{ note.time }}</span>
+            <span class="note-time">{{ formatTime(note.created_at || note.time) }}</span>
           </div>
           <div class="note-actions">
-            <button class="action-btn" @click="editNote(note)" title="编辑">
+            <button class="action-btn" @click="editNote(note)" title="编辑" :disabled="loading">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.13,5.12L18.88,8.87M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25Z"/>
               </svg>
             </button>
-            <button class="action-btn" @click="deleteNote(note.id)" title="删除">
+            <button class="action-btn" @click="deleteNote(note.id)" title="删除" :disabled="loading">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
               </svg>
@@ -111,9 +149,14 @@
           {{ note.content }}
         </div>
         
-        <div class="note-footer" v-if="note.tags && note.tags.length > 0">
+        <div class="note-footer" v-if="note.tags">
           <div class="note-tags">
-            <span class="tag" v-for="tag in note.tags" :key="tag">#{{ tag }}</span>
+            <template v-if="typeof note.tags === 'string' && note.tags">
+              <span class="tag" v-for="tag in note.tags.split(',').map(t => t.trim()).filter(t => t)" :key="tag">#{{ tag }}</span>
+            </template>
+            <template v-else-if="Array.isArray(note.tags) && note.tags.length > 0">
+              <span class="tag" v-for="tag in note.tags" :key="tag">#{{ tag }}</span>
+            </template>
           </div>
         </div>
       </div>
@@ -185,13 +228,15 @@
 
 <script>
 import { useRouter } from 'vue-router'
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { ApiService } from '@/services/api'
 
 export default {
   name: 'QuickNotes',
   setup() {
     const router = useRouter()
     const newNote = ref('')
+    const newNoteTags = ref('')
     const selectedMood = ref('neutral')
     const searchQuery = ref('')
     const filterMood = ref('')
@@ -200,6 +245,8 @@ export default {
     const editContent = ref('')
     const editMood = ref('neutral')
     const editTagsInput = ref('')
+    const loading = ref(false)
+    const error = ref('')
     
     const moods = ref([
       { value: 'happy', emoji: '😊', label: '开心' },
@@ -210,95 +257,66 @@ export default {
       { value: 'sad', emoji: '😔', label: '难过' }
     ])
     
-    const notes = ref([
-      {
-        id: 1,
-        content: '今天学习了Vue 3的组合式API，感觉比Options API更灵活，特别是在逻辑复用方面。需要多练习几个实际项目来加深理解。',
-        mood: 'thinking',
-        time: '2024-01-15 14:30',
-        tags: ['学习', 'Vue3', '编程']
-      },
-      {
-        id: 2,
-        content: '项目演示非常成功！团队合作很愉快，大家都很有干劲。下一步要优化性能和用户体验。',
-        mood: 'excited',
-        time: '2024-01-15 10:15',
-        tags: ['项目', '团队', '成功']
-      },
-      {
-        id: 3,
-        content: '遇到了一个复杂的算法问题，花了一整天才解决。虽然累但很有成就感。',
-        mood: 'tired',
-        time: '2024-01-14 18:45',
-        tags: ['算法', '解决问题', '成就感']
-      },
-      {
-        id: 4,
-        content: '看了一篇关于TypeScript高级类型的文章，泛型的使用真的很强大，可以让代码更加类型安全。',
-        mood: 'happy',
-        time: '2024-01-14 16:20',
-        tags: ['TypeScript', '泛型', '学习']
-      },
-      {
-        id: 5,
-        content: '今天的代码review发现了几个可以优化的地方，同事的建议很中肯，学到了新的写法。',
-        mood: 'neutral',
-        time: '2024-01-13 15:30',
-        tags: ['代码review', '学习', '优化']
-      },
-      {
-        id: 6,
-        content: '设计师给出的新UI方案很棒，用户体验会提升很多。期待实现后的效果。',
-        mood: 'excited',
-        time: '2024-01-13 11:45',
-        tags: ['UI设计', '用户体验', '期待']
-      },
-      {
-        id: 7,
-        content: 'Bug修复花了比预期更长的时间，但最终找到了根本原因。调试技巧还需要提升。',
-        mood: 'thinking',
-        time: '2024-01-12 17:20',
-        tags: ['Bug修复', '调试', '技巧提升']
-      },
-      {
-        id: 8,
-        content: '周末学习了一些产品设计的知识，对用户需求分析有了新的认识。',
-        mood: 'happy',
-        time: '2024-01-12 09:30',
-        tags: ['产品设计', '用户需求', '周末学习']
+    const notes = ref([])
+
+    // 加载所有记录
+    const loadNotes = async () => {
+      loading.value = true
+      error.value = ''
+      try {
+        const response = await ApiService.getDailyRecords(filterMood.value || null, searchQuery.value || null)
+        if (response.success) {
+          notes.value = response.data || []
+        } else {
+          error.value = response.message || '加载记录失败'
+        }
+      } catch (err) {
+        error.value = '网络错误，请稍后重试'
+        console.error('加载记录失败:', err)
+      } finally {
+        loading.value = false
       }
-    ])
+    }
+
+    // 组件挂载时加载数据
+    onMounted(() => {
+      loadNotes()
+    })
 
     const filteredNotes = computed(() => {
       let filtered = notes.value
 
       if (searchQuery.value) {
-        filtered = filtered.filter(note => 
-          note.content.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-          note.tags.some(tag => tag.toLowerCase().includes(searchQuery.value.toLowerCase()))
-        )
+        filtered = filtered.filter(note => {
+          const searchTerm = searchQuery.value.toLowerCase()
+          const content = note.content ? note.content.toLowerCase() : ''
+          const tagsString = note.tags ? note.tags.toLowerCase() : ''
+          return content.includes(searchTerm) || tagsString.includes(searchTerm)
+        })
       }
 
       if (filterMood.value) {
         filtered = filtered.filter(note => note.mood === filterMood.value)
       }
 
-      return filtered.sort((a, b) => new Date(b.time) - new Date(a.time))
+      return filtered.sort((a, b) => new Date(b.created_at || b.time) - new Date(a.created_at || a.time))
     })
 
     const todayNotes = computed(() => {
       const today = new Date().toDateString()
-      return notes.value.filter(note => 
-        new Date(note.time).toDateString() === today
-      ).length
+      return notes.value.filter(note => {
+        const noteDate = new Date(note.created_at || note.time).toDateString()
+        return noteDate === today
+      }).length
     })
 
     const weekNotes = computed(() => {
       const weekAgo = new Date()
       weekAgo.setDate(weekAgo.getDate() - 7)
-      return notes.value.filter(note => 
-        new Date(note.time) >= weekAgo
-      ).length
+      return notes.value.filter(note => {
+        const noteDate = new Date(note.created_at || note.time)
+        return noteDate >= weekAgo
+      }).length
     })
 
     const getMoodEmoji = (mood) => {
@@ -306,33 +324,84 @@ export default {
       return moodObj ? moodObj.emoji : '😐'
     }
 
-    const addQuickNote = () => {
-      if (!newNote.value.trim()) return
+    const formatTime = (timeString) => {
+      if (!timeString) return ''
       
-      const note = {
-        id: Date.now(),
-        content: newNote.value,
-        mood: selectedMood.value,
-        time: new Date().toLocaleString('zh-CN', {
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
+      const date = new Date(timeString)
+      const now = new Date()
+      const diffMs = now - date
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+      
+      if (diffDays === 0) {
+        // 今天 - 显示时间
+        return date.toLocaleString('zh-CN', {
           hour: '2-digit',
           minute: '2-digit'
-        }),
-        tags: []
+        })
+      } else if (diffDays === 1) {
+        // 昨天
+        return '昨天'
+      } else if (diffDays < 7) {
+        // 一周内
+        return `${diffDays}天前`
+      } else {
+        // 一周以上 - 显示日期
+        return date.toLocaleDateString('zh-CN', {
+          month: '2-digit',
+          day: '2-digit'
+        })
       }
+    }
+
+    const addQuickNote = async () => {
+      if (!newNote.value.trim()) return
       
-      notes.value.unshift(note)
-      newNote.value = ''
-      selectedMood.value = 'neutral'
+      loading.value = true
+      error.value = ''
+      
+      try {
+        const recordData = {
+          content: newNote.value,
+          mood: selectedMood.value || null,
+          tags: newNoteTags.value.trim() ? 
+                newNoteTags.value.replace(/[,，\s]+/g, ',').replace(/^,|,$/g, '') : 
+                null
+        }
+        
+        const response = await ApiService.createDailyRecord(recordData)
+        if (response.success) {
+          // 创建成功后重新加载数据
+          await loadNotes()
+          newNote.value = ''
+          newNoteTags.value = ''
+          selectedMood.value = 'neutral'
+        } else {
+          error.value = response.message || '创建记录失败'
+        }
+      } catch (err) {
+        error.value = '网络错误，请稍后重试'
+        console.error('创建记录失败:', err)
+      } finally {
+        loading.value = false
+      }
     }
 
     const editNote = (note) => {
       editingNote.value = note
       editContent.value = note.content
-      editMood.value = note.mood
-      editTagsInput.value = note.tags ? note.tags.join(' ') : ''
+      editMood.value = note.mood || 'neutral'
+      // 处理标签，如果是逗号分隔的字符串就转换为空格分隔
+      if (note.tags) {
+        if (typeof note.tags === 'string') {
+          editTagsInput.value = note.tags.split(',').map(tag => tag.trim()).join(' ')
+        } else if (Array.isArray(note.tags)) {
+          editTagsInput.value = note.tags.join(' ')
+        } else {
+          editTagsInput.value = ''
+        }
+      } else {
+        editTagsInput.value = ''
+      }
     }
 
     const closeEdit = () => {
@@ -342,25 +411,52 @@ export default {
       editTagsInput.value = ''
     }
 
-    const saveEdit = () => {
-      if (editingNote.value) {
-        editingNote.value.content = editContent.value
-        editingNote.value.mood = editMood.value
-        editingNote.value.tags = editTagsInput.value
-          .split(' ')
-          .filter(tag => tag.trim())
-          .map(tag => tag.trim())
+    const saveEdit = async () => {
+      if (!editingNote.value) return
+      
+      loading.value = true
+      error.value = ''
+      
+      try {
+        const updateData = {
+          content: editContent.value,
+          mood: editMood.value || null,
+          tags: editTagsInput.value.trim() ? editTagsInput.value.replace(/\s+/g, ',') : null
+        }
         
-        closeEdit()
+        const response = await ApiService.updateDailyRecord(editingNote.value.id, updateData)
+        if (response.success) {
+          await loadNotes()
+          closeEdit()
+        } else {
+          error.value = response.message || '更新记录失败'
+        }
+      } catch (err) {
+        error.value = '网络错误，请稍后重试'
+        console.error('更新记录失败:', err)
+      } finally {
+        loading.value = false
       }
     }
 
-    const deleteNote = (noteId) => {
-      if (confirm('确定要删除这条记录吗？')) {
-        const index = notes.value.findIndex(note => note.id === noteId)
-        if (index > -1) {
-          notes.value.splice(index, 1)
+    const deleteNote = async (noteId) => {
+      if (!confirm('确定要删除这条记录吗？')) return
+      
+      loading.value = true
+      error.value = ''
+      
+      try {
+        const response = await ApiService.deleteDailyRecord(noteId)
+        if (response.success) {
+          await loadNotes()
+        } else {
+          error.value = response.message || '删除记录失败'
         }
+      } catch (err) {
+        error.value = '网络错误，请稍后重试'
+        console.error('删除记录失败:', err)
+      } finally {
+        loading.value = false
       }
     }
 
@@ -369,8 +465,27 @@ export default {
       console.log('查看记录:', note)
     }
 
+    // 筛选变化时重新加载数据（仅在心情筛选变化时）
+    const onFilterChange = () => {
+      // 心情筛选需要重新请求API，文本搜索由前端filteredNotes处理
+      if (filterMood.value) {
+        loadNotes()
+      }
+    }
+
+    // 监听搜索输入变化，防抖处理
+    let searchTimeout = null
+    const onSearchChange = () => {
+      clearTimeout(searchTimeout)
+      searchTimeout = setTimeout(() => {
+        // 如果有搜索关键词，可以考虑发送到后端进行更精确搜索
+        // 这里我们先使用前端筛选
+      }, 300)
+    }
+
     return {
       newNote,
+      newNoteTags,
       selectedMood,
       searchQuery,
       filterMood,
@@ -379,18 +494,24 @@ export default {
       editContent,
       editMood,
       editTagsInput,
+      loading,
+      error,
       moods,
       notes,
       filteredNotes,
       todayNotes,
       weekNotes,
       getMoodEmoji,
+      formatTime,
       addQuickNote,
       editNote,
       closeEdit,
       saveEdit,
       deleteNote,
-      viewNote
+      viewNote,
+      loadNotes,
+      onFilterChange,
+      onSearchChange
     }
   }
 }
@@ -506,10 +627,76 @@ export default {
   border-color: #a8edea;
 }
 
+.tags-input-section {
+  margin-bottom: 16px;
+}
+
+.tags-input-section label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #4a5568;
+}
+
+.tags-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+}
+
+.tags-input:focus {
+  outline: none;
+  border-color: #a8edea;
+}
+
+.tags-input:disabled {
+  background-color: #f8f9fa;
+  cursor: not-allowed;
+}
+
 .add-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.error-message {
+  background: #ffebee;
+  color: #c62828;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-top: 12px;
+  font-size: 0.9rem;
+  border-left: 4px solid #c62828;
+}
+
+.loading-message, .empty-message {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6c757d;
+}
+
+.empty-message {
+  background: #f8f9fa;
+  border-radius: 12px;
+  margin: 20px 0;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 16px;
+}
+
+.empty-hint {
+  font-size: 0.9rem;
+  color: #9ca3af;
+  margin-top: 8px;
 }
 
 .mood-selector {
