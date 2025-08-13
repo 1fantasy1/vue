@@ -247,6 +247,14 @@ export default {
     const editTagsInput = ref('')
     const loading = ref(false)
     const error = ref('')
+
+    // 统一解析 ApiService 响应
+    const parseApi = (res) => {
+      const success = res?.data?.success ?? res?.success ?? false
+      const payload = res?.data?.data ?? res?.data ?? null
+      const message = res?.data?.message ?? res?.message ?? ''
+      return { success, data: payload, message }
+    }
     
     const moods = ref([
       { value: 'happy', emoji: '😊', label: '开心' },
@@ -260,15 +268,17 @@ export default {
     const notes = ref([])
 
     // 加载所有记录
-    const loadNotes = async () => {
+  const loadNotes = async () => {
       loading.value = true
       error.value = ''
       try {
-        const response = await ApiService.getDailyRecords(filterMood.value || null, searchQuery.value || null)
-        if (response.success) {
-          notes.value = response.data || []
+        // 仅将心情作为后端筛选参数；文本搜索在前端完成
+        const res = await ApiService.getDailyRecords(filterMood.value || null, null)
+        const { success, data, message } = parseApi(res)
+        if (success) {
+          notes.value = Array.isArray(data) ? data : (data ? [data] : [])
         } else {
-          error.value = response.message || '加载记录失败'
+          error.value = message || '加载记录失败'
         }
       } catch (err) {
         error.value = '网络错误，请稍后重试'
@@ -290,8 +300,9 @@ export default {
         filtered = filtered.filter(note => {
           const searchTerm = searchQuery.value.toLowerCase()
           const content = note.content ? note.content.toLowerCase() : ''
-          const tagsString = note.tags ? note.tags.toLowerCase() : ''
-          return content.includes(searchTerm) || tagsString.includes(searchTerm)
+          const combined = note.combined_text ? String(note.combined_text).toLowerCase() : ''
+          const tagsString = note.tags ? (Array.isArray(note.tags) ? note.tags.join(',') : String(note.tags)).toLowerCase() : ''
+          return content.includes(searchTerm) || tagsString.includes(searchTerm) || combined.includes(searchTerm)
         })
       }
 
@@ -368,15 +379,23 @@ export default {
                 null
         }
         
-        const response = await ApiService.createDailyRecord(recordData)
-        if (response.success) {
-          // 创建成功后重新加载数据
-          await loadNotes()
+        const res = await ApiService.createDailyRecord(recordData)
+        const { success, data: created, message } = parseApi(res)
+        if (success) {
+          // 优先使用后端返回的记录插入到顶部；否则回退为刷新列表
+          if (created && created.id) {
+            // 防止筛选影响可见性：清空搜索并保留当前心情筛选
+            searchQuery.value = ''
+            // 插入到顶部，避免等待重新请求
+            notes.value = [created, ...notes.value]
+          } else {
+            await loadNotes()
+          }
           newNote.value = ''
           newNoteTags.value = ''
           selectedMood.value = 'neutral'
         } else {
-          error.value = response.message || '创建记录失败'
+          error.value = message || '创建记录失败'
         }
       } catch (err) {
         error.value = '网络错误，请稍后重试'
@@ -424,12 +443,13 @@ export default {
           tags: editTagsInput.value.trim() ? editTagsInput.value.replace(/\s+/g, ',') : null
         }
         
-        const response = await ApiService.updateDailyRecord(editingNote.value.id, updateData)
-        if (response.success) {
+        const res = await ApiService.updateDailyRecord(editingNote.value.id, updateData)
+        const { success, message } = parseApi(res)
+        if (success) {
           await loadNotes()
           closeEdit()
         } else {
-          error.value = response.message || '更新记录失败'
+          error.value = message || '更新记录失败'
         }
       } catch (err) {
         error.value = '网络错误，请稍后重试'
@@ -446,11 +466,12 @@ export default {
       error.value = ''
       
       try {
-        const response = await ApiService.deleteDailyRecord(noteId)
-        if (response.success) {
+        const res = await ApiService.deleteDailyRecord(noteId)
+        const { success, message } = parseApi(res)
+        if (success) {
           await loadNotes()
         } else {
-          error.value = response.message || '删除记录失败'
+          error.value = message || '删除记录失败'
         }
       } catch (err) {
         error.value = '网络错误，请稍后重试'
@@ -467,10 +488,8 @@ export default {
 
     // 筛选变化时重新加载数据（仅在心情筛选变化时）
     const onFilterChange = () => {
-      // 心情筛选需要重新请求API，文本搜索由前端filteredNotes处理
-      if (filterMood.value) {
-        loadNotes()
-      }
+      // 心情筛选变化时，重新请求数据；清空时也重载
+      loadNotes()
     }
 
     // 监听搜索输入变化，防抖处理
@@ -519,7 +538,8 @@ export default {
 
 <style scoped>
 .page {
-  padding: 24px;
+  /* 给底部预留空间，避免被底部导航遮挡 */
+  padding: 24px 24px calc(24px + var(--bottom-nav-height, 96px)) 24px;
   background: #f8f9fa;
   min-height: calc(100vh - 48px);
 }
@@ -1111,10 +1131,12 @@ export default {
 
 .stats-info {
   position: fixed;
-  bottom: 24px;
+  /* 永远位于底部导航之上：默认导航 96px 高度，可用 CSS 变量覆盖 */
+  bottom: calc(24px + var(--bottom-nav-height, 96px));
   right: 24px;
   display: flex;
   gap: 12px;
+  z-index: 9999;
 }
 
 .stats-card {
