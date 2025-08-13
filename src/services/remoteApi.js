@@ -606,11 +606,13 @@ export class ForumAPI extends BaseAPI {
   }
 
   async followUser(userId) {
-    return await this.request('POST', '/follow/', { user_id: userId })
+  // 按后端规范，字段为 followed_id
+  return await this.request('POST', '/follow/', { followed_id: userId })
   }
 
   async unfollowUser(userId) {
-    return await this.request('DELETE', '/unfollow/', { user_id: userId })
+  // DELETE 也需要在 body 中传入 followed_id
+  return await this.request('DELETE', '/unfollow/', { followed_id: userId })
   }
 }
 

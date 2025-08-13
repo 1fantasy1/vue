@@ -711,6 +711,24 @@ export class ApiService {
     }
   }
 
+  static async updateForumTopic(topicId, topicData) {
+    try {
+      const response = await remoteApiService.forum.updateTopic(topicId, topicData)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async deleteForumTopic(topicId) {
+    try {
+      const response = await remoteApiService.forum.deleteTopic(topicId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
   static async getForumComments(topicId, parentCommentId = null, limit = 50, offset = 0) {
     try {
       const response = await remoteApiService.forum.getComments(topicId, parentCommentId, limit, offset)
@@ -723,6 +741,78 @@ export class ApiService {
   static async addForumComment(topicId, commentData) {
     try {
       const response = await remoteApiService.forum.addComment(topicId, commentData)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async updateForumComment(commentId, commentData) {
+    try {
+      const response = await remoteApiService.forum.updateComment(commentId, commentData)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async deleteForumComment(commentId) {
+    try {
+      const response = await remoteApiService.forum.deleteComment(commentId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async likeForumTopic(topicId) {
+    try {
+      const response = await remoteApiService.forum.likeTopic(topicId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async unlikeForumTopic(topicId) {
+    try {
+      const response = await remoteApiService.forum.unlikeTopic(topicId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async likeForumComment(commentId) {
+    try {
+      const response = await remoteApiService.forum.likeComment(commentId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async unlikeForumComment(commentId) {
+    try {
+      const response = await remoteApiService.forum.unlikeComment(commentId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async followUser(userId) {
+    try {
+      const response = await remoteApiService.forum.followUser(userId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async unfollowUser(userId) {
+    try {
+      const response = await remoteApiService.forum.unfollowUser(userId)
       return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)

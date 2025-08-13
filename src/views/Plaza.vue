@@ -317,13 +317,30 @@
               <div class="post-time">{{ formatTime(post.timestamp) }}</div>
             </div>
           </div>
+          <div class="post-actions-right" v-if="currentUser?.id !== post.ownerId">
+            <button class="follow-btn" :class="{ followed: post.isFollowed }" @click="toggleFollow(post)">
+              {{ post.isFollowed ? '已关注' : '关注' }}
+            </button>
+          </div>
+          <div class="post-actions-right" v-else>
+            <button class="action-btn" @click="post.isEditing = !post.isEditing">{{ post.isEditing ? '取消' : '编辑' }}</button>
+            <button class="action-btn" @click="deletePost(post)">删除</button>
+          </div>
           <div class="post-topic" v-if="post.topic">
             <span class="topic-badge"># {{ post.topic }}</span>
           </div>
         </div>
         
         <div class="post-content">
-          {{ post.content }}
+          <template v-if="!post.isEditing">
+            {{ post.content }}
+          </template>
+          <template v-else>
+            <textarea class="composer-input" v-model="post.editContent" rows="3"></textarea>
+            <div class="composer-actions" style="margin-top: 8px;">
+              <button class="publish-btn" @click="savePost(post)" :disabled="!post.editContent?.trim()">保存</button>
+            </div>
+          </template>
         </div>
         
         <div class="post-images" v-if="post.images && post.images.length">
@@ -351,7 +368,7 @@
             @click="toggleComments(post)"
           >
             <span class="action-icon">💬</span>
-            <span class="action-text">{{ post.comments.length }}</span>
+            <span class="action-text">{{ post.commentsCount !== undefined ? post.commentsCount : post.comments.length }}</span>
           </button>
           
           <button class="action-btn share-btn">
@@ -391,19 +408,32 @@
                   <span class="comment-username">{{ comment.username }}</span>
                   <span class="comment-time">{{ formatTime(comment.timestamp) }}</span>
                 </div>
-                <div class="comment-text">{{ comment.content }}</div>
+                <div class="comment-text" v-if="!comment.isEditing">{{ comment.content }}</div>
+                <div class="comment-edit" v-else>
+                  <input class="comment-input" v-model="comment.editContent" />
+                  <div class="comment-edit-actions">
+                    <button class="comment-submit-btn" @click="saveEditComment(comment)" :disabled="!comment.editContent?.trim()">保存</button>
+                    <button class="comment-submit-btn" @click="cancelEditComment(comment)">取消</button>
+                  </div>
+                </div>
+                <div class="comment-footer">
+                  <button class="action-btn like-btn" @click="toggleLikeComment(post, comment)" :class="{ liked: comment.isLiked }">
+                    <span class="action-icon">{{ comment.isLiked ? '❤️' : '🤍' }}</span>
+                    <span class="action-text">{{ comment.likesCount }}</span>
+                  </button>
+                  <template v-if="currentUser?.id === comment.ownerId">
+                    <button class="action-btn" @click="editComment(comment)">编辑</button>
+                    <button class="action-btn" @click="deleteComment(post, comment)">删除</button>
+                  </template>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
       
-      <!-- 加载更多 -->
-      <div class="load-more" v-if="hasMore">
-        <button class="load-more-btn" @click="loadMorePosts">
-          加载更多动态
-        </button>
-      </div>
+  <!-- 无限滚动哨兵 -->
+  <div ref="infiniteSentinel" style="height: 1px; width: 100%;"></div>
     </div>
 
     <!-- 推荐内容展示区域 -->
@@ -463,8 +493,9 @@
 </template>
 
 <script>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { ApiService } from '@/services/api.js'
 
 export default {
   name: 'Plaza',
@@ -501,109 +532,101 @@ export default {
       { id: 5, name: '随便聊聊' }
     ])
 
-    const posts = ref([
-      {
-        id: 1,
-        username: '前端大神',
-        avatar: '👨‍💻',
-        content: '刚完成了一个基于Vue3的管理系统项目，用了最新的Composition API和TypeScript，开发体验真的太棒了！分享一下技术栈：Vue3 + Vite + TypeScript + Element Plus + Pinia，有兴趣的小伙伴可以一起交流~',
-        topic: '技术交流',
-        timestamp: new Date(Date.now() - 300000),
-        likes: 24,
-        isLiked: false,
-        images: [],
-        comments: [
-          {
-            id: 1,
-            username: '学习小白',
-            avatar: '👶',
-            content: '太厉害了！能分享一下具体的项目架构吗？',
-            timestamp: new Date(Date.now() - 180000)
-          },
-          {
-            id: 2,
-            username: 'Vue爱好者',
-            avatar: '🦄',
-            content: 'Composition API确实比Options API灵活很多',
-            timestamp: new Date(Date.now() - 120000)
-          }
-        ],
-        showComments: false,
-        newComment: ''
-      },
-      {
-        id: 2,
-        username: 'AI研究员',
-        avatar: '🤖',
-        content: '最近在研究大语言模型的微调技术，发现了一些有趣的现象。通过LoRA微调，可以用很少的参数就达到很好的效果。正在整理相关的实验数据和代码，准备开源出来供大家学习交流。',
-        topic: '项目分享',
-        timestamp: new Date(Date.now() - 900000),
-        likes: 18,
-        isLiked: true,
-        images: [],
-        comments: [
-          {
-            id: 3,
-            username: '机器学习小白',
-            avatar: '🎓',
-            content: '期待开源！正好在学习这方面的知识',
-            timestamp: new Date(Date.now() - 600000)
-          }
-        ],
-        showComments: false,
-        newComment: ''
-      },
-      {
-        id: 3,
-        username: '算法新手',
-        avatar: '📚',
-        content: '今天终于刷完了LeetCode前100题！从一开始的完全不会到现在能独立解决中等难度的题目，真的是一个很大的进步。分享一下我的学习方法：1. 每天至少刷2题 2. 重点理解题目的解题思路 3. 多做总结和复盘。坚持就是胜利！',
-        topic: '学习心得',
-        timestamp: new Date(Date.now() - 1800000),
-        likes: 32,
-        isLiked: false,
+    const posts = ref([])
+    const isLoading = ref(false)
+    const pageSize = ref(10)
+    const offset = ref(0)
+    const infiniteSentinel = ref(null)
+    let observer = null
+    const currentUser = ref(null)
+
+    try {
+      const cu = localStorage.getItem('currentUser')
+      currentUser.value = cu ? JSON.parse(cu) : null
+    } catch {}
+
+    // 将论坛话题映射为现有UI的post对象
+    const genAvatar = (name) => {
+      const pool = ['👤','🧑','👩','👨‍💻','🤖','🦄','🐱','🐶','🦊','🐼']
+      if (!name) return pool[0]
+      const code = name.split('').reduce((s,c)=>s+c.charCodeAt(0),0)
+      return pool[code % pool.length]
+    }
+
+  const mapTopicToPost = (t) => {
+      const tagFirst = t?.tags ? String(t.tags).split(/[,#\s]+/).filter(Boolean)[0] : ''
+      return {
+        id: t.id,
+    ownerId: t.owner_id,
+    ownerName: t.owner_name,
+        username: t.owner_name || '用户',
+        avatar: genAvatar(t.owner_name),
+        content: t.content || t.title || '',
+        topic: tagFirst || null,
+        timestamp: t.created_at ? new Date(t.created_at) : new Date(),
+        likes: t.likes_count ?? 0,
+        isLiked: !!t.is_liked_by_current_user,
         images: [],
         comments: [],
-        showComments: false,
-        newComment: ''
-      },
-      {
-        id: 4,
-        username: '职场老司机',
-        avatar: '💼',
-        content: '作为一个工作5年的程序员，想跟大家分享一下职业规划的心得。技术能力固然重要，但软技能同样不可忽视：沟通能力、团队协作、项目管理等。建议大家在技术精进的同时，也要注重这些方面的提升。',
-        topic: '职场话题',
-        timestamp: new Date(Date.now() - 3600000),
-        likes: 15,
-        isLiked: false,
-        images: [],
-        comments: [
-          {
-            id: 4,
-            username: '应届毕业生',
-            avatar: '🎓',
-            content: '受教了！请问有什么具体的建议吗？',
-            timestamp: new Date(Date.now() - 3000000)
-          }
-        ],
-        showComments: false,
-        newComment: ''
-      },
-      {
-        id: 5,
-        username: '咖啡爱好者',
-        avatar: '☕',
-        content: '今天发现了一家新开的咖啡店，环境超棒，很适合写代码！而且老板还是个程序员，店里有很多技术书籍可以免费阅读。地址在xxx街道，推荐给经常需要外出办公的小伙伴们~',
-        topic: '随便聊聊',
-        timestamp: new Date(Date.now() - 7200000),
-        likes: 8,
-        isLiked: false,
-        images: [],
-        comments: [],
-        showComments: false,
-        newComment: ''
+        commentsCount: t.comments_count ?? 0,
+  isFollowed: !!followStateByUserId.value[t.owner_id],
+  showComments: false,
+  newComment: '',
+  isEditing: false,
+  editContent: t.content || t.title || ''
       }
-    ])
+    }
+
+  const mapComment = (c) => ({
+      id: c.id,
+    ownerId: c.owner_id,
+      username: c.owner_name || '用户',
+      avatar: genAvatar(c.owner_name),
+      content: c.content || '',
+    timestamp: c.created_at ? new Date(c.created_at) : new Date(),
+    likesCount: c.likes_count ?? 0,
+    isLiked: !!c.is_liked_by_current_user,
+    isEditing: false,
+    editContent: c.content || ''
+    })
+
+    const pickData = (resp) => resp?.data?.data ?? resp?.data ?? []
+
+    const loadTopics = async (reset = false) => {
+      try {
+        if (isLoading.value) return
+        isLoading.value = true
+        if (reset) {
+          offset.value = 0
+          posts.value = []
+        }
+        const options = { limit: pageSize.value, offset: offset.value }
+        if (selectedTopic.value?.name) options.tag = selectedTopic.value.name
+        const resp = await ApiService.getForumTopics(options)
+        const list = Array.isArray(pickData(resp)) ? pickData(resp) : []
+        const mapped = list.map(mapTopicToPost)
+        posts.value = reset ? mapped : posts.value.concat(mapped)
+        offset.value += mapped.length
+        hasMore.value = mapped.length === pageSize.value
+      } catch (e) {
+        hasMore.value = false
+        ElMessage.error(e.message || '加载话题失败')
+      } finally {
+        isLoading.value = false
+      }
+    }
+
+  const setupInfiniteObserver = () => {
+      if (observer) observer.disconnect()
+      if (!infiniteSentinel.value) return
+      observer = new IntersectionObserver(async (entries) => {
+        const entry = entries[0]
+        if (entry.isIntersecting && hasMore.value && !isLoading.value) {
+          await loadTopics(false)
+        }
+      }, { root: null, rootMargin: '0px', threshold: 0.1 })
+      observer.observe(infiniteSentinel.value)
+    }
 
     // 计算过滤后的动态
     const filteredPosts = computed(() => {
@@ -696,66 +719,185 @@ export default {
     }
 
     // 社区动态方法
-    const selectTopic = (topic) => {
+    const selectTopic = async (topic) => {
       selectedTopic.value = selectedTopic.value?.id === topic.id ? null : topic
+      await loadTopics(true)
     }
 
-    const publishPost = () => {
+    const publishPost = async () => {
       if (!newPost.value.trim()) return
-
-      const post = {
-        id: Date.now(),
-        username: '我',
-        avatar: '👤',
-        content: newPost.value.trim(),
-        topic: selectedPostTopic.value || null,
-        timestamp: new Date(),
-        likes: 0,
-        isLiked: false,
-        images: [],
-        comments: [],
-        showComments: false,
-        newComment: ''
+      try {
+        const payload = {
+          title: newPost.value.slice(0, 40),
+          content: newPost.value.trim(),
+          tags: selectedPostTopic.value || undefined
+        }
+        const resp = await ApiService.createForumTopic(payload)
+        const data = pickData(resp)
+        const post = mapTopicToPost(data)
+        posts.value.unshift(post)
+        newPost.value = ''
+        selectedPostTopic.value = ''
+        ElMessage.success('动态发布成功！')
+      } catch (e) {
+        ElMessage.error(e.message || '发布失败')
       }
-
-      posts.value.unshift(post)
-      newPost.value = ''
-      selectedPostTopic.value = ''
-      ElMessage.success('动态发布成功！')
     }
 
-    const toggleLike = (post) => {
-      post.isLiked = !post.isLiked
-      post.likes += post.isLiked ? 1 : -1
+    const toggleLike = async (post) => {
+      const prev = post.isLiked
+      try {
+        post.isLiked = !post.isLiked
+        post.likes += post.isLiked ? 1 : -1
+        if (post.isLiked) {
+          await ApiService.likeForumTopic(post.id)
+        } else {
+          await ApiService.unlikeForumTopic(post.id)
+        }
+      } catch (e) {
+        // revert
+        post.isLiked = prev
+        post.likes += prev ? 1 : -1
+        ElMessage.error(e.message || '操作失败')
+      }
     }
 
-    const toggleComments = (post) => {
+  const toggleComments = async (post) => {
       post.showComments = !post.showComments
-    }
-
-    const addComment = (post) => {
-      if (!post.newComment?.trim()) return
-
-      const comment = {
-        id: Date.now(),
-        username: '我',
-        avatar: '👤',
-        content: post.newComment.trim(),
-        timestamp: new Date()
+      if (post.showComments && post.comments.length === 0) {
+        try {
+          const resp = await ApiService.getForumComments(post.id, null, 50, 0)
+          const list = Array.isArray(pickData(resp)) ? pickData(resp) : []
+          post.comments = list.map(mapComment)
+        } catch (e) {
+          ElMessage.error(e.message || '加载评论失败')
+        }
       }
-
-      post.comments.push(comment)
-      post.newComment = ''
-      ElMessage.success('评论发布成功！')
     }
 
-    const loadMorePosts = () => {
-      // 模拟加载更多数据
-      ElMessage.info('正在加载更多动态...')
-      setTimeout(() => {
-        hasMore.value = false
-        ElMessage.success('没有更多动态了')
-      }, 1000)
+    const addComment = async (post) => {
+      if (!post.newComment?.trim()) return
+      try {
+        const resp = await ApiService.addForumComment(post.id, { content: post.newComment.trim() })
+        const data = pickData(resp)
+        post.comments.push(mapComment(data))
+        post.commentsCount = (post.commentsCount || 0) + 1
+        post.newComment = ''
+        ElMessage.success('评论发布成功！')
+      } catch (e) {
+        ElMessage.error(e.message || '评论失败')
+      }
+    }
+
+    const toggleLikeComment = async (post, comment) => {
+      const prev = comment.isLiked
+      try {
+        comment.isLiked = !comment.isLiked
+        comment.likesCount += comment.isLiked ? 1 : -1
+        if (comment.isLiked) {
+          await ApiService.likeForumComment(comment.id)
+        } else {
+          await ApiService.unlikeForumComment(comment.id)
+        }
+      } catch (e) {
+        comment.isLiked = prev
+        comment.likesCount += prev ? 1 : -1
+        ElMessage.error(e.message || '操作失败')
+      }
+    }
+
+    const editComment = (comment) => {
+      comment.isEditing = true
+      comment.editContent = comment.content
+    }
+
+    const cancelEditComment = (comment) => {
+      comment.isEditing = false
+      comment.editContent = comment.content
+    }
+
+    const saveEditComment = async (comment) => {
+      const text = (comment.editContent || '').trim()
+      if (!text) return
+      try {
+        await ApiService.updateForumComment(comment.id, { content: text })
+        comment.content = text
+        comment.isEditing = false
+        ElMessage.success('已更新评论')
+      } catch (e) {
+        ElMessage.error(e.message || '更新失败')
+      }
+    }
+
+    const deleteComment = async (post, comment) => {
+      try {
+        await ApiService.deleteForumComment(comment.id)
+        post.comments = post.comments.filter(c => c.id !== comment.id)
+        post.commentsCount = Math.max(0, (post.commentsCount || 0) - 1)
+        ElMessage.success('已删除评论')
+      } catch (e) {
+        ElMessage.error(e.message || '删除失败')
+      }
+    }
+
+    const savePost = async (post) => {
+      const text = (post.editContent || '').trim()
+      if (!text) return
+      try {
+        const payload = { content: text }
+        await ApiService.updateForumTopic(post.id, payload)
+        post.content = text
+        post.isEditing = false
+        ElMessage.success('已更新动态')
+      } catch (e) {
+        ElMessage.error(e.message || '更新失败')
+      }
+    }
+
+    const deletePost = async (post) => {
+      try {
+        await ApiService.deleteForumTopic(post.id)
+        posts.value = posts.value.filter(p => p.id !== post.id)
+        ElMessage.success('已删除动态')
+      } catch (e) {
+        ElMessage.error(e.message || '删除失败')
+      }
+    }
+
+    const followStateByUserId = ref({})
+    // 初始化：从本地存储同步关注状态（轻量缓存，非权威）
+    try {
+      const raw = localStorage.getItem('follow_state')
+      if (raw) followStateByUserId.value = JSON.parse(raw)
+    } catch {}
+    const updateFollowStateForUser = (userId, followed) => {
+      followStateByUserId.value = { ...followStateByUserId.value, [userId]: followed }
+      posts.value = posts.value.map(p => p.ownerId === userId ? { ...p, isFollowed: followed } : p)
+      try { localStorage.setItem('follow_state', JSON.stringify(followStateByUserId.value)) } catch {}
+    }
+
+    const toggleFollow = async (post) => {
+      const userId = post.ownerId
+      if (!userId) return
+      const prev = !!followStateByUserId.value[userId]
+      try {
+        updateFollowStateForUser(userId, !prev)
+        if (!prev) {
+          await ApiService.followUser(userId)
+          ElMessage.success('已关注')
+        } else {
+          await ApiService.unfollowUser(userId)
+          ElMessage.success('已取消关注')
+        }
+      } catch (e) {
+        updateFollowStateForUser(userId, prev)
+        ElMessage.error(e.message || '操作失败')
+      }
+    }
+
+    const loadMorePosts = async () => {
+      if (!hasMore.value) return
+      await loadTopics(false)
     }
 
     const formatTime = (timestamp) => {
@@ -819,6 +961,15 @@ export default {
       selectedType.value = ''
     }
 
+    onMounted(async () => {
+      await loadTopics(true)
+      nextTick(() => setupInfiniteObserver())
+    })
+
+    onUnmounted(() => {
+      if (observer) observer.disconnect()
+    })
+
     return {
       // 智能搜索数据
       searchQuery,
@@ -848,6 +999,7 @@ export default {
       selectedPostTopic,
       newPost,
       hasMore,
+      isLoading,
       hotTopics,
       posts,
       filteredPosts,
@@ -856,6 +1008,15 @@ export default {
       toggleLike,
       toggleComments,
       addComment,
+  toggleLikeComment,
+  editComment,
+  cancelEditComment,
+  saveEditComment,
+  deleteComment,
+  savePost,
+  deletePost,
+  toggleFollow,
+  currentUser,
       loadMorePosts,
       formatTime
     }
