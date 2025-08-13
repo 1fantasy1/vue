@@ -14,6 +14,7 @@ import CourseNotes from '../views/CourseNotes.vue'
 import Favorites from '../views/Favorites.vue'
 import QuickNotes from '../views/QuickNotes.vue'
 import DevTools from '../views/DevTools.vue'
+import CollectionDetail from '../views/CollectionDetail.vue'
 
 const routes = [
   {
@@ -84,6 +85,12 @@ const routes = [
     path: '/favorites',
     name: 'Favorites',
     component: Favorites,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/collections/:id',
+    name: 'CollectionDetail',
+    component: CollectionDetail,
     meta: { requiresAuth: true }
   },
   {

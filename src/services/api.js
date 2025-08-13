@@ -622,6 +622,104 @@ export class ApiService {
   static isCoursesUsingLocalData() {
     return COURSES_USE_LOCAL
   }
+
+  // ========== 文件夹（Folders）相关API ==========
+  static async getFolders(parentId = null) {
+    try {
+      const response = await remoteApiService.folders.getAllFolders(parentId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async getFolder(folderId) {
+    try {
+      const response = await remoteApiService.folders.getFolderById(folderId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async createFolder(folderData) {
+    try {
+      const response = await remoteApiService.folders.createFolder(folderData)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async updateFolder(folderId, folderData) {
+    try {
+      const response = await remoteApiService.folders.updateFolder(folderId, folderData)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async deleteFolder(folderId, options = {}) {
+    try {
+      const response = await remoteApiService.folders.deleteFolder(folderId, options)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  // ========== 收藏内容（Collections）相关API ==========
+  static async getCollections(options = {}) {
+    try {
+      const response = await remoteApiService.collections.getAllCollections({
+        folderId: options.folderId,
+        typeFilter: options.typeFilter,
+        tagFilter: options.tagFilter,
+        isStarred: options.isStarred,
+        statusFilter: options.statusFilter
+      })
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async getCollection(contentId) {
+    try {
+      const response = await remoteApiService.collections.getCollectionById(contentId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async createCollection(collectionData) {
+    try {
+      const response = await remoteApiService.collections.createCollection(collectionData)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async updateCollection(contentId, collectionData) {
+    try {
+      const response = await remoteApiService.collections.updateCollection(contentId, collectionData)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async deleteCollection(contentId) {
+    try {
+      const response = await remoteApiService.collections.deleteCollection(contentId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
 }
 
 // 在应用启动时初始化数据

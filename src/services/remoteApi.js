@@ -415,8 +415,12 @@ export class FoldersAPI extends BaseAPI {
     return await this.request('PUT', `/${folderId}`, folderData)
   }
 
-  async deleteFolder(folderId) {
-    return await this.request('DELETE', `/${folderId}`)
+  async deleteFolder(folderId, options = {}) {
+    const params = {}
+    if (options.cascade) params.cascade = true
+    if (options.recursive) params.recursive = true
+    if (options.force) params.force = true
+    return await this.request('DELETE', `/${folderId}`, null, Object.keys(params).length ? params : null)
   }
 }
 

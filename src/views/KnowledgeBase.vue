@@ -114,7 +114,7 @@
             </div>
           </div>
           <div class="document-actions">
-            <button class="action-btn" @click.stop="favoriteDocument(document)">
+            <button class="action-btn" @click.stop="openCollectionModal(document)">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12,21.35L10.55,20.03C5.4,15.36 2,12.28 2,8.5 2,5.42 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.09C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.42 22,8.5C22,12.28 18.6,15.36 13.45,20.04L12,21.35Z"/>
               </svg>
@@ -144,12 +144,27 @@
         </svg>
       </button>
     </div>
+
+    <!-- 收藏弹窗 -->
+    <CollectionModal
+      :model-value="collectionModalVisible"
+      @update:modelValue="v => (collectionModalVisible = v)"
+      :is-editing="isEditingCollection"
+      :initial="collectionForm"
+      :show-folder="false"
+      :types="['knowledge_article']"
+      title-text="收藏知识文档"
+      @submit="onCollectionSubmit"
+    />
   </div>
 </template>
 
 <script>
+import CollectionModal from '@/components/CollectionModal.vue'
+
 export default {
   name: 'KnowledgeBase',
+  components: { CollectionModal },
   data() {
     return {
       searchQuery: '',
@@ -272,7 +287,12 @@ export default {
           categoryId: 6,
           favorite: false
         }
-      ]
+      ],
+  currentDocument: null,
+      // 收藏弹窗
+      collectionModalVisible: false,
+      isEditingCollection: false,
+  collectionForm: { id: null, title: '', type: 'knowledge_article', url: '', content: '', tags: '', folder_id: null }
     }
   },
   computed: {
@@ -327,9 +347,34 @@ export default {
     openDocument(document) {
       alert(`打开文档: ${document.title}`)
     },
-    favoriteDocument(document) {
-      document.favorite = !document.favorite
-      this.$forceUpdate()
+    openCollectionModal(document) {
+      this.isEditingCollection = false
+      this.currentDocument = document
+      this.collectionForm = {
+        id: null,
+        title: document.title,
+        type: 'knowledge_article',
+        url: '',
+        content: document.description,
+        tags: Array.isArray(document.tags) ? document.tags.join(',') : ''
+      }
+      this.collectionModalVisible = true
+    },
+    async onCollectionSubmit(payload) {
+      try {
+        const { ApiService } = await import('@/services/api.js')
+        const toTagsString = (val) => Array.isArray(val) ? val.join(',') : (typeof val === 'string' ? val : undefined)
+        const res = await ApiService.createCollection({
+          ...payload,
+          type: 'knowledge_article',
+          tags: toTagsString(payload.tags)
+        })
+        if (res?.data?.success === false) throw new Error(res.data.message || '收藏失败')
+        this.collectionModalVisible = false
+        if (this.currentDocument) this.currentDocument.favorite = true
+      } catch (e) {
+        alert(e.message || '收藏失败')
+      }
     },
     shareDocument(document) {
       alert(`分享文档: ${document.title}`)
@@ -754,3 +799,4 @@ export default {
   }
 }
 </style>
+

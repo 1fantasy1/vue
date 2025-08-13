@@ -50,6 +50,38 @@
       </div>
     </div>
 
+    <!-- 文件夹筛选与新建 -->
+    <div class="folder-bar">
+      <div class="folder-left">
+        <label class="folder-label">文件夹</label>
+        <select class="folder-select" v-model.number="currentFolderId">
+          <option :value="-1">全部</option>
+          <option :value="0">根目录</option>
+          <option v-for="f in folders" :key="f.id" :value="f.id">{{ f.name }}</option>
+        </select>
+      </div>
+      <div class="folder-right">
+        <button class="new-folder-btn" @click="openCreateFolder()" title="新建文件夹">新建文件夹</button>
+        <button 
+          class="new-folder-btn light" 
+          :disabled="currentFolderId <= 0" 
+          @click="openEditFolder()"
+          :title="currentFolderId > 0 ? '编辑当前文件夹' : '请选择要编辑的文件夹'"
+        >编辑文件夹</button>
+        <button 
+          class="new-folder-btn danger" 
+          :disabled="currentFolderId <= 0" 
+          @click="deleteCurrentFolder()"
+          :title="currentFolderId > 0 ? '删除当前文件夹' : '请选择要删除的文件夹'"
+        >删除文件夹</button>
+        <button class="new-folder-btn primary" @click="openCreateCollection()" title="新建收藏">新建收藏</button>
+      </div>
+    </div>
+
+    <!-- 加载与错误提示 -->
+    <div v-if="loading" class="loading">加载中...</div>
+    <div v-if="!loading && errorMsg" class="error">{{ errorMsg }}</div>
+
     <div class="filter-tabs">
       <button 
         class="tab-btn" 
@@ -114,6 +146,11 @@
                 <path d="M12,21.35L10.55,20.03C5.4,15.36 2,12.28 2,8.5 2,5.42 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.09C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.42 22,8.5C22,12.28 18.6,15.36 13.45,20.04L12,21.35Z"/>
               </svg>
             </button>
+            <button class="action-btn" @click="openEditCollection(item)" title="编辑收藏">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M14.06,9L15,9.94L5.92,19H5V18.08L14.06,9M17.66,3C17.41,3 17.15,3.1 16.96,3.29L15.13,5.12L18.88,8.87L20.71,7.04C21.1,6.65 21.1,6 20.71,5.62L18.38,3.29C18.18,3.09 17.92,3 17.66,3M14.06,6.19L3,17.25V21H6.75L17.81,9.94L14.06,6.19Z"/>
+              </svg>
+            </button>
             <button class="action-btn" @click="shareItem(item.id)" title="分享">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M18,16.08C17.24,16.08 16.56,16.38 16.04,16.85L8.91,12.7C8.96,12.47 9,12.24 9,12C9,11.76 8.96,11.53 8.91,11.3L15.96,7.19C16.5,7.69 17.21,8 18,8A3,3 0 0,0 21,5A3,3 0 0,0 18,2A3,3 0 0,0 15,5C15,5.24 15.04,5.47 15.09,5.7L8.04,9.81C7.5,9.31 6.79,9 6,9A3,3 0 0,0 3,12A3,3 0 0,0 6,15C6.79,15 7.5,14.69 8.04,14.19L15.16,18.34C15.11,18.55 15.08,18.77 15.08,19C15.08,20.61 16.39,21.91 18,21.91C19.61,21.91 20.92,20.61 20.92,19A2.92,2.92 0 0,0 18,16.08Z"/>
@@ -155,8 +192,131 @@
             <button class="view-btn" @click="viewItem(item)">
               {{ getViewButtonText(item.type) }}
             </button>
+            <button class="view-btn outline" @click="goDetail(item)">详情</button>
             <div class="favorite-source">来源：{{ item.source }}</div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新建文件夹弹窗 -->
+    <div v-if="creatingFolder" class="modal-backdrop">
+      <div class="modal">
+        <h3 class="modal-title">新建文件夹</h3>
+        <div class="modal-body">
+          <div class="form-row">
+            <label>名称<span class="required">*</span></label>
+            <input v-model="newFolder.name" class="input" placeholder="请输入文件夹名称" />
+          </div>
+          <div class="form-row">
+            <label>描述</label>
+            <input v-model="newFolder.description" class="input" placeholder="可选" />
+          </div>
+          <div class="form-row two-cols">
+            <div>
+              <label>颜色</label>
+              <input v-model="newFolder.color" class="input" placeholder="#FF8800 或描述色" />
+            </div>
+            <div>
+              <label>图标</label>
+              <input v-model="newFolder.icon" class="input" placeholder="如 folder, star" />
+            </div>
+          </div>
+          <div class="form-row">
+            <label>父文件夹</label>
+            <select v-model="newFolder.parent_id" class="input">
+              <option :value="null">无（顶级）</option>
+              <option v-for="f in folders" :key="f.id" :value="f.id">{{ f.name }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn secondary" @click="creatingFolder = false">取消</button>
+          <button class="btn primary" @click="submitCreateFolder">创建</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 编辑文件夹弹窗 -->
+    <div v-if="editingFolder" class="modal-backdrop">
+      <div class="modal">
+        <h3 class="modal-title">编辑文件夹</h3>
+        <div class="modal-body">
+          <div class="form-row">
+            <label>名称<span class="required">*</span></label>
+            <input v-model="folderForm.name" class="input" />
+          </div>
+          <div class="form-row">
+            <label>描述</label>
+            <input v-model="folderForm.description" class="input" />
+          </div>
+          <div class="form-row two-cols">
+            <div>
+              <label>颜色</label>
+              <input v-model="folderForm.color" class="input" />
+            </div>
+            <div>
+              <label>图标</label>
+              <input v-model="folderForm.icon" class="input" />
+            </div>
+          </div>
+          <div class="form-row">
+            <label>父文件夹</label>
+            <select v-model="folderForm.parent_id" class="input">
+              <option :value="null">无（顶级）</option>
+              <option v-for="f in folders" :key="f.id" :value="f.id" :disabled="f.id === folderForm.id">{{ f.name }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn secondary" @click="editingFolder = false">取消</button>
+          <button class="btn primary" @click="submitEditFolder">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新建/编辑收藏弹窗 -->
+    <div v-if="collectionModalVisible" class="modal-backdrop">
+      <div class="modal">
+        <h3 class="modal-title">{{ isEditingCollection ? '编辑收藏' : '新建收藏' }}</h3>
+        <div class="modal-body">
+          <div class="form-row">
+            <label>标题<span class="required">*</span></label>
+            <input v-model="collectionForm.title" class="input" placeholder="请输入标题" />
+          </div>
+          <div class="form-row two-cols">
+            <div>
+              <label>类型</label>
+              <select v-model="collectionForm.type" class="input">
+                <option value="knowledge_article">文章</option>
+                <option value="project">项目</option>
+                <option value="course">课程</option>
+              </select>
+            </div>
+            <div>
+              <label>文件夹</label>
+              <select v-model="collectionForm.folder_id" class="input">
+                <option :value="null">无（根目录）</option>
+                <option v-for="f in folders" :key="f.id" :value="f.id">{{ f.name }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <label>URL</label>
+            <input v-model="collectionForm.url" class="input" placeholder="https://..." />
+          </div>
+          <div class="form-row">
+            <label>标签（用逗号分隔）</label>
+            <input v-model="collectionForm.tags" class="input" placeholder="tag1, tag2" />
+          </div>
+          <div class="form-row">
+            <label>内容</label>
+            <textarea v-model="collectionForm.content" class="input" rows="4" style="resize: vertical;"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn secondary" @click="collectionModalVisible = false">取消</button>
+          <button class="btn primary" @click="submitCollection">{{ isEditingCollection ? '保存' : '创建' }}</button>
         </div>
       </div>
     </div>
@@ -165,15 +325,34 @@
 
 <script>
 import { useRouter } from 'vue-router'
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { ApiService } from '@/services/api.js'
 
 export default {
   name: 'Favorites',
   setup() {
-    const router = useRouter()
-    const activeTab = ref('all')
+  const router = useRouter()
+  const activeTab = ref('all') // all | courses | projects | articles (UI 值), 将在请求时映射为后端类型
     const searchQuery = ref('')
     const debouncedSearchQuery = ref('')
+
+    // UI state
+    const loading = ref(false)
+    const errorMsg = ref('')
+
+    // Folders
+  const folders = ref([])
+  const currentFolderId = ref(-1) // -1=全部, 0=根目录, 具体id=某文件夹
+    const creatingFolder = ref(false)
+    const newFolder = ref({ name: '', description: '', color: '', icon: '', parent_id: null })
+  const editingFolder = ref(false)
+  const folderForm = ref({ id: null, name: '', description: '', color: '', icon: '', parent_id: null })
+
+    // Collections
+    const favorites = ref([])
+  const collectionModalVisible = ref(false)
+  const isEditingCollection = ref(false)
+  const collectionForm = ref({ id: null, title: '', type: 'knowledge_article', url: '', content: '', tags: '', folder_id: null })
 
     // 防抖搜索
     let searchTimeout = null
@@ -183,173 +362,340 @@ export default {
         debouncedSearchQuery.value = newValue
       }, 300)
     })
-    
-    const favorites = ref([
-      {
-        id: 1,
-        title: 'Vue 3 响应式原理深度解析',
-        description: '详细解释Vue 3中响应式系统的实现原理，包括Proxy、effect、reactive等核心概念。',
-        type: 'courses',
-        author: '尤雨溪',
-        rating: 4.9,
-        duration: '2.5小时',
-        tags: ['Vue3', '响应式', '源码分析'],
-        source: '慕课网',
-        addedDate: '3天前'
-      },
-      {
-        id: 2,
-        title: '电商平台微服务架构实战',
-        description: '基于Spring Cloud构建的完整电商平台，包含用户服务、商品服务、订单服务等。',
-        type: 'projects',
-        author: '架构师张三',
-        rating: 4.8,
-        tags: ['微服务', 'Spring Cloud', '电商'],
-        source: 'GitHub',
-        addedDate: '1周前'
-      },
-      {
-        id: 3,
-        title: 'JavaScript设计模式最佳实践',
-        description: '23种设计模式在JavaScript中的应用，提高代码质量和可维护性。',
-        type: 'articles',
-        author: '前端大牛',
-        tags: ['设计模式', 'JavaScript', '最佳实践'],
-        source: '掘金',
-        addedDate: '2周前'
-      },
-      {
-        id: 4,
-        title: 'React Hooks 深入浅出',
-        description: '从useState到自定义Hook，全面掌握React Hooks的使用技巧。',
-        type: 'courses',
-        author: 'Dan Abramov',
-        rating: 4.9,
-        duration: '3小时',
-        tags: ['React', 'Hooks', '函数式组件'],
-        source: 'React官网',
-        addedDate: '2天前'
-      },
-      {
-        id: 5,
-        title: '智能推荐系统实现',
-        description: '基于协同过滤和深度学习的推荐系统，支持实时推荐和离线计算。',
-        type: 'projects',
-        author: '算法工程师李四',
-        tags: ['推荐系统', '机器学习', 'Python'],
-        source: 'Kaggle',
-        addedDate: '5天前'
-      },
-      {
-        id: 6,
-        title: 'CSS Grid 布局完全指南',
-        description: 'CSS Grid的所有属性和使用场景，从基础到高级应用一网打尽。',
-        type: 'articles',
-        author: 'CSS大师',
-        tags: ['CSS', 'Grid', '布局'],
-        source: 'MDN',
-        addedDate: '1周前'
-      },
-      {
-        id: 7,
-        title: 'TypeScript 进阶教程',
-        description: '高级类型、泛型、装饰器等TypeScript进阶特性详解。',
-        type: 'courses',
-        author: 'TypeScript团队',
-        rating: 4.7,
-        duration: '4小时',
-        tags: ['TypeScript', '类型系统', '进阶'],
-        source: 'TypeScript官网',
-        addedDate: '4天前'
-      },
-      {
-        id: 8,
-        title: '区块链投票系统',
-        description: '基于以太坊的去中心化投票系统，支持透明、不可篡改的投票机制。',
-        type: 'projects',
-        author: '区块链开发者',
-        tags: ['区块链', '以太坊', '智能合约'],
-        source: 'GitHub',
-        addedDate: '1天前'
-      }
-    ])
 
+    // 远程加载
+    const loadFolders = async () => {
+      try {
+        const { data } = await ApiService.getFolders(null)
+        if (data?.success !== false) {
+          folders.value = data.data || data
+        } else {
+          throw new Error(data.message || '获取文件夹失败')
+        }
+      } catch (e) {
+        console.error(e)
+      }
+    }
+
+  const loadCollections = async () => {
+      loading.value = true
+      errorMsg.value = ''
+      try {
+        const mapTabToBackendType = (tab) => tab === 'projects' ? 'project' : tab === 'courses' ? 'course' : tab === 'articles' ? 'knowledge_article' : undefined
+        const { data } = await ApiService.getCollections({
+          folderId: currentFolderId.value === -1 ? undefined : currentFolderId.value,
+          typeFilter: activeTab.value === 'all' ? undefined : mapTabToBackendType(activeTab.value),
+          tagFilter: debouncedSearchQuery.value || undefined
+        })
+        if (data?.success !== false) {
+          const items = data.data || data
+          favorites.value = (items || []).map(mapCollectionToView)
+        } else {
+          throw new Error(data.message || '获取收藏失败')
+        }
+      } catch (e) {
+        errorMsg.value = e.message || '加载失败'
+      } finally {
+        loading.value = false
+      }
+    }
+
+    const mapCollectionToView = (c) => {
+      // 后端 schemas.CollectedContentResponse -> 视图字段映射
+      return {
+        id: c.id,
+        title: c.title,
+        description: c.content || c.description || '',
+  type: c.type || 'knowledge_article',
+        author: c.author || '未知',
+        rating: c.rating,
+        duration: c.duration,
+        tags: Array.isArray(c.tags) ? c.tags : (typeof c.tags === 'string' ? c.tags.split(',').map(t => t.trim()).filter(Boolean) : []),
+  source: (() => { try { return c.source || (c.url ? new URL(c.url).hostname : '本地') } catch { return c.source || '本地' } })(),
+        url: c.url,
+        addedDate: c.created_at ? formatRelativeTime(c.created_at) : ''
+      }
+    }
+
+    const formatRelativeTime = (iso) => {
+      try {
+        const d = new Date(iso)
+        const diff = Date.now() - d.getTime()
+        const m = Math.floor(diff / 60000)
+        if (m < 1) return '刚刚'
+        if (m < 60) return `${m}分钟前`
+        const h = Math.floor(m / 60)
+        if (h < 24) return `${h}小时前`
+        const days = Math.floor(h / 24)
+        if (days < 7) return `${days}天前`
+        return d.toLocaleDateString()
+      } catch {
+        return ''
+      }
+    }
+
+    // 过滤与统计
     const filteredFavorites = computed(() => {
       let filtered = favorites.value
 
-      if (activeTab.value !== 'all') {
-        filtered = filtered.filter(item => item.type === activeTab.value)
-      }
-
+      // 本地二次过滤：搜索标题/作者/标签/描述
       if (debouncedSearchQuery.value.trim()) {
-        const query = debouncedSearchQuery.value.toLowerCase().trim()
-        filtered = filtered.filter(item => 
-          item.title.toLowerCase().includes(query) ||
-          item.description.toLowerCase().includes(query) ||
-          item.author.toLowerCase().includes(query) ||
-          item.tags.some(tag => tag.toLowerCase().includes(query))
+        const q = debouncedSearchQuery.value.toLowerCase().trim()
+        filtered = filtered.filter(item =>
+          item.title?.toLowerCase().includes(q) ||
+          item.description?.toLowerCase().includes(q) ||
+          item.author?.toLowerCase().includes(q) ||
+          (item.tags || []).some(tag => tag.toLowerCase().includes(q))
         )
       }
 
       return filtered
     })
 
-    // 统计数据
-    const coursesCount = computed(() => {
-      return favorites.value.filter(item => item.type === 'courses').length
-    })
+  const coursesCount = computed(() => favorites.value.filter(i => i.type === 'course').length)
+  const projectsCount = computed(() => favorites.value.filter(i => i.type === 'project').length)
+  const articlesCount = computed(() => favorites.value.filter(i => i.type === 'knowledge_article').length)
 
-    const projectsCount = computed(() => {
-      return favorites.value.filter(item => item.type === 'projects').length
-    })
+  const getTypeText = (type) => ({ course: '课程', project: '项目', knowledge_article: '文章', document: '文档', video: '视频', note: '笔记', link: '链接', file: '文件', forum_topic: '话题', daily_record: '随手记录' }[type] || '其他')
+  const getViewButtonText = (type) => ({ course: '开始学习', project: '查看项目', knowledge_article: '阅读文章' }[type] || '查看详情')
 
-    const articlesCount = computed(() => {
-      return favorites.value.filter(item => item.type === 'articles').length
-    })
-
-    const getTypeText = (type) => {
-      const typeMap = {
-        courses: '课程',
-        projects: '项目',
-        articles: '文章'
+    const viewItem = async (item) => {
+      try {
+        // 调用详情接口以增加访问计数
+        await ApiService.getCollection(item.id)
+      } catch (e) {
+        // 忽略计数失败
       }
-      return typeMap[type] || '其他'
-    }
-
-    const getViewButtonText = (type) => {
-      const buttonMap = {
-        courses: '开始学习',
-        projects: '查看项目',
-        articles: '阅读文章'
+      // 打开详情：优先 URL，否则根据 type 决定路由
+      if (item.url) {
+        window.open(item.url, '_blank')
       }
-      return buttonMap[type] || '查看详情'
     }
 
-    const viewItem = (item) => {
-      alert(`打开${item.title}`)
+    const goDetail = (item) => {
+      if (!item?.id) return
+      router.push({ name: 'CollectionDetail', params: { id: item.id } })
     }
 
-    const removeFavorite = (itemId) => {
-      if (confirm('确定要取消收藏吗？')) {
-        const index = favorites.value.findIndex(item => item.id === itemId)
-        if (index > -1) {
-          favorites.value.splice(index, 1)
-        }
+    const removeFavorite = async (itemId) => {
+      if (!confirm('确定要取消收藏吗？')) return
+      try {
+        const { data } = await ApiService.deleteCollection(itemId)
+        if (data?.success === false) throw new Error(data.message || '删除失败')
+        favorites.value = favorites.value.filter(i => i.id !== itemId)
+      } catch (e) {
+        alert(e.message || '删除失败')
       }
     }
 
     const shareItem = (itemId) => {
-      alert(`分享收藏项目 ${itemId}`)
+      // 简单分享：复制链接占位
+      navigator.clipboard?.writeText(location.href + `?share=${itemId}`)
+      alert('分享链接已复制')
     }
 
-    const clearSearch = () => {
-      searchQuery.value = ''
+    const clearSearch = () => { searchQuery.value = '' }
+
+    // 监听筛选变化
+    watch([activeTab, debouncedSearchQuery, currentFolderId], () => {
+      loadCollections()
+    })
+
+    onMounted(async () => {
+      await loadFolders()
+      await loadCollections()
+    })
+
+    // 创建文件夹
+    const openCreateFolder = (parentId = null) => {
+      creatingFolder.value = true
+      newFolder.value = { name: '', description: '', color: '', icon: '', parent_id: parentId }
+    }
+
+    const submitCreateFolder = async () => {
+      if (!newFolder.value.name?.trim()) {
+        alert('请输入文件夹名称')
+        return
+      }
+      try {
+        const { data } = await ApiService.createFolder({
+          name: newFolder.value.name.trim(),
+          description: newFolder.value.description || undefined,
+          color: newFolder.value.color || undefined,
+          icon: newFolder.value.icon || undefined,
+          parent_id: newFolder.value.parent_id ?? undefined
+        })
+        if (data?.success === false) throw new Error(data.message || '创建失败')
+        creatingFolder.value = false
+        await loadFolders()
+      } catch (e) {
+        alert(e.message || '创建失败')
+      }
+    }
+
+    const openEditFolder = async () => {
+      if (!(currentFolderId.value > 0)) return
+      try {
+        const { data } = await ApiService.getFolder(currentFolderId.value)
+        const f = data?.data || data
+        folderForm.value = {
+          id: f.id,
+          name: f.name || '',
+          description: f.description || '',
+          color: f.color || '',
+          icon: f.icon || '',
+          parent_id: f.parent_id ?? null
+        }
+        editingFolder.value = true
+      } catch (e) {
+        alert(e.message || '加载文件夹失败')
+      }
+    }
+
+    const submitEditFolder = async () => {
+      if (!folderForm.value.name?.trim()) {
+        alert('请输入文件夹名称')
+        return
+      }
+      if (folderForm.value.parent_id === folderForm.value.id) {
+        alert('父文件夹不能选择自身')
+        return
+      }
+      try {
+        const payload = {
+          name: folderForm.value.name.trim(),
+          description: folderForm.value.description || undefined,
+          color: folderForm.value.color || undefined,
+          icon: folderForm.value.icon || undefined,
+          parent_id: folderForm.value.parent_id ?? undefined
+        }
+        const { data } = await ApiService.updateFolder(folderForm.value.id, payload)
+        if (data?.success === false) throw new Error(data.message || '保存失败')
+        editingFolder.value = false
+        await loadFolders()
+      } catch (e) {
+        alert(e.message || '保存失败')
+      }
+    }
+
+    const deleteCurrentFolder = async () => {
+      if (!(currentFolderId.value > 0)) return
+      if (!confirm('确定要删除该文件夹吗？\n提示：若文件夹非空，可选择“级联删除”一并删除其下内容。')) return
+      try {
+        // 先尝试普通删除
+        const { data } = await ApiService.deleteFolder(currentFolderId.value)
+        if (data?.success === false) throw new Error(data.message || '删除失败')
+        currentFolderId.value = -1
+        await loadFolders()
+        await loadCollections()
+        alert('删除成功')
+      } catch (e1) {
+        const ok = confirm('删除失败，可能因为文件夹内仍有内容。\n是否级联删除该文件夹及其所有子内容？此操作不可撤销。')
+        if (!ok) { alert(e1.message || '删除失败'); return }
+        try {
+          const { data } = await ApiService.deleteFolder(currentFolderId.value, { cascade: true, recursive: true })
+          if (data?.success === false) throw new Error(data.message || '删除失败')
+          currentFolderId.value = -1
+          await loadFolders()
+          await loadCollections()
+          alert('已级联删除该文件夹及其内容')
+        } catch (e2) {
+          alert(e2.message || '删除失败')
+        }
+      }
+    }
+
+    // 收藏：创建/编辑
+    const openCreateCollection = () => {
+      isEditingCollection.value = false
+      const mapTabToBackendType = (tab) => tab === 'projects' ? 'project' : tab === 'courses' ? 'course' : tab === 'articles' ? 'knowledge_article' : 'knowledge_article'
+      collectionForm.value = {
+        id: null,
+        title: '',
+        type: activeTab.value === 'all' ? 'knowledge_article' : mapTabToBackendType(activeTab.value),
+        url: '',
+        content: '',
+        tags: '',
+        folder_id: currentFolderId.value > 0 ? currentFolderId.value : null
+      }
+      collectionModalVisible.value = true
+    }
+
+    const openEditCollection = async (item) => {
+      try {
+        const { data } = await ApiService.getCollection(item.id)
+        const c = data?.data || data
+        isEditingCollection.value = true
+        collectionForm.value = {
+          id: c.id,
+          title: c.title || '',
+    type: c.type || 'knowledge_article',
+          url: c.url || '',
+          content: c.content || '',
+          tags: Array.isArray(c.tags) ? c.tags.join(', ') : (c.tags || ''),
+          folder_id: c.folder_id ?? null
+        }
+        collectionModalVisible.value = true
+      } catch (e) {
+        alert(e.message || '加载收藏失败')
+      }
+    }
+
+    const submitCollection = async () => {
+      if (!collectionForm.value.title?.trim()) {
+        alert('请输入标题')
+        return
+      }
+        const toTagsString = (val) => Array.isArray(val) ? val.join(',') : (typeof val === 'string' ? val : undefined)
+        const payload = {
+        title: collectionForm.value.title.trim(),
+        type: collectionForm.value.type,
+        url: collectionForm.value.url || undefined,
+        content: collectionForm.value.content || undefined,
+          tags: toTagsString(collectionForm.value.tags),
+        folder_id: collectionForm.value.folder_id ?? undefined
+      }
+      try {
+        if (isEditingCollection.value) {
+          const { data } = await ApiService.updateCollection(collectionForm.value.id, payload)
+          if (data?.success === false) throw new Error(data.message || '保存失败')
+        } else {
+          const { data } = await ApiService.createCollection(payload)
+          if (data?.success === false) throw new Error(data.message || '创建失败')
+        }
+        collectionModalVisible.value = false
+        await loadCollections()
+      } catch (e) {
+        alert(e.message || (isEditingCollection.value ? '保存失败' : '创建失败'))
+      }
     }
 
     return {
+      // state
       activeTab,
       searchQuery,
+      debouncedSearchQuery,
+      loading,
+      errorMsg,
+
+      // folders
+      folders,
+      currentFolderId,
+      creatingFolder,
+      newFolder,
+      openCreateFolder,
+      submitCreateFolder,
+  editingFolder,
+  folderForm,
+  openEditFolder,
+  submitEditFolder,
+  deleteCurrentFolder,
+
+      // collections
       favorites,
+  collectionModalVisible,
+  isEditingCollection,
+  collectionForm,
       filteredFavorites,
       coursesCount,
       projectsCount,
@@ -357,6 +703,10 @@ export default {
       getTypeText,
       getViewButtonText,
       viewItem,
+  goDetail,
+  openCreateCollection,
+  openEditCollection,
+  submitCollection,
       removeFavorite,
       shareItem,
       clearSearch
@@ -571,6 +921,102 @@ export default {
   border: 1px solid #f0f0f0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
+
+.folder-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.folder-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.folder-label {
+  color: #6c757d;
+  font-size: 13px;
+}
+
+.folder-select {
+  padding: 8px 10px;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  background: #fff;
+  color: #2c3e50;
+}
+
+.new-folder-btn {
+  border: none;
+  background: linear-gradient(135deg, #ff7b42 0%, #ff5722 100%);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.new-folder-btn:disabled { opacity: 0.6; cursor: not-allowed; filter: saturate(0.7); }
+.new-folder-btn.light { background: #f1f3f5; color: #2c3e50; margin-left: 8px; }
+.new-folder-btn.danger { background: #dc3545; margin-left: 8px; }
+.new-folder-btn.primary { margin-left: 8px; }
+.form-row textarea.input { font-family: inherit; }
+
+.loading {
+  margin: 12px 0;
+  color: #6c757d;
+}
+
+.error {
+  margin: 12px 0;
+  color: #d9534f;
+}
+
+/* Modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: #fff;
+  width: 520px;
+  max-width: calc(100% - 32px);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  overflow: hidden;
+}
+
+.modal-title {
+  margin: 0;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.modal-body {
+  padding: 16px 20px;
+}
+
+.form-row { margin-bottom: 12px; }
+.form-row.two-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-row label { display: block; font-size: 13px; color: #6c757d; margin-bottom: 6px; }
+.form-row .input { width: 100%; padding: 8px 10px; border: 1px solid #e9ecef; border-radius: 8px; }
+.required { color: #d9534f; margin-left: 4px; }
+
+.modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid #f0f0f0; }
+.btn { padding: 8px 12px; border-radius: 8px; border: none; cursor: pointer; }
+.btn.secondary { background: #f1f3f5; color: #2c3e50; }
+.btn.primary { background: linear-gradient(135deg, #ff7b42 0%, #ff5722 100%); color: #fff; }
 
 .tab-btn {
   padding: 12px 20px;

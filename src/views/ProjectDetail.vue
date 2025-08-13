@@ -17,6 +17,14 @@
         <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M5 21h14v-2H5v2zm3.7-6.04l7.06-7.06 2.34 2.34-7.06 7.06H8.7v-2.34zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
         编辑项目
       </button>
+      <button class="edit-btn" v-if="existingCollectionId" @click="openEditCollection" title="编辑收藏">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M14.06,6.19L3,17.25V21H6.75L17.81,9.94M14.06,6.19L17.81,9.94M17.66,3C17.41,3 17.15,3.1 16.96,3.29L15.13,5.12L18.88,8.87L20.71,7.04C21.1,6.65 21.1,6 20.71,5.62L18.38,3.29C18.18,3.09 17.92,3 17.66,3Z"/></svg>
+        编辑收藏
+      </button>
+      <button class="edit-btn" v-else :disabled="!project" @click="openCreateCollection" title="收藏此项目">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12,21.35L10.55,20.03C5.4,15.36 2,12.28 2,8.5 2,5.42 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.09C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.42 22,8.5C22,12.28 18.6,15.36 13.45,20.04L12,21.35Z"/></svg>
+        收藏
+      </button>
     </div>
 
     <!-- 概览卡片 -->
@@ -144,6 +152,17 @@
       @cancel="closeForm"
       @success="onEditSuccess"
     />
+
+    <CollectionModal
+      :model-value="collectionModalVisible"
+      @update:modelValue="v => collectionModalVisible = v"
+      :is-editing="isEditingCollection"
+      :initial="collectionForm"
+      :show-folder="false"
+  :types="['project']"
+      title-text="收藏此项目"
+      @submit="onCollectionSubmit"
+    />
   </div>
 
   <div v-else class="loading-card">
@@ -159,11 +178,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiService } from '@/services/api.js'
+import CollectionModal from '@/components/CollectionModal.vue'
 import ProjectForm from '@/components/ProjectForm.vue'
 
 export default {
   name: 'ProjectDetail',
-  components: { ProjectForm },
+  components: { ProjectForm, CollectionModal },
   setup() {
   const route = useRoute()
   const router = useRouter()
@@ -221,6 +241,88 @@ export default {
     }
 
     onMounted(load)
+
+    // 收藏入口：创建/编辑
+    const existingCollectionId = ref(null)
+    const collectionModalVisible = ref(false)
+    const isEditingCollection = ref(false)
+  const collectionForm = ref({ id: null, title: '', type: 'project', url: '', content: '', tags: '' })
+    const collLoading = ref(false)
+
+    const fetchExistingCollection = async () => {
+      if (!project.value?.id) return
+      try {
+  const res = await ApiService.getCollections({ typeFilter: 'project' })
+        const list = res?.data?.data || res?.data || []
+        const found = Array.isArray(list) ? list.find(c => (c.source_type === 'project' && c.source_id === project.value.id) || c.title === project.value.title) : null
+        existingCollectionId.value = found?.id || null
+      } catch {
+        existingCollectionId.value = null
+      }
+    }
+
+    // 载入项目后尝试检测收藏
+    onMounted(async () => {
+      await fetchExistingCollection()
+    })
+
+    const openCreateCollection = () => {
+      collectionForm.value = {
+        id: null,
+        title: project.value?.title || '',
+  type: 'project',
+        url: '',
+        content: project.value?.description || '',
+        tags: (keywords.value || []).join(', ')
+      }
+      isEditingCollection.value = false
+      collectionModalVisible.value = true
+    }
+
+    const openEditCollection = async () => {
+      if (!existingCollectionId.value) return
+      try {
+        const res = await ApiService.getCollection(existingCollectionId.value)
+        const c = res?.data?.data || res?.data
+        collectionForm.value = {
+          id: c.id,
+          title: c.title || project.value?.title || '',
+          type: c.type || 'project',
+          url: c.url || '',
+          content: c.content || '',
+          tags: Array.isArray(c.tags) ? c.tags.join(', ') : (c.tags || '')
+        }
+        isEditingCollection.value = true
+        collectionModalVisible.value = true
+      } catch (e) {
+        alert(e.message || '加载收藏失败')
+      }
+    }
+
+    const onCollectionSubmit = async (payload, editing) => {
+      if (!collectionForm.value.title?.trim()) {
+        alert('请输入标题')
+        return
+      }
+      collLoading.value = true
+  payload = { ...payload, type: 'project', source_type: 'project', source_id: project.value?.id }
+      try {
+        if (isEditingCollection.value && collectionForm.value.id) {
+          const res = await ApiService.updateCollection(collectionForm.value.id, payload)
+          if (res?.data?.success === false) throw new Error(res.data.message || '保存失败')
+          existingCollectionId.value = collectionForm.value.id
+        } else {
+          const res = await ApiService.createCollection(payload)
+          const created = res?.data?.data || res?.data
+          existingCollectionId.value = created?.id || null
+        }
+        collectionModalVisible.value = false
+      } catch (e) {
+        alert(e.message || '提交失败')
+      } finally {
+        collLoading.value = false
+      }
+    }
 
     // 编辑弹窗集成
     const showForm = ref(false)
@@ -280,6 +382,15 @@ export default {
       openEdit,
       closeForm,
       onEditSuccess,
+  // 收藏
+  existingCollectionId,
+  collectionModalVisible,
+  isEditingCollection,
+  collectionForm,
+  collLoading,
+  openCreateCollection,
+  openEditCollection,
+  onCollectionSubmit,
       // 推荐
       initialK,
       finalK,
@@ -367,4 +478,17 @@ export default {
   .stats { grid-template-columns: 1fr 1fr; }
   .grid { grid-template-columns: 1fr; }
 }
+
+/* 简易弹窗样式，复用 Favorites 页风格 */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal { background: #fff; width: 520px; max-width: calc(100% - 32px); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.15); overflow: hidden; }
+.modal-title { margin: 0; padding: 16px 20px; border-bottom: 1px solid #f0f0f0; }
+.modal-body { padding: 16px 20px; }
+.form-row { margin-bottom: 12px; }
+.form-row label { display: block; font-size: 13px; color: #6b7280; margin-bottom: 6px; }
+.form-row .input { width: 100%; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 8px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid #f0f0f0; }
+.btn { padding: 8px 12px; border-radius: 8px; border: none; cursor: pointer; }
+.btn.secondary { background: #f1f3f5; color: #2c3e50; }
+.btn.primary { background: #667eea; color: #fff; }
 </style>
