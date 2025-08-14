@@ -285,7 +285,7 @@
       <div class="topic-filter">
         <span 
           class="filter-tag" 
-          @click="selectedTopic = null"
+          @click="selectTopic(null)"
           :class="{ 'active': !selectedTopic }"
         >
           全部
@@ -304,6 +304,21 @@
 
     <!-- 动态流内容 -->
     <div class="feed-container">
+      <!-- 加载状态 -->
+      <div v-if="isLoading && posts.length === 0" class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>正在加载动态...</p>
+      </div>
+      
+      <!-- 空状态 -->
+      <div v-else-if="!isLoading && filteredPosts.length === 0" class="empty-state">
+        <div class="empty-icon">📝</div>
+        <h3>暂无动态</h3>
+        <p v-if="selectedTopic">该话题下暂无动态，试试其他话题或发布第一条动态吧！</p>
+        <p v-else>还没有动态，快来发布第一条动态吧！</p>
+      </div>
+      
+      <!-- 动态列表 -->
       <div 
         class="feed-item" 
         v-for="post in filteredPosts" 
@@ -318,13 +333,20 @@
             </div>
           </div>
           <div class="post-actions-right" v-if="currentUser?.id !== post.ownerId">
-            <button class="follow-btn" :class="{ followed: post.isFollowed }" @click="toggleFollow(post)">
-              {{ post.isFollowed ? '已关注' : '关注' }}
+            <button 
+              class="follow-btn" 
+              :class="{ followed: post.isFollowed }" 
+              @click="toggleFollow(post)"
+              :title="post.isFollowed ? '点击取消关注' : '点击关注该用户'"
+            >
+              <span class="follow-icon">{{ post.isFollowed ? '✓' : '+' }}</span>
+              <span class="follow-text">{{ post.isFollowed ? '已关注' : '关注' }}</span>
+              <div class="follow-ripple" v-if="post.followRipple"></div>
             </button>
           </div>
           <div class="post-actions-right" v-else>
-            <button class="action-btn" @click="post.isEditing = !post.isEditing">{{ post.isEditing ? '取消' : '编辑' }}</button>
-            <button class="action-btn" @click="deletePost(post)">删除</button>
+            <button class="action-btn" @click="startEdit(post)">{{ post.isEditing ? '取消' : '编辑' }}</button>
+            <button class="action-btn delete-btn" @click="deletePost(post)">删除</button>
           </div>
           <div class="post-topic" v-if="post.topic">
             <span class="topic-badge"># {{ post.topic }}</span>
@@ -336,9 +358,53 @@
             {{ post.content }}
           </template>
           <template v-else>
-            <textarea class="composer-input" v-model="post.editContent" rows="3"></textarea>
-            <div class="composer-actions" style="margin-top: 8px;">
-              <button class="publish-btn" @click="savePost(post)" :disabled="!post.editContent?.trim()">保存</button>
+            <div class="edit-form">
+              <div class="edit-form-header">
+                <div class="edit-icon">✏️</div>
+                <span class="edit-title">编辑动态</span>
+              </div>
+              
+              <div class="edit-content">
+                <div class="edit-label-row">
+                  <label class="edit-label">内容</label>
+                  <span class="char-counter">{{ post.editContent?.length || 0 }}/500</span>
+                </div>
+                <textarea 
+                  class="edit-textarea" 
+                  v-model="post.editContent" 
+                  rows="3"
+                  maxlength="500"
+                  placeholder="编辑动态内容..."
+                ></textarea>
+              </div>
+              
+              <div class="edit-topic">
+                <label class="edit-label">话题标签</label>
+                <div class="topic-select-wrapper">
+                  <select v-model="post.editTopic" class="edit-topic-select">
+                    <option value="">🏷️ 无标签</option>
+                    <option v-for="topic in hotTopics" :key="topic.id" :value="topic.name">
+                      # {{ topic.name }}
+                    </option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="edit-actions">
+                <button 
+                  class="edit-cancel-btn" 
+                  @click="cancelEdit(post)"
+                >
+                  取消
+                </button>
+                <button 
+                  class="edit-save-btn" 
+                  @click="savePost(post)" 
+                  :disabled="!post.editContent?.trim()"
+                >
+                  保存修改
+                </button>
+              </div>
             </div>
           </template>
         </div>
@@ -412,18 +478,30 @@
                 <div class="comment-edit" v-else>
                   <input class="comment-input" v-model="comment.editContent" />
                   <div class="comment-edit-actions">
-                    <button class="comment-submit-btn" @click="saveEditComment(comment)" :disabled="!comment.editContent?.trim()">保存</button>
-                    <button class="comment-submit-btn" @click="cancelEditComment(comment)">取消</button>
+                    <button class="comment-save-btn" @click="saveEditComment(comment)" :disabled="!comment.editContent?.trim()">
+                      <span class="btn-icon">💾</span>
+                      保存
+                    </button>
+                    <button class="comment-cancel-btn" @click="cancelEditComment(comment)">
+                      <span class="btn-icon">✖️</span>
+                      取消
+                    </button>
                   </div>
                 </div>
                 <div class="comment-footer">
-                  <button class="action-btn like-btn" @click="toggleLikeComment(post, comment)" :class="{ liked: comment.isLiked }">
-                    <span class="action-icon">{{ comment.isLiked ? '❤️' : '🤍' }}</span>
-                    <span class="action-text">{{ comment.likesCount }}</span>
+                  <button class="comment-action-btn comment-like-btn" @click="toggleLikeComment(post, comment)" :class="{ liked: comment.isLiked }">
+                    <span class="comment-action-icon">{{ comment.isLiked ? '❤️' : '🤍' }}</span>
+                    <span class="comment-action-text">{{ comment.likesCount }}</span>
                   </button>
                   <template v-if="currentUser?.id === comment.ownerId">
-                    <button class="action-btn" @click="editComment(comment)">编辑</button>
-                    <button class="action-btn" @click="deleteComment(post, comment)">删除</button>
+                    <button class="comment-action-btn comment-edit-btn" @click="editComment(comment)">
+                      <span class="comment-action-icon">✏️</span>
+                      <span class="comment-action-text">编辑</span>
+                    </button>
+                    <button class="comment-action-btn comment-delete-btn" @click="deleteComment(post, comment)">
+                      <span class="comment-action-icon">🗑️</span>
+                      <span class="comment-action-text">删除</span>
+                    </button>
                   </template>
                 </div>
               </div>
@@ -569,11 +647,13 @@ export default {
         images: [],
         comments: [],
         commentsCount: t.comments_count ?? 0,
-  isFollowed: !!followStateByUserId.value[t.owner_id],
-  showComments: false,
-  newComment: '',
-  isEditing: false,
-  editContent: t.content || t.title || ''
+        isFollowed: !!followStateByUserId.value[t.owner_id],
+        showComments: false,
+        newComment: '',
+        isEditing: false,
+        editContent: t.content || t.title || '',
+        editTopic: tagFirst || '',
+        followRipple: false
       }
     }
 
@@ -630,10 +710,12 @@ export default {
 
     // 计算过滤后的动态
     const filteredPosts = computed(() => {
-      if (!selectedTopic.value) {
-        return posts.value
+      // 如果正在加载中，返回当前的posts以避免闪烁
+      if (isLoading.value && posts.value.length === 0) {
+        return []
       }
-      return posts.value.filter(post => post.topic === selectedTopic.value.name)
+      // 由于已经通过服务端过滤，直接返回posts
+      return posts.value
     })
 
     const projectRecommendations = ref([
@@ -720,8 +802,23 @@ export default {
 
     // 社区动态方法
     const selectTopic = async (topic) => {
-      selectedTopic.value = selectedTopic.value?.id === topic.id ? null : topic
-      await loadTopics(true)
+      try {
+        // 如果传入null，表示选择"全部"
+        if (topic === null) {
+          selectedTopic.value = null
+        } else {
+          // 正常的话题切换逻辑
+          const newTopic = selectedTopic.value?.id === topic.id ? null : topic
+          selectedTopic.value = newTopic
+        }
+        
+        // 立即清空当前动态列表，显示加载状态
+        posts.value = []
+        await loadTopics(true)
+      } catch (error) {
+        console.error('选择话题失败:', error)
+        ElMessage.error('加载话题动态失败，请重试')
+      }
     }
 
     const publishPost = async () => {
@@ -844,14 +941,45 @@ export default {
       const text = (post.editContent || '').trim()
       if (!text) return
       try {
-        const payload = { content: text }
+        const payload = { 
+          content: text,
+          tags: post.editTopic || undefined
+        }
         await ApiService.updateForumTopic(post.id, payload)
         post.content = text
+        
+        // 更新话题标签
+        const oldTopic = post.topic
+        const newTopic = post.editTopic || null
+        post.topic = newTopic
+        
+        // 如果当前选择了特定话题，并且修改后的动态不再属于该话题，则从列表中移除
+        if (selectedTopic.value && newTopic !== selectedTopic.value.name) {
+          posts.value = posts.value.filter(p => p.id !== post.id)
+        }
+        
         post.isEditing = false
         ElMessage.success('已更新动态')
+        
+        // 如果话题发生变化，可能需要刷新话题列表
+        if (oldTopic !== newTopic) {
+          console.log('话题已更新:', oldTopic, '->', newTopic)
+        }
       } catch (e) {
         ElMessage.error(e.message || '更新失败')
       }
+    }
+
+    const startEdit = (post) => {
+      post.editContent = post.content
+      post.editTopic = post.topic || ''
+      post.isEditing = true
+    }
+
+    const cancelEdit = (post) => {
+      post.editContent = post.content
+      post.editTopic = post.topic || ''
+      post.isEditing = false
     }
 
     const deletePost = async (post) => {
@@ -879,6 +1007,13 @@ export default {
     const toggleFollow = async (post) => {
       const userId = post.ownerId
       if (!userId) return
+      
+      // 触发波纹效果
+      post.followRipple = true
+      setTimeout(() => {
+        post.followRipple = false
+      }, 600)
+      
       const prev = !!followStateByUserId.value[userId]
       try {
         updateFollowStateForUser(userId, !prev)
@@ -1008,14 +1143,16 @@ export default {
       toggleLike,
       toggleComments,
       addComment,
-  toggleLikeComment,
-  editComment,
-  cancelEditComment,
-  saveEditComment,
-  deleteComment,
-  savePost,
-  deletePost,
-  toggleFollow,
+      toggleLikeComment,
+      editComment,
+      cancelEditComment,
+      saveEditComment,
+      deleteComment,
+      savePost,
+      startEdit,
+      cancelEdit,
+      deletePost,
+      toggleFollow,
   currentUser,
       loadMorePosts,
       formatTime
@@ -1963,6 +2100,69 @@ export default {
   gap: 20px;
 }
 
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: #666;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e9ecef;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+  color: #666;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e9ecef;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.7;
+}
+
+.empty-state h3 {
+  margin: 0 0 8px 0;
+  color: #333;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 14px;
+  color: #888;
+  line-height: 1.5;
+}
+
 .feed-item {
   background: white;
   border-radius: 12px;
@@ -2016,6 +2216,174 @@ export default {
   font-size: 14px;
 }
 
+/* 编辑表单样式 */
+.edit-form {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e9ecef;
+  position: relative;
+  animation: editFormSlideIn 0.3s ease-out;
+}
+
+@keyframes editFormSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.edit-form-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.edit-icon {
+  font-size: 16px;
+}
+
+.edit-title {
+  font-weight: 600;
+  color: #495057;
+  font-size: 16px;
+}
+
+.edit-content,
+.edit-topic {
+  margin-bottom: 16px;
+}
+
+.edit-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.char-counter {
+  font-size: 12px;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.edit-label {
+  display: block;
+  font-weight: 600;
+  color: #495057;
+  font-size: 14px;
+}
+
+.edit-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #495057;
+  background: white;
+  resize: vertical;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.edit-textarea:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.edit-textarea::placeholder {
+  color: #6c757d;
+}
+
+.topic-select-wrapper {
+  position: relative;
+}
+
+.edit-topic-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #495057;
+  background: white;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 12px center;
+  background-repeat: no-repeat;
+  background-size: 16px;
+  padding-right: 40px;
+  cursor: pointer;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.edit-topic-select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.edit-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e9ecef;
+}
+
+.edit-cancel-btn {
+  padding: 8px 20px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  background: white;
+  color: #6c757d;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.edit-cancel-btn:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+  color: #495057;
+}
+
+.edit-save-btn {
+  padding: 8px 20px;
+  border: 1px solid #007bff;
+  border-radius: 6px;
+  background: #007bff;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.edit-save-btn:hover:not(:disabled) {
+  background: #0056b3;
+  border-color: #0056b3;
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.25);
+}
+
+.edit-save-btn:disabled {
+  background: #6c757d;
+  border-color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .post-images {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -2056,6 +2424,208 @@ export default {
   color: #e74c3c;
 }
 
+.post-actions-right .action-btn {
+  padding: 6px 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  background: white;
+  color: #6c757d;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  margin-left: 8px;
+}
+
+.post-actions-right .action-btn:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+  color: #495057;
+}
+
+.post-actions-right .action-btn.delete-btn {
+  color: #dc3545;
+  border-color: #dc3545;
+}
+
+.post-actions-right .action-btn.delete-btn:hover {
+  background: #dc3545;
+  color: white;
+}
+
+/* 关注按钮样式 */
+.follow-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border: 2px solid transparent;
+  border-radius: 25px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+  text-decoration: none;
+  user-select: none;
+}
+
+.follow-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.follow-btn:hover::before {
+  left: 100%;
+}
+
+.follow-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transition: width 0.4s, height 0.4s, margin-left 0.4s, margin-top 0.4s;
+  transform: translate(-50%, -50%);
+}
+
+.follow-btn:active::after {
+  width: 200px;
+  height: 200px;
+}
+
+.follow-btn:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+  background: linear-gradient(135deg, #5a6fd8 0%, #6a4c96 100%);
+}
+
+.follow-btn:active {
+  transform: translateY(-1px) scale(1.02);
+}
+
+.follow-btn.followed {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+  animation: followSuccess 0.6s ease;
+}
+
+@keyframes followSuccess {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 8px 25px rgba(40, 167, 69, 0.6);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+  }
+}
+
+.follow-btn.followed:hover {
+  background: linear-gradient(135deg, #218838 0%, #1abc9c 100%);
+  box-shadow: 0 8px 25px rgba(40, 167, 69, 0.5);
+  transform: translateY(-3px) scale(1.05);
+}
+
+.follow-icon {
+  font-size: 16px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 2;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.follow-btn:hover .follow-icon {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.2) rotate(180deg);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.3);
+}
+
+.follow-btn.followed .follow-icon {
+  background: rgba(255, 255, 255, 0.3);
+  animation: checkmarkAnimation 0.8s ease;
+}
+
+@keyframes checkmarkAnimation {
+  0% {
+    transform: scale(0) rotate(-180deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.4) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.follow-btn.followed:hover .follow-icon {
+  transform: scale(1.2);
+  box-shadow: 0 2px 12px rgba(255, 255, 255, 0.4);
+}
+
+.follow-text {
+  font-size: 14px;
+  font-weight: 600;
+  position: relative;
+  z-index: 2;
+}
+
+.follow-ripple {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: rippleEffect 0.6s ease-out;
+  pointer-events: none;
+}
+
+@keyframes rippleEffect {
+  0% {
+    width: 10px;
+    height: 10px;
+    opacity: 1;
+  }
+  100% {
+    width: 80px;
+    height: 80px;
+    opacity: 0;
+  }
+}
+
 .action-icon {
   font-size: 16px;
 }
@@ -2074,10 +2644,24 @@ export default {
 
 .comment-input {
   flex: 1;
-  padding: 8px 12px;
-  border: 1px solid #e9ecef;
-  border-radius: 20px;
+  padding: 10px 14px;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
   font-size: 12px;
+  line-height: 1.4;
+  color: #495057;
+  background: white;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.comment-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.comment-input::placeholder {
+  color: #6c757d;
 }
 
 .comment-submit-btn {
@@ -2096,6 +2680,67 @@ export default {
   cursor: not-allowed;
 }
 
+/* 评论编辑按钮样式 */
+.comment-edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.comment-save-btn,
+.comment-cancel-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-icon {
+  font-size: 10px;
+}
+
+.comment-save-btn {
+  background: #28a745;
+  color: white;
+  border: 1px solid #28a745;
+}
+
+.comment-save-btn:hover:not(:disabled) {
+  background: #218838;
+  border-color: #1e7e34;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+}
+
+.comment-save-btn:disabled {
+  background: #e9ecef;
+  color: #6c757d;
+  border-color: #e9ecef;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.comment-cancel-btn {
+  background: white;
+  color: #6c757d;
+  border: 1px solid #dee2e6;
+}
+
+.comment-cancel-btn:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+  color: #495057;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
 .comments-list {
   display: flex;
   flex-direction: column;
@@ -2104,19 +2749,46 @@ export default {
 
 .comment-item {
   display: flex;
-  gap: 8px;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #fafbfc;
+  border: 1px solid #f1f3f4;
+  transition: all 0.2s ease;
+  animation: commentSlideIn 0.3s ease-out;
+}
+
+.comment-item:hover {
+  background: #f8f9fa;
+  border-color: #e9ecef;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes commentSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .comment-avatar {
-  width: 24px;
-  height: 24px;
-  background: #667eea;
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
   flex-shrink: 0;
+  color: white;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
 }
 
 .comment-content {
@@ -2145,6 +2817,73 @@ export default {
   font-size: 12px;
   color: #495057;
   line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+/* 评论操作按钮样式 */
+.comment-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  padding-top: 6px;
+}
+
+.comment-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  font-size: 11px;
+  color: #6c757d;
+  position: relative;
+}
+
+.comment-action-btn:hover {
+  background: #f8f9fa;
+  color: #495057;
+}
+
+.comment-action-icon {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.comment-action-text {
+  font-weight: 500;
+  font-size: 11px;
+}
+
+/* 点赞按钮特殊样式 */
+.comment-like-btn.liked {
+  color: #e74c3c;
+}
+
+.comment-like-btn.liked:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* 编辑按钮样式 */
+.comment-edit-btn:hover {
+  background: #e1f5fe;
+  color: #0277bd;
+}
+
+/* 删除按钮样式 */
+.comment-delete-btn:hover {
+  background: #ffebee;
+  color: #d32f2f;
+}
+
+.comment-delete-btn .comment-action-text {
+  color: #dc3545;
 }
 
 .load-more {
