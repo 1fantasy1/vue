@@ -187,12 +187,14 @@
 <script>
 import { useRouter } from 'vue-router'
 import { ref, computed, watch, onMounted } from 'vue'
+import { useGlobalStore } from '@/stores/global'
 import apiService from '@/services/api.js'
 
 export default {
   name: 'MyCourses',
   setup() {
     const router = useRouter()
+  const globalStore = useGlobalStore()
     const activeTab = ref('all')
     const searchQuery = ref('')
     const debouncedSearchQuery = ref('')
@@ -396,10 +398,15 @@ export default {
       router.push('/admin/courses')
     }
 
-    // 检查是否是管理员
+    // 检查是否是管理员（兼容 localStorage 与 store，并容忍多种字段）
     const isAdmin = computed(() => {
-      const userRole = localStorage.getItem('userRole')
-      return userRole === 'admin'
+      const lsRole = (localStorage.getItem('userRole') || '').toLowerCase()
+      const u = globalStore?.user || {}
+      const storeRole = (u.role || '').toLowerCase()
+      const roles = Array.isArray(u.roles) ? u.roles.map(r => String(r).toLowerCase()) : []
+      const perms = Array.isArray(u.permissions) ? u.permissions.map(p => String(p).toLowerCase()) : []
+      const flags = [lsRole, storeRole, ...roles, ...perms]
+      return u.is_admin === true || flags.includes('admin')
     })
 
     const clearSearch = () => {

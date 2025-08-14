@@ -157,6 +157,21 @@ router.beforeEach((to, from, next) => {
       return
     }
   }
+
+  // 管理员权限校验
+  if (to.matched.some(record => record.meta.requiresAdmin)) {
+    // 兼容两种来源：localStorage 与 store 中的用户角色
+    const lsRole = (localStorage.getItem('userRole') || '').toLowerCase()
+    const storeUser = globalStore.user || {}
+    const storeRole = (storeUser.role || (Array.isArray(storeUser.roles) ? storeUser.roles[0] : '') || '').toLowerCase()
+    const isAdmin = lsRole === 'admin' || storeRole === 'admin'
+
+    if (!isAdmin) {
+      // 无权限，跳回首页并带上提示参数
+      next({ path: '/', query: { forbidden: 'admin' } })
+      return
+    }
+  }
   
   // 如果是登录页面但用户已登录
   if (to.matched.some(record => record.meta.requiresGuest)) {

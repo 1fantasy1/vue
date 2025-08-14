@@ -141,10 +141,27 @@ export default {
     const selectedLevel = ref('')
     const selectedCategory = ref('')
 
-    // 检查管理员权限
+    // 检查管理员权限（兼容 localStorage 与 store，并容忍多种字段）
     const isAdmin = computed(() => {
-      const userRole = localStorage.getItem('userRole')
-      return userRole === 'admin'
+      const lsRole = (localStorage.getItem('userRole') || '').toLowerCase()
+      // 运行时按需引入 store，避免循环依赖
+      let storeRole = ''
+      let roles = []
+      let perms = []
+      let isAdminFlag = false
+      try {
+        const { useGlobalStore } = require('@/stores/global')
+        const store = useGlobalStore()
+        const u = store?.user || {}
+        storeRole = (u.role || '').toLowerCase()
+        roles = Array.isArray(u.roles) ? u.roles.map(r => String(r).toLowerCase()) : []
+        perms = Array.isArray(u.permissions) ? u.permissions.map(p => String(p).toLowerCase()) : []
+        isAdminFlag = u.is_admin === true
+      } catch (e) {
+        // 忽略运行时导入失败
+      }
+      const flags = [lsRole, storeRole, ...roles, ...perms]
+      return isAdminFlag || flags.includes('admin')
     })
 
     // 筛选课程

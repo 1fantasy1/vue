@@ -420,8 +420,23 @@ export default {
         
         if (response.data.success) {
           // 登录成功，更新全局状态
-          globalStore.login(response.data.data.user)
-          
+          const loggedUser = response.data.data.user
+          globalStore.login(loggedUser)
+
+          // 尝试从返回的用户对象中推断角色并写入 localStorage，便于前端 isAdmin 判定
+          try {
+            const role = (
+              (loggedUser.role) ||
+              (Array.isArray(loggedUser.roles) ? loggedUser.roles[0] : '') ||
+              (loggedUser.is_admin ? 'admin' : '')
+            )
+            if (role) {
+              localStorage.setItem('userRole', String(role).toLowerCase())
+            }
+          } catch (e) {
+            // 忽略角色写入失败
+          }
+
           // 跳转到首页
           router.push('/')
           

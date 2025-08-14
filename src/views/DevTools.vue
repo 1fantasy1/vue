@@ -225,10 +225,22 @@ export default {
     }
 
     const navigateToAdmin = (adminType) => {
-      // 检查管理员权限 (这里应该从用户状态或store中获取)
-      const userRole = localStorage.getItem('userRole') || 'user'
-      
-      if (userRole !== 'admin') {
+      // 检查管理员权限（兼容 localStorage 与 store）
+      const lsRole = (localStorage.getItem('userRole') || '').toLowerCase()
+      let isAdmin = lsRole === 'admin'
+      try {
+        const { useGlobalStore } = require('@/stores/global')
+        const store = useGlobalStore()
+        const u = store?.user || {}
+        const storeRole = (u.role || '').toLowerCase()
+        const roles = Array.isArray(u.roles) ? u.roles.map(r => String(r).toLowerCase()) : []
+        const perms = Array.isArray(u.permissions) ? u.permissions.map(p => String(p).toLowerCase()) : []
+        isAdmin = isAdmin || u.is_admin === true || storeRole === 'admin' || roles.includes('admin') || perms.includes('admin')
+      } catch (e) {
+        // 忽略
+      }
+
+      if (!isAdmin) {
         alert('您没有管理员权限')
         return
       }
