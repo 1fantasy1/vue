@@ -11,9 +11,12 @@
           <div class="kb-select">
             <label for="kb">知识库：</label>
             <select id="kb" v-model="selectedKbId" @change="onKbChange">
-              <option v-for="kb in knowledgeBases" :key="kb.id" :value="kb.id">{{ kb.name }}</option>
+              <option v-for="kb in knowledgeBases" :key="kb.id" :value="kb.id">
+                {{ kb.name }} ({{ kb.access_type === 'private' ? '私有' : '公开' }})
+              </option>
             </select>
-            <button type="button" class="kb-btn" @click="createKbPrompt">新建知识库</button>
+            <button type="button" class="kb-btn" @click="openKbModal">新建知识库</button>
+            <button type="button" class="kb-btn secondary" @click="editCurrentKb" v-if="selectedKbId">编辑</button>
           </div>
           <div class="kb-status-filter">
             <label for="status">状态：</label>
@@ -66,7 +69,7 @@
       <h3 class="section-title">知识分类</h3>
       <div class="categories-grid">
         <div 
-          v-for="category in categories" 
+          v-for="category in categoriesWithCount" 
           :key="category.id"
           class="category-card"
           @click="selectCategory(category)"
@@ -129,6 +132,7 @@
               <span class="document-date">{{ document.updatedAt }}</span>
               <span class="document-size">{{ document.size }}</span>
               <span class="document-status" :class="`status-${document.status}`">{{ document.status }}</span>
+              <span v-if="document.totalChunks" class="document-chunks">{{ document.totalChunks }} 块</span>
             </div>
             <div class="document-tags">
               <span 
@@ -154,6 +158,11 @@
             <button class="action-btn danger" title="删除" @click.stop="deleteDocument(document)">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6Z"/>
+              </svg>
+            </button>
+            <button v-if="document.status === 'completed'" class="action-btn info" title="查看内容" @click.stop="viewDocumentContent(document)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z"/>
               </svg>
             </button>
           </div>
@@ -253,6 +262,80 @@
         </div>
       </div>
     </div>
+
+    <!-- 知识库创建/编辑弹窗 -->
+    <div v-if="kbModalVisible" class="modal-mask">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>{{ isEditingKb ? '编辑知识库' : '新建知识库' }}</h3>
+          <button class="close" @click="closeKbModal">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-row">
+            <label>名称 *</label>
+            <input v-model="kbForm.name" type="text" placeholder="知识库名称" />
+          </div>
+          <div class="form-row">
+            <label>描述</label>
+            <textarea v-model="kbForm.description" rows="3" placeholder="知识库描述（可选）" />
+          </div>
+          <div class="form-row">
+            <label>访问类型</label>
+            <select v-model="kbForm.access_type">
+              <option value="private">私有 - 只有我可以访问</option>
+              <option value="public">公开 - 所有用户可查看</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="kb-btn" @click="submitKb" :disabled="!kbForm.name">{{ isEditingKb ? '保存' : '创建' }}</button>
+          <button v-if="isEditingKb" class="kb-btn danger" @click="deleteCurrentKb">删除知识库</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 文档内容查看弹窗 -->
+    <div v-if="contentModalVisible" class="modal-mask">
+      <div class="modal-card large">
+        <div class="modal-header">
+          <h3>文档内容：{{ currentDocument?.title }}</h3>
+          <div class="modal-header-actions">
+            <button class="kb-btn secondary" @click="viewDocumentChunks" v-if="currentDocument">查看分块</button>
+            <button class="close" @click="closeContentModal">×</button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <div v-if="loadingContent" class="loading">正在加载内容...</div>
+          <div v-else-if="documentContent" class="document-content">
+            <pre>{{ documentContent }}</pre>
+          </div>
+          <div v-else class="empty-content">无法获取文档内容</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 文档分块查看弹窗 -->
+    <div v-if="chunksModalVisible" class="modal-mask">
+      <div class="modal-card large">
+        <div class="modal-header">
+          <h3>文档分块：{{ currentDocument?.title }}</h3>
+          <button class="close" @click="closeChunksModal">×</button>
+        </div>
+        <div class="modal-body">
+          <div v-if="loadingChunks" class="loading">正在加载分块...</div>
+          <div v-else-if="documentChunks.length > 0" class="chunks-list">
+            <div v-for="chunk in documentChunks" :key="chunk.id" class="chunk-item">
+              <div class="chunk-header">
+                <span class="chunk-index">第 {{ chunk.chunk_index + 1 }} 块</span>
+                <span class="chunk-id">ID: {{ chunk.id }}</span>
+              </div>
+              <div class="chunk-content">{{ chunk.content }}</div>
+            </div>
+          </div>
+          <div v-else class="empty-content">无分块数据</div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -267,14 +350,25 @@ export default {
     return {
       searchQuery: '',
       viewMode: 'grid',
-  selectedCategory: null,
-  knowledgeBases: [],
-  selectedKbId: null,
-  statusFilter: '',
-  loadingDocs: false,
-  activeTab: 'documents',
-  articles: [],
-  articlesLoaded: false,
+      selectedCategory: null,
+      knowledgeBases: [],
+      selectedKbId: null,
+      statusFilter: '',
+      loadingDocs: false,
+      activeTab: 'documents',
+      articles: [],
+      articlesLoaded: false,
+      // 知识库弹窗
+      kbModalVisible: false,
+      isEditingKb: false,
+      kbForm: { id: null, name: '', description: '', access_type: 'private' },
+      // 文档内容查看
+      contentModalVisible: false,
+      chunksModalVisible: false,
+      loadingContent: false,
+      loadingChunks: false,
+      documentContent: '',
+      documentChunks: [],
       filterTags: [
         { id: 1, name: '全部', active: true },
         { id: 2, name: '最新', active: false },
@@ -341,6 +435,13 @@ export default {
     await this.init()
   },
   computed: {
+    // 动态计算每个分类的文档数量
+    categoriesWithCount() {
+      return this.categories.map(category => ({
+        ...category,
+        count: this.documents.filter(doc => doc.categoryId === category.id).length
+      }))
+    },
     filteredDocuments() {
       let result = this.documents
 
@@ -408,24 +509,78 @@ export default {
       this.loadingDocs = true
       try {
         const res = await ApiService.getKnowledgeBaseDocuments(this.selectedKbId, this.statusFilter || null)
-        const raw = res?.data?.data || []
+        console.log('Documents API response:', res) // 调试日志
+        
+        // 更灵活地处理响应数据结构
+        let raw = []
+        
+        // 基于 createResponse 函数的结构 { data: { success, data, message } }
+        if (res?.data?.data) {
+          const apiData = res.data.data
+          if (Array.isArray(apiData)) {
+            raw = apiData
+          } else if (apiData.documents && Array.isArray(apiData.documents)) {
+            raw = apiData.documents
+          } else if (apiData.items && Array.isArray(apiData.items)) {
+            raw = apiData.items
+          } else if (apiData.list && Array.isArray(apiData.list)) {
+            raw = apiData.list
+          }
+        } else if (res?.data) {
+          // 后备解析方案
+          if (Array.isArray(res.data)) {
+            raw = res.data
+          } else if (res.data.success !== false && Array.isArray(res.data.documents)) {
+            raw = res.data.documents
+          } else if (res.data.success !== false && Array.isArray(res.data.items)) {
+            raw = res.data.items
+          }
+        }
+        
+        console.log('Parsed documents:', raw) // 调试日志
+        
         this.documents = (Array.isArray(raw) ? raw : []).map(d => ({
           id: d.id,
-          title: d.file_name || `文档 #${d.id}`,
-          description: d.processing_message || '',
-          type: d.file_type || '-',
-          size: '-',
-          updatedAt: this.formatDate(d.updated_at || d.created_at),
-          tags: [],
-          categoryId: null,
-          favorite: false,
-          status: d.status || 'processing'
+          title: d.file_name || d.filename || d.name || `文档 #${d.id}`,
+          description: d.processing_message || d.description || '',
+          type: d.file_type || d.fileType || d.type || '-',
+          size: d.file_size || d.fileSize || d.size || '-',
+          updatedAt: this.formatDate(d.updated_at || d.created_at || d.upload_time),
+          tags: d.tags || [],
+          // 临时方案：根据文档类型分配分类ID，让分类功能可以工作
+          categoryId: this.getCategoryIdByFileType(d.file_type || d.fileType || d.type),
+          favorite: d.favorite || false,
+          status: d.status || 'processing',
+          totalChunks: d.total_chunks || d.chunks || 0
         }))
+        
+        console.log('Final documents list:', this.documents) // 调试日志
       } catch (e) {
-        console.error(e)
+        console.error('Load documents error:', e)
         alert(e.message || '加载文档失败')
       } finally {
         this.loadingDocs = false
+      }
+    },
+    getCategoryIdByFileType(fileType) {
+      // 根据文件类型映射到分类ID，让分类功能可以工作
+      if (!fileType || fileType === '-') {
+        return Math.floor(Math.random() * 6) + 1 // 随机分配
+      }
+      
+      const type = fileType.toLowerCase()
+      if (type.includes('doc') || type.includes('pdf') || type.includes('txt')) {
+        return 1 // 技术文档
+      } else if (type.includes('ppt') || type.includes('slide')) {
+        return 2 // 项目指南
+      } else if (type.includes('img') || type.includes('png') || type.includes('jpg')) {
+        return 3 // 设计规范
+      } else if (type.includes('json') || type.includes('xml')) {
+        return 4 // API文档
+      } else if (type.includes('mp4') || type.includes('avi')) {
+        return 5 // 教程视频
+      } else {
+        return 6 // 工具资源
       }
     },
     async loadArticles() {
@@ -496,12 +651,20 @@ export default {
         return
       }
       try {
+        console.log('Uploading file:', file.name, 'to KB:', this.selectedKbId) // 调试日志
         const res = await ApiService.uploadDocument(this.selectedKbId, file)
+        console.log('Upload response:', res) // 调试日志
+        
         if (res?.data?.success === false) throw new Error(res.data.message || '上传失败')
         alert('上传成功，后台正在处理...')
-        await this.loadDocuments()
+        
+        // 延迟1秒后重新加载，确保后端已保存
+        setTimeout(async () => {
+          await this.loadDocuments()
+        }, 1000)
+        
       } catch (err) {
-        console.error(err)
+        console.error('Upload error:', err)
         alert(err.message || '上传失败')
       } finally {
         e.target.value = ''
@@ -574,6 +737,107 @@ export default {
         console.error(e)
         alert(e.message || '删除失败')
       }
+    },
+    openKbModal() {
+      this.isEditingKb = false
+      this.kbForm = { id: null, name: '', description: '', access_type: 'private' }
+      this.kbModalVisible = true
+    },
+    async editCurrentKb() {
+      if (!this.selectedKbId) return
+      try {
+        const res = await ApiService.getKnowledgeBase(this.selectedKbId)
+        const kb = res?.data?.data
+        if (!kb) throw new Error('知识库不存在')
+        this.isEditingKb = true
+        this.kbForm = {
+          id: kb.id,
+          name: kb.name || '',
+          description: kb.description || '',
+          access_type: kb.access_type || 'private'
+        }
+        this.kbModalVisible = true
+      } catch (e) {
+        console.error(e)
+        alert(e.message || '获取知识库信息失败')
+      }
+    },
+    closeKbModal() {
+      this.kbModalVisible = false
+    },
+    async submitKb() {
+      try {
+        const payload = {
+          name: this.kbForm.name,
+          description: this.kbForm.description || undefined,
+          access_type: this.kbForm.access_type
+        }
+        let res
+        if (this.isEditingKb && this.kbForm.id) {
+          res = await ApiService.updateKnowledgeBase(this.kbForm.id, payload)
+        } else {
+          res = await ApiService.createKnowledgeBase(payload)
+        }
+        if (res?.data?.success === false) throw new Error(res.data.message || '保存失败')
+        this.kbModalVisible = false
+        await this.init()
+      } catch (e) {
+        console.error(e)
+        alert(e.message || '保存失败')
+      }
+    },
+    async deleteCurrentKb() {
+      if (!this.kbForm.id) return
+      if (!confirm(`确认删除知识库："${this.kbForm.name}"？此操作将删除其中的所有文章和文档，不可恢复`)) return
+      try {
+        const res = await ApiService.deleteKnowledgeBase(this.kbForm.id)
+        if (res?.data?.success === false) throw new Error(res.data.message || '删除失败')
+        this.kbModalVisible = false
+        await this.init()
+      } catch (e) {
+        console.error(e)
+        alert(e.message || '删除失败')
+      }
+    },
+    async viewDocumentContent(document) {
+      if (!this.selectedKbId || document.status !== 'completed') return
+      this.currentDocument = document
+      this.contentModalVisible = true
+      this.loadingContent = true
+      this.documentContent = ''
+      
+      try {
+        const res = await ApiService.getKnowledgeDocumentContent(this.selectedKbId, document.id)
+        this.documentContent = res?.data?.data?.content || '无内容'
+      } catch (e) {
+        console.error(e)
+        this.documentContent = `加载失败: ${e.message}`
+      } finally {
+        this.loadingContent = false
+      }
+    },
+    closeContentModal() {
+      this.contentModalVisible = false
+      this.currentDocument = null
+    },
+    async viewDocumentChunks() {
+      if (!this.selectedKbId || !this.currentDocument) return
+      this.chunksModalVisible = true
+      this.loadingChunks = true
+      this.documentChunks = []
+      
+      try {
+        const res = await ApiService.getKnowledgeDocumentChunks(this.selectedKbId, this.currentDocument.id)
+        this.documentChunks = res?.data?.data || []
+      } catch (e) {
+        console.error(e)
+        alert(`加载分块失败: ${e.message}`)
+      } finally {
+        this.loadingChunks = false
+      }
+    },
+    closeChunksModal() {
+      this.chunksModalVisible = false
     },
     async createKbPrompt() {
       const name = prompt('请输入知识库名称')
@@ -932,6 +1196,24 @@ export default {
 
 .action-btn.danger { color: #ef4444; border-color: #fecaca; }
 .action-btn.danger:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
+.action-btn.info { color: #3b82f6; border-color: #dbeafe; }
+.action-btn.info:hover { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+
+.kb-btn.secondary { background: #6b7280; }
+.kb-btn.secondary:hover { background: #4b5563; }
+
+/* 弹窗样式增强 */
+.modal-card.large { width: min(90vw, 1000px); max-height: 80vh; }
+.modal-header-actions { display: flex; gap: 8px; align-items: center; }
+.document-content { max-height: 60vh; overflow-y: auto; background: #f9fafb; padding: 12px; border-radius: 8px; }
+.document-content pre { white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.5; }
+
+.chunks-list { max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+.chunk-item { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; background: #f9fafb; }
+.chunk-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; color: #6b7280; }
+.chunk-content { font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+
+.loading, .empty-content { text-align: center; padding: 40px; color: #6b7280; }
 
 /* 空状态 */
 .empty-state {
