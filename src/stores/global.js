@@ -26,10 +26,10 @@ export const useGlobalStore = defineStore('global', () => {
 
   // LLM配置
   const llmConfig = ref({
-    llm_api_type: 'openai',
+    llm_api_type: 'siliconflow',
     llm_api_key: '',
-    llm_api_base_url: 'https://api.openai.com/v1',
-    llm_model_id: 'gpt-3.5-turbo',
+    llm_api_base_url: 'https://api.siliconflow.cn/v1',
+    llm_model_id: 'deepseek-ai/DeepSeek-V3',
     temperature: 0.7,
     isConfigured: false // 标记是否已配置
   })
@@ -120,10 +120,10 @@ export const useGlobalStore = defineStore('global', () => {
         
         if (userData) {
           const serverConfig = {
-            llm_api_type: userData.llm_api_type || 'openai',
+            llm_api_type: userData.llm_api_type || 'siliconflow',
             llm_api_key: userData.llm_api_key_encrypted || '',
-            llm_api_base_url: userData.llm_api_base_url || 'https://api.openai.com/v1',
-            llm_model_id: userData.llm_model_id || 'gpt-3.5-turbo'
+            llm_api_base_url: userData.llm_api_base_url || 'https://api.siliconflow.cn/v1',
+            llm_model_id: userData.llm_model_id || 'deepseek-ai/DeepSeek-V3'
           }
           updateLLMConfig(serverConfig)
           return serverConfig

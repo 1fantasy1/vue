@@ -229,7 +229,7 @@
 <script>
 import { useRouter } from 'vue-router'
 import { ref, computed, onMounted } from 'vue'
-import { ApiService } from '@/services/api'
+import { ApiService } from '@/services/api.js'
 
 export default {
   name: 'QuickNotes',

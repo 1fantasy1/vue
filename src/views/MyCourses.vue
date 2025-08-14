@@ -3,6 +3,20 @@
     <div class="header">
       <div class="title-section">
         <h1 class="page-title">我的课程</h1>
+        <div class="header-actions">
+          <button @click="browseCourses" class="btn-secondary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M15,7A5,5 0 0,1 20,12A5,5 0 0,1 15,17A5,5 0 0,1 10,12A5,5 0 0,1 15,7M15,9A3,3 0 0,0 12,12A3,3 0 0,0 15,15A3,3 0 0,0 18,12A3,3 0 0,0 15,9Z"/>
+            </svg>
+            浏览课程
+          </button>
+          <button v-if="isAdmin" @click="manageCourses" class="btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+            </svg>
+            创建课程
+          </button>
+        </div>
       </div>
       <div class="header-subtitle">持续学习，持续成长</div>
     </div>
@@ -72,8 +86,14 @@
     </div>
 
     <div class="courses-container">
+      <!-- 加载状态 -->
+      <div v-if="loading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>正在加载课程数据...</p>
+      </div>
+      
       <!-- 没有搜索结果时显示 -->
-      <div v-if="filteredCourses.length === 0" class="empty-state">
+      <div v-else-if="!loading && filteredCourses.length === 0" class="empty-state">
         <div class="empty-icon">
           <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
             <path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
@@ -94,7 +114,7 @@
       </div>
 
       <!-- 课程列表 -->
-      <div v-else class="course-card" v-for="course in filteredCourses" :key="course.id">
+      <div v-else-if="!loading" class="course-card" v-for="course in filteredCourses" :key="course.id">
         <div class="course-image">
           <img v-if="course.coverImage" :src="course.coverImage" :alt="course.title" class="course-cover" />
         </div>
@@ -166,7 +186,8 @@
 
 <script>
 import { useRouter } from 'vue-router'
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import apiService from '@/services/api.js'
 
 export default {
   name: 'MyCourses',
@@ -175,6 +196,8 @@ export default {
     const activeTab = ref('all')
     const searchQuery = ref('')
     const debouncedSearchQuery = ref('')
+    const loading = ref(true)
+    const courses = ref([])
 
     // 防抖搜索
     let searchTimeout = null
@@ -185,7 +208,9 @@ export default {
       }, 300)
     })
     
-    const courses = ref([
+    // 课程数据初始化
+    const initializeDefaultCourses = () => {
+      courses.value = [
       {
         id: 1,
         title: 'Vue.js 3.0 完整开发教程',
@@ -265,8 +290,43 @@ export default {
         lastUpdate: '3周前',
         completedDate: '2023-12-25',
         coverImage: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400&h=300&fit=crop'
+      }]
+    }
+
+    // 从API加载课程数据
+    const loadCourses = async () => {
+      try {
+        loading.value = true
+        const response = await apiService.getCourses()
+        if (response.data.success) {
+          // 转换API数据格式到前端格式
+          courses.value = response.data.data.map(course => ({
+            id: course.id,
+            title: course.title,
+            instructor: course.instructor || '未知',
+            description: course.description || '',
+            category: course.category || '其他',
+            level: 'intermediate', // API中暂无level字段，使用默认值
+            progress: 0, // 需要从用户课程进度API获取
+            duration: '未知',
+            lessons: course.total_lessons || 0,
+            students: 0, // 需要从统计API获取
+            status: 'learning', // 需要从用户课程进度API获取
+            lastUpdate: course.updated_at ? new Date(course.updated_at).toLocaleDateString() : '未知',
+            coverImage: course.cover_image_url
+          }))
+        } else {
+          // 如果API失败，使用默认数据
+          initializeDefaultCourses()
+        }
+      } catch (error) {
+        console.error('加载课程失败:', error)
+        // 如果API失败，使用默认数据
+        initializeDefaultCourses()
+      } finally {
+        loading.value = false
       }
-    ])
+    }
 
     const filteredCourses = computed(() => {
       let filtered = courses.value
@@ -317,34 +377,57 @@ export default {
     }
 
     const continueLearning = (courseId) => {
-      alert(`继续学习课程 ${courseId}`)
+      // 跳转到课程详情页面
+      router.push(`/courses/${courseId}`)
     }
 
     const viewNotes = (courseId) => {
-      alert(`查看课程 ${courseId} 笔记`)
+      // 跳转到课程笔记页面，传递课程ID参数
+      router.push({ name: 'CourseNotes', query: { courseId } })
     }
 
     const browseCourses = () => {
-      alert('浏览更多课程功能开发中...')
+      // 跳转到课程浏览页面
+      router.push('/courses')
     }
+
+    const manageCourses = () => {
+      // 跳转到课程管理页面
+      router.push('/admin/courses')
+    }
+
+    // 检查是否是管理员
+    const isAdmin = computed(() => {
+      const userRole = localStorage.getItem('userRole')
+      return userRole === 'admin'
+    })
 
     const clearSearch = () => {
       searchQuery.value = ''
       debouncedSearchQuery.value = ''
     }
 
+    // 组件挂载时加载数据
+    onMounted(() => {
+      loadCourses()
+    })
+
     return {
       activeTab,
       searchQuery,
+      debouncedSearchQuery,
+      loading,
       courses,
       filteredCourses,
       learningCount,
       completedCount,
+      isAdmin,
       getLevelText,
       getStatusText,
       continueLearning,
       viewNotes,
       browseCourses,
+      manageCourses,
       clearSearch
     }
   }
@@ -375,6 +458,51 @@ export default {
 .title-section {
   max-width: 100%;
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.btn-primary, .btn-secondary {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+  background: white;
+  color: #666;
+  border: 1px solid #e1e5e9;
+}
+
+.btn-secondary:hover {
+  background: #f8f9fa;
+  border-color: #d1d9e0;
 }
 
 .page-title {
@@ -588,6 +716,36 @@ export default {
   grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
   gap: 24px;
   margin-bottom: 40px;
+}
+
+/* 加载状态样式 */
+.loading-state {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 40px;
+  background: white;
+  border-radius: 20px;
+  border: 1px solid #e9ecef;
+  text-align: center;
+  color: #6c757d;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* 空状态样式 */

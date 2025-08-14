@@ -35,28 +35,36 @@ export function useLLMConfig() {
 
   // 检查特定API类型是否可用
   const isApiTypeSupported = (apiType) => {
-    const supportedTypes = ['openai', 'azure', 'anthropic', 'google']
+    const supportedTypes = ['siliconflow', 'openai', 'deepseek', 'doubashanglong', 'kimi', 'zhipu']
     return supportedTypes.includes(apiType)
   }
 
   // 获取默认配置
-  const getDefaultConfig = (apiType = 'openai') => {
+  const getDefaultConfig = (apiType = 'siliconflow') => {
     const defaults = {
+      siliconflow: {
+        llm_api_base_url: 'https://api.siliconflow.cn/v1',
+        llm_model_id: 'deepseek-ai/DeepSeek-V3'
+      },
       openai: {
         llm_api_base_url: 'https://api.openai.com/v1',
         llm_model_id: 'gpt-3.5-turbo'
       },
-      azure: {
-        llm_api_base_url: 'https://your-resource.openai.azure.com',
-        llm_model_id: 'gpt-35-turbo'
+      deepseek: {
+        llm_api_base_url: 'https://api.deepseek.com/v1',
+        llm_model_id: 'deepseek-chat'
       },
-      anthropic: {
-        llm_api_base_url: 'https://api.anthropic.com',
-        llm_model_id: 'claude-3-sonnet-20240229'
+      doubashanglong: {
+        llm_api_base_url: 'https://ark.cn-beijing.volces.com/api/v3',
+        llm_model_id: 'doubao-5-thinking-pro-256045'
       },
-      google: {
-        llm_api_base_url: 'https://generativelanguage.googleapis.com/v1beta',
-        llm_model_id: 'gemini-pro'
+      kimi: {
+        llm_api_base_url: 'https://api.moonshot.cn/v1',
+        llm_model_id: 'kimi-k2-0711-preview'
+      },
+      zhipu: {
+        llm_api_base_url: 'https://open.bigmodel.cn/api/paas/v4',
+        llm_model_id: 'glm-4.5v'
       }
     }
     

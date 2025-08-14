@@ -159,14 +159,62 @@
           </div>
         </div>
       </div>
+
+      <!-- 管理员工具 -->
+      <div class="tool-category">
+        <h2 class="category-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12,15C12.81,15 13.5,14.7 14.11,14.11C14.7,13.5 15,12.81 15,12C15,11.19 14.7,10.5 14.11,9.89C13.5,9.3 12.81,9 12,9C11.19,9 10.5,9.3 9.89,9.89C9.3,10.5 9,11.19 9,12C9,12.81 9.3,13.5 9.89,14.11C10.5,14.7 11.19,15 12,15M21.1,12.5L22.5,11.09L21.1,9.91L19.29,10.39C18.97,10.04 18.59,9.75 18.15,9.56L17.85,7.5H15.95L15.65,9.56C15.21,9.75 14.83,10.04 14.5,10.39L12.7,9.91L11.3,11.09L12.7,12.5L11.3,13.91L12.7,15.09L14.5,14.61C14.82,14.96 15.2,15.25 15.64,15.44L15.94,17.5H17.84L18.14,15.44C18.58,15.25 18.96,14.96 19.29,14.61L21.1,15.09L22.5,13.91L21.1,12.5M17.9,13.75C17.9,14.47 17.32,15.06 16.6,15.06C15.88,15.06 15.29,14.47 15.29,13.75C15.29,13.03 15.88,12.44 16.6,12.44C17.32,12.44 17.9,13.03 17.9,13.75M8.81,14.5C8.81,14.78 8.64,15 8.44,15H3.56C3.36,15 3.19,14.78 3.19,14.5V13.5C3.19,13.22 3.36,13 3.56,13H8.44C8.64,13 8.81,13.22 8.81,13.5V14.5M8.81,10.5C8.81,10.78 8.64,11 8.44,11H3.56C3.36,11 3.19,10.78 3.19,10.5V9.5C3.19,9.22 3.36,9 3.56,9H8.44C8.64,9 8.81,9.22 8.81,9.5V10.5Z"/>
+          </svg>
+          管理员工具
+        </h2>
+        <div class="tools-grid">
+          <div class="tool-card admin-tool" @click="navigateToAdmin('courses')">
+            <div class="tool-icon admin-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z"/>
+              </svg>
+            </div>
+            <h3 class="tool-title">课程管理</h3>
+            <p class="tool-description">创建、编辑和管理平台课程</p>
+            <div class="admin-badge">管理员</div>
+          </div>
+
+          <div class="tool-card admin-tool" @click="navigateToAdmin('users')">
+            <div class="tool-icon admin-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M16,4C18.11,4 19.99,5.89 19.99,8C19.99,10.11 18.11,12 16,12C13.89,12 12,10.11 12,8C12,5.89 13.89,4 16,4M16,14C20.42,14 24,15.79 24,18V20H8V18C8,15.79 11.58,14 16,14Z"/>
+              </svg>
+            </div>
+            <h3 class="tool-title">用户管理</h3>
+            <p class="tool-description">管理平台用户和权限</p>
+            <div class="admin-badge">管理员</div>
+          </div>
+
+          <div class="tool-card admin-tool" @click="navigateToAdmin('settings')">
+            <div class="tool-icon admin-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8M12,10A2,2 0 0,0 10,12A2,2 0 0,0 12,14A2,2 0 0,0 14,12A2,2 0 0,0 12,10M10,22C9.75,22 9.54,21.82 9.5,21.58L9.13,18.93C8.5,18.68 7.96,18.34 7.44,17.94L4.95,18.95C4.73,19.03 4.46,18.95 4.34,18.73L2.34,15.27C2.21,15.05 2.27,14.78 2.46,14.63L4.57,12.97L4.5,12L4.57,11L2.46,9.37C2.27,9.22 2.21,8.95 2.34,8.73L4.34,5.27C4.46,5.05 4.73,4.96 4.95,5.05L7.44,6.05C7.96,5.66 8.5,5.32 9.13,5.07L9.5,2.42C9.54,2.18 9.75,2 10,2H14C14.25,2 14.46,2.18 14.5,2.42L14.87,5.07C15.5,5.32 16.04,5.66 16.56,6.05L19.05,5.05C19.27,4.96 19.54,5.05 19.66,5.27L21.66,8.73C21.79,8.95 21.73,9.22 21.54,9.37L19.43,11L19.5,12L19.43,13L21.54,14.63C21.73,14.78 21.79,15.05 21.66,15.27L19.66,18.73C19.54,18.95 19.27,19.04 19.05,18.95L16.56,17.95C16.04,18.34 15.5,18.68 14.87,18.93L14.5,21.58C14.46,21.82 14.25,22 14,22H10M11.25,4L10.88,6.61C9.68,6.86 8.62,7.5 7.85,8.39L5.44,7.35L4.69,8.65L6.8,10.2C6.4,11.37 6.4,12.64 6.8,13.8L4.68,15.36L5.43,16.66L7.86,15.62C8.63,16.5 9.68,17.14 10.87,17.38L11.24,20H12.76L13.13,17.39C14.32,17.14 15.37,16.5 16.14,15.62L18.57,16.66L19.32,15.36L17.2,13.81C17.6,12.64 17.6,11.37 17.2,10.2L19.31,8.65L18.56,7.35L16.15,8.39C15.38,7.5 14.32,6.86 13.12,6.62L12.75,4H11.25Z"/>
+              </svg>
+            </div>
+            <h3 class="tool-title">系统设置</h3>
+            <p class="tool-description">平台配置和系统管理</p>
+            <div class="admin-badge">管理员</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
+import { useRouter } from 'vue-router'
+
 export default {
   name: 'DevTools',
   setup() {
+    const router = useRouter()
+
     const openTool = (toolType) => {
       // 这里可以实现具体的工具功能
       // 可以打开模态框或跳转到具体的工具页面
@@ -174,6 +222,30 @@ export default {
       
       // 简单的提示信息
       alert(`即将打开 ${getToolName(toolType)} 工具`)
+    }
+
+    const navigateToAdmin = (adminType) => {
+      // 检查管理员权限 (这里应该从用户状态或store中获取)
+      const userRole = localStorage.getItem('userRole') || 'user'
+      
+      if (userRole !== 'admin') {
+        alert('您没有管理员权限')
+        return
+      }
+
+      switch (adminType) {
+        case 'courses':
+          router.push('/admin/courses')
+          break
+        case 'users':
+          alert('用户管理功能正在开发中')
+          break
+        case 'settings':
+          alert('系统设置功能正在开发中')
+          break
+        default:
+          console.log(`未知管理工具: ${adminType}`)
+      }
     }
 
     const getToolName = (toolType) => {
@@ -195,7 +267,8 @@ export default {
     }
 
     return {
-      openTool
+      openTool,
+      navigateToAdmin
     }
   }
 }
@@ -294,6 +367,36 @@ export default {
 
 .generate-icon {
   background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.admin-icon {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.admin-tool {
+  position: relative;
+  border: 2px solid transparent;
+  background: linear-gradient(135deg, #fff 0%, #f8f9ff 100%);
+  box-shadow: 0 4px 12px rgba(240, 147, 251, 0.15);
+}
+
+.admin-tool:hover {
+  border-color: rgba(240, 147, 251, 0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(240, 147, 251, 0.25);
+}
+
+.admin-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
 }
 
 .tool-title {

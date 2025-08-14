@@ -342,13 +342,15 @@
               <form class="settings-form">
                 <div class="settings-items">
                   <div class="setting-item">
-                    <label class="setting-label">API类型</label>
+                    <label class="setting-label">服务商</label>
                     <div class="setting-input-container">
-                      <select class="setting-input" v-model="settings.llm_api_type">
+                      <select class="setting-input" v-model="settings.llm_api_type" @change="onApiTypeChange">
+                        <option value="siliconflow">SiliconFlow</option>
                         <option value="openai">OpenAI兼容</option>
-                        <option value="azure">Azure OpenAI</option>
-                        <option value="anthropic">Anthropic Claude</option>
-                        <option value="google">Google Gemini</option>
+                        <option value="deepseek">DeepSeek</option>
+                        <option value="doubashanglong">豆包</option>
+                        <option value="kimi">Kimi</option>
+                        <option value="zhipu">智谱</option>
                       </select>
                     </div>
                   </div>
@@ -368,13 +370,23 @@
                   <div class="setting-item">
                     <label class="setting-label">API基础URL</label>
                     <div class="setting-input-container">
-                      <input type="text" class="setting-input" placeholder="https://api.openai.com/v1" v-model="settings.llm_api_base_url">
+                      <input 
+                        type="text" 
+                        class="setting-input" 
+                        :placeholder="getApiUrlPlaceholder(settings.llm_api_type)" 
+                        v-model="settings.llm_api_base_url"
+                        :readonly="settings.llm_api_type !== 'openai'"
+                        :class="{ 'readonly': settings.llm_api_type !== 'openai' }"
+                      >
+                      <small class="input-hint" v-if="settings.llm_api_type !== 'openai'">
+                        此服务商使用固定API地址
+                      </small>
                     </div>
                   </div>
                   <div class="setting-item">
                     <label class="setting-label">模型ID</label>
                     <div class="setting-input-container">
-                      <input type="text" class="setting-input" placeholder="gpt-3.5-turbo" v-model="settings.llm_model_id">
+                      <input type="text" class="setting-input" placeholder="deepseek-ai/DeepSeek-V3" v-model="settings.llm_model_id">
                     </div>
                   </div>
                   <div class="setting-item">
@@ -1448,11 +1460,11 @@ export default {
     const settings = ref({
       theme: 'light',
       themeColor: '#667eea',
-      // LLM配置 - OpenAI兼容格式
-      llm_api_type: 'openai',
+      // LLM配置 - SiliconFlow默认
+      llm_api_type: 'siliconflow',
       llm_api_key: '',
-      llm_api_base_url: 'https://api.openai.com/v1',
-      llm_model_id: 'gpt-3.5-turbo',
+      llm_api_base_url: 'https://api.siliconflow.cn/v1',
+      llm_model_id: 'deepseek-ai/DeepSeek-V3',
       // 保留旧配置以兼容
       defaultModel: 'gpt-4',
       apiKey: 'sk-****',
@@ -2565,6 +2577,48 @@ export default {
       return mcpTestedStatus.value[configId] || 'unknown'
     }
 
+    // API类型变化处理
+    const onApiTypeChange = () => {
+      // 根据选择的API类型设置对应的基础URL和模型ID
+      const apiUrlMap = {
+        'openai': 'https://api.openai.com/v1',
+        'deepseek': 'https://api.deepseek.com/v1',
+        'siliconflow': 'https://api.siliconflow.cn/v1',
+        'doubashanglong': 'https://ark.cn-beijing.volces.com/api/v3',
+        'kimi': 'https://api.moonshot.cn/v1',
+        'zhipu': 'https://open.bigmodel.cn/api/paas/v4'
+      }
+
+      const defaultModelMap = {
+        'openai': 'gpt-3.5-turbo',
+        'deepseek': 'deepseek-chat',
+        'siliconflow': 'deepseek-ai/DeepSeek-V3',
+        'doubashanglong': 'doubao-5-thinking-pro-256045',
+        'kimi': 'kimi-k2-0711-preview',
+        'zhipu': 'glm-4.5v'
+      }
+      
+      if (settings.value.llm_api_type !== 'openai') {
+        settings.value.llm_api_base_url = apiUrlMap[settings.value.llm_api_type] || ''
+      }
+
+      // 设置默认模型ID
+      settings.value.llm_model_id = defaultModelMap[settings.value.llm_api_type] || 'deepseek-ai/DeepSeek-V3'
+    }
+
+    // 获取API URL占位符
+    const getApiUrlPlaceholder = (apiType) => {
+      const placeholderMap = {
+        'openai': 'https://api.openai.com/v1',
+        'deepseek': 'https://api.deepseek.com/v1 (固定)',
+        'siliconflow': 'https://api.siliconflow.cn/v1 (固定)',
+        'doubashanglong': 'https://ark.cn-beijing.volces.com/api/v3 (固定)',
+        'kimi': 'https://api.moonshot.cn/v1 (固定)',
+        'zhipu': 'https://open.bigmodel.cn/api/paas/v4 (固定)'
+      }
+      return placeholderMap[apiType] || 'API基础URL'
+    }
+
     const backToMain = () => {
       currentView.value = 'main'
       currentSettingDetail.value = ''
@@ -2623,6 +2677,8 @@ export default {
       saveLLMConfig,
       testLLMConfig,
       loadLLMConfig,
+      onApiTypeChange,
+      getApiUrlPlaceholder,
       // 搜索引擎配置相关
       searchEngineConfigs,
       searchConfigsLoading,
@@ -4036,6 +4092,31 @@ export default {
     background: rgba(255, 255, 255, 1);
     transform: translateY(-2px);
   }
+
+  .setting-input.readonly {
+    background: rgba(249, 250, 251, 0.8);
+    color: #6b7280;
+    cursor: not-allowed;
+    border-color: rgba(226, 232, 240, 0.4);
+  }
+
+  .setting-input.readonly:hover {
+    background: rgba(249, 250, 251, 0.8);
+    border-color: rgba(226, 232, 240, 0.4);
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.04),
+      inset 0 1px 2px rgba(0, 0, 0, 0.02);
+    transform: none;
+  }
+
+  .setting-input.readonly:focus {
+    outline: none;
+    border-color: rgba(226, 232, 240, 0.4);
+    box-shadow: 
+      0 4px 12px rgba(0, 0, 0, 0.04),
+      inset 0 1px 2px rgba(0, 0, 0, 0.02);
+    transform: none;
+  }
   
   .range-input {
     height: 12px;
@@ -5357,9 +5438,13 @@ textarea.form-input {
 
 /* TTS 提供商标签颜色 */
 .type-openai { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
-.type-gemini { background: linear-gradient(135deg, #3b82f6 0%, #7c3aed 100%); }
-.type-aliyun { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+.type-deepseek { background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); }
 .type-siliconflow { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); }
+.type-doubashanglong { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
+.type-kimi { background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); }
+.type-zhipu { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+.type-aliyun { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+.type-gemini { background: linear-gradient(135deg, #3b82f6 0%, #7c3aed 100%); }
 
 /* 配置表单模态框样式 */
 .config-form-modal {

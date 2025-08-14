@@ -252,88 +252,353 @@ export class ApiService {
     }
   }
 
-  // ========== 课程相关API（本地实现 - 后端API暂不支持） ==========
-  static async getCourse(courseId) {
-    const courses = localStorageAPI.get('courses') || []
-    const course = courses.find(c => c.id === courseId)
-    if (course) {
-      // 增强课程信息
-      course.progress = course.progress || 0
-      course.enrolledStudents = course.enrolledStudents || []
-      course.chapters = course.chapters || []
-      course.resources = course.resources || []
+  // ========== 课程相关API（后端API实现） ==========
+  
+  // 1. 课程核心管理
+  static async getCourses() {
+    try {
+      if (COURSES_USE_LOCAL) {
+        // 本地实现保持不变作为备用
+        const courses = localStorageAPI.get('courses') || []
+        const enrichedCourses = courses.map(course => ({
+          ...course,
+          progress: course.progress || 0,
+          enrolledStudents: course.enrolledStudents || [],
+          totalStudents: (course.enrolledStudents || []).length,
+          isActive: course.status === 'active'
+        }))
+        return createResponse(enrichedCourses)
+      }
+      
+      // 调用后端API获取所有课程列表
+      const response = await remoteApiService.request('/courses/', 'GET')
+      return createResponse(response.data)
+    } catch (error) {
+      return createResponse(null, false, error.message)
     }
-    return createResponse(course)
   }
 
-  static async getCourses() {
-    const courses = localStorageAPI.get('courses') || []
-    // 增强课程列表信息
-    const enrichedCourses = courses.map(course => ({
-      ...course,
-      progress: course.progress || 0,
-      enrolledStudents: course.enrolledStudents || [],
-      totalStudents: (course.enrolledStudents || []).length,
-      isActive: course.status === 'active'
-    }))
-    return createResponse(enrichedCourses)
+  // 获取所有可用课程（用于课程浏览页面）
+  static async getAllCourses() {
+    try {
+      if (COURSES_USE_LOCAL) {
+        // 返回本地模拟数据，包含示例课程
+        const sampleCourses = [
+          {
+            id: 1,
+            title: 'Vue.js 从入门到精通',
+            instructor: '张老师',
+            description: '完整学习Vue.js框架，从基础语法到高级应用，包含实战项目。适合前端开发者提升技能。',
+            level: 'intermediate',
+            category: 'programming',
+            duration: 24,
+            thumbnail: '/api/placeholder/300/200',
+            required_skills: ['JavaScript', 'HTML', 'CSS'],
+            enrolled_count: 128,
+            status: 'active',
+            enrolled: false
+          },
+          {
+            id: 2,
+            title: 'React Native 移动开发',
+            instructor: '李老师',
+            description: '学习使用React Native开发跨平台移动应用，涵盖组件开发、导航、状态管理等核心技术。',
+            level: 'advanced',
+            category: 'programming',
+            duration: 32,
+            thumbnail: '/api/placeholder/300/200',
+            required_skills: ['React', 'JavaScript', 'Mobile Development'],
+            enrolled_count: 89,
+            status: 'active',
+            enrolled: false
+          },
+          {
+            id: 3,
+            title: 'UI/UX 设计基础',
+            instructor: '王老师',
+            description: '学习用户界面和用户体验设计的基础理论和实践技巧，掌握设计思维和工具使用。',
+            level: 'beginner',
+            category: 'design',
+            duration: 18,
+            thumbnail: '/api/placeholder/300/200',
+            required_skills: ['Design Thinking', 'Figma', 'Sketch'],
+            enrolled_count: 256,
+            status: 'active',
+            enrolled: false
+          },
+          {
+            id: 4,
+            title: 'Python 数据科学',
+            instructor: '陈老师',
+            description: '使用Python进行数据分析和机器学习，包含pandas、numpy、scikit-learn等核心库的使用。',
+            level: 'intermediate',
+            category: 'science',
+            duration: 28,
+            thumbnail: '/api/placeholder/300/200',
+            required_skills: ['Python', 'Statistics', 'Mathematics'],
+            enrolled_count: 167,
+            status: 'active',
+            enrolled: false
+          },
+          {
+            id: 5,
+            title: '商业计划书写作',
+            instructor: '刘老师',
+            description: '学习如何撰写专业的商业计划书，包含市场分析、财务预测、风险评估等关键内容。',
+            level: 'beginner',
+            category: 'business',
+            duration: 16,
+            thumbnail: '/api/placeholder/300/200',
+            required_skills: ['Business Analysis', 'Financial Planning'],
+            enrolled_count: 94,
+            status: 'active',
+            enrolled: false
+          },
+          {
+            id: 6,
+            title: '英语口语提升',
+            instructor: 'Smith老师',
+            description: '通过实用对话和场景模拟，快速提升英语口语表达能力，适合中级学习者。',
+            level: 'intermediate',
+            category: 'language',
+            duration: 20,
+            thumbnail: '/api/placeholder/300/200',
+            required_skills: ['English Basics', 'Pronunciation'],
+            enrolled_count: 203,
+            status: 'active',
+            enrolled: false
+          }
+        ]
+        return createResponse(sampleCourses)
+      }
+      
+      // 调用后端API获取所有可用课程
+      const response = await remoteApiService.request('/courses/available', 'GET')
+      return createResponse(response.data)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async getCourse(courseId) {
+    try {
+      if (COURSES_USE_LOCAL) {
+        // 本地实现保持不变作为备用
+        const courses = localStorageAPI.get('courses') || []
+        const course = courses.find(c => c.id === courseId)
+        if (course) {
+          course.progress = course.progress || 0
+          course.enrolledStudents = course.enrolledStudents || []
+          course.chapters = course.chapters || []
+          course.resources = course.resources || []
+        }
+        return createResponse(course)
+      }
+      
+      // 调用后端API获取指定课程详情
+      const response = await remoteApiService.request(`/courses/${courseId}`, 'GET')
+      return createResponse(response.data)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
   }
 
   static async createCourse(courseData) {
-    const courses = localStorageAPI.get('courses') || []
-    const newCourse = {
-      id: generateId(),
-      ...courseData,
-      status: 'active',
-      enrolledStudents: [],
-      chapters: [],
-      resources: [],
-      progress: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+    try {
+      if (COURSES_USE_LOCAL) {
+        // 本地实现保持不变作为备用
+        const courses = localStorageAPI.get('courses') || []
+        const newCourse = {
+          id: generateId(),
+          ...courseData,
+          status: 'active',
+          enrolledStudents: [],
+          chapters: [],
+          resources: [],
+          progress: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+        courses.push(newCourse)
+        localStorageAPI.set('courses', courses)
+        return createResponse(newCourse)
+      }
+      
+      // 调用后端API创建新课程 - 需要管理员权限
+      const response = await remoteApiService.request('/courses/', 'POST', courseData)
+      return createResponse(response.data)
+    } catch (error) {
+      return createResponse(null, false, error.message)
     }
-    courses.push(newCourse)
-    localStorageAPI.set('courses', courses)
-    return createResponse(newCourse)
   }
 
   static async updateCourse(courseId, courseData) {
-    const courses = localStorageAPI.get('courses') || []
-    const index = courses.findIndex(c => c.id === courseId)
-    if (index !== -1) {
-      courses[index] = { 
-        ...courses[index], 
-        ...courseData, 
-        updatedAt: new Date().toISOString() 
+    try {
+      if (COURSES_USE_LOCAL) {
+        // 本地实现保持不变作为备用
+        const courses = localStorageAPI.get('courses') || []
+        const index = courses.findIndex(c => c.id === courseId)
+        if (index !== -1) {
+          courses[index] = { 
+            ...courses[index], 
+            ...courseData, 
+            updated_at: new Date().toISOString() 
+          }
+          localStorageAPI.set('courses', courses)
+          return createResponse(courses[index])
+        }
+        return createResponse(null, false, '课程不存在')
       }
-      localStorageAPI.set('courses', courses)
-      return createResponse(courses[index])
+      
+      // 调用后端API更新指定课程 - 需要管理员权限
+      const response = await remoteApiService.request(`/courses/${courseId}`, 'PUT', courseData)
+      return createResponse(response.data)
+    } catch (error) {
+      return createResponse(null, false, error.message)
     }
-    return createResponse(null, false, '课程不存在')
   }
 
-  static async deleteCourse(courseId) {
-    const courses = localStorageAPI.get('courses') || []
-    const filteredCourses = courses.filter(c => c.id !== courseId)
-    localStorageAPI.set('courses', filteredCourses)
-    return createResponse(true, true, '删除成功')
+  // 2. 课程推荐
+  static async getRecommendedCourses(studentId, options = {}) {
+    try {
+      const { initial_k = 50, final_k = 3 } = options
+      const params = new URLSearchParams({ initial_k, final_k }).toString()
+      const response = await remoteApiService.request(
+        `/recommend/courses/${studentId}?${params}`, 
+        'GET'
+      )
+      return createResponse(response.data)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
   }
 
+  // 3. 用户课程交互
+  static async updateUserCourseProgress(courseId, progressData) {
+    try {
+      // progressData 包含 progress (0.0-1.0) 和 status ('not_started', 'in_progress', 'completed', 'dropped')
+      const response = await remoteApiService.request(
+        `/users/me/courses/${courseId}`, 
+        'PUT', 
+        progressData
+      )
+      return createResponse(response.data)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  // 4. 课程材料管理
+  static async getCourseMaterials(courseId, typeFilter = null) {
+    try {
+      const params = typeFilter ? `?type_filter=${typeFilter}` : ''
+      const response = await remoteApiService.request(
+        `/courses/${courseId}/materials/${params}`, 
+        'GET'
+      )
+      return createResponse(response.data)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async getCourseMaterial(courseId, materialId) {
+    try {
+      const response = await remoteApiService.request(
+        `/courses/${courseId}/materials/${materialId}`, 
+        'GET'
+      )
+      return createResponse(response.data)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async createCourseMaterial(courseId, materialData, file = null) {
+    try {
+      let requestData
+      let headers = {}
+
+      if (file) {
+        // 文件上传使用 FormData
+        requestData = new FormData()
+        requestData.append('file', file)
+        requestData.append('material_data', JSON.stringify(materialData))
+        headers['Content-Type'] = 'multipart/form-data'
+      } else {
+        // 链接或文本材料使用 JSON
+        requestData = materialData
+        headers['Content-Type'] = 'application/json'
+      }
+
+      const response = await remoteApiService.request(
+        `/courses/${courseId}/materials/`,
+        'POST',
+        requestData,
+        { headers }
+      )
+      return createResponse(response.data)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async updateCourseMaterial(courseId, materialId, materialData, file = null) {
+    try {
+      let requestData
+      let headers = {}
+
+      if (file) {
+        requestData = new FormData()
+        requestData.append('file', file)
+        requestData.append('material_data', JSON.stringify(materialData))
+        headers['Content-Type'] = 'multipart/form-data'
+      } else {
+        requestData = materialData
+        headers['Content-Type'] = 'application/json'
+      }
+
+      const response = await remoteApiService.request(
+        `/courses/${courseId}/materials/${materialId}`,
+        'PUT',
+        requestData,
+        { headers }
+      )
+      return createResponse(response.data)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async deleteCourseMaterial(courseId, materialId) {
+    try {
+      await remoteApiService.request(
+        `/courses/${courseId}/materials/${materialId}`,
+        'DELETE'
+      )
+      return createResponse(true, true, '材料删除成功')
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  // 5. 课程统计
+  static async getCourseCompletionCount(courseId) {
+    try {
+      const response = await remoteApiService.request(
+        `/courses/${courseId}/completed-by-count`, 
+        'GET'
+      )
+      return createResponse(response.data)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  // 兼容性方法
   static async enrollCourse(courseId, studentId) {
-    const courses = localStorageAPI.get('courses') || []
-    const courseIndex = courses.findIndex(c => c.id === courseId)
-    if (courseIndex !== -1) {
-      const course = courses[courseIndex]
-      if (!course.enrolledStudents) course.enrolledStudents = []
-      if (!course.enrolledStudents.includes(studentId)) {
-        course.enrolledStudents.push(studentId)
-        course.updatedAt = new Date().toISOString()
-        localStorageAPI.set('courses', courses)
-        return createResponse(course)
-      }
-      return createResponse(null, false, '已经报名过该课程')
-    }
-    return createResponse(null, false, '课程不存在')
+    // 使用用户课程交互API来实现报名功能
+    return this.updateUserCourseProgress(courseId, { status: 'not_started' })
   }
 
   // ========== 笔记相关API ==========
@@ -961,3 +1226,6 @@ ApiService.initialize()
 
 // 导出本地存储API工具
 export { localStorageAPI }
+
+// 默认导出 ApiService (因为类已经用 export class 导出了)
+export default ApiService

@@ -9,6 +9,9 @@ import Profile from '../views/Profile.vue'
 import MyProjects from '../views/MyProjects.vue'
 import ProjectDetail from '../views/ProjectDetail.vue'
 import MyCourses from '../views/MyCourses.vue'
+import CourseDetail from '../views/CourseDetail.vue'
+import CourseBrowser from '../views/CourseBrowser.vue'
+import CourseManagement from '../views/CourseManagement.vue'
 import ChatRooms from '../views/ChatRooms.vue'
 import CourseNotes from '../views/CourseNotes.vue'
 import Favorites from '../views/Favorites.vue'
@@ -70,6 +73,18 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
+    path: '/courses',
+    name: 'CourseBrowser',
+    component: CourseBrowser,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/courses/:id',
+    name: 'CourseDetail',
+    component: CourseDetail,
+    meta: { requiresAuth: true }
+  },
+  {
     path: '/chat-rooms',
     name: 'ChatRooms',
     component: ChatRooms,
@@ -110,6 +125,12 @@ const routes = [
     name: 'DevTools',
     component: DevTools,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/admin/courses',
+    name: 'CourseManagement',
+    component: CourseManagement,
+    meta: { requiresAuth: true, requiresAdmin: true }
   }
 ]
 

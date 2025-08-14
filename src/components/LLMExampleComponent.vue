@@ -15,7 +15,7 @@
       </p>
       
       <div v-if="isConfigured" class="config-info">
-        <p>API类型: {{ config.llm_api_type }}</p>
+        <p>服务商: {{ config.llm_api_type }}</p>
         <p>模型ID: {{ config.llm_model_id }}</p>
         <p>API地址: {{ config.llm_api_base_url }}</p>
         <p>API密钥: {{ config.llm_api_key ? '已配置' : '未配置' }}</p>
@@ -119,7 +119,7 @@ export default {
     const callLLMAPI = async (message, apiConfig) => {
       // 这是一个示例函数，展示如何使用配置
       console.log('使用配置调用LLM API:')
-      console.log('API类型:', apiConfig.apiType)
+      console.log('服务商:', apiConfig.apiType)
       console.log('API地址:', apiConfig.baseUrl) 
       console.log('模型ID:', apiConfig.modelId)
       console.log('用户消息:', message)
