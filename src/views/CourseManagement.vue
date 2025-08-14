@@ -509,7 +509,10 @@ export default {
           total_lessons: courseForm.total_lessons,
           avg_rating: courseForm.avg_rating,
           cover_image_url: courseForm.cover_image_url,
-          required_skills: courseForm.required_skills.filter(skill => skill.name)
+          required_skills: courseForm.required_skills.filter(skill => skill.name),
+          // 默认将课程设置为可见/启用（若后端接受这些字段）
+          is_published: true,
+          status: 'active'
         }
 
         if (showEditModal.value) {

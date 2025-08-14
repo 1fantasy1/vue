@@ -118,6 +118,18 @@ export class UsersAPI extends BaseAPI {
   async updateLLMConfig(config) {
     return await this.request('PUT', '/me/llm-config', config)
   }
+
+  // 更新当前用户的课程进度/状态
+  async updateMyCourseProgress(courseId, progressData) {
+    return await this.request('PUT', `/me/courses/${courseId}`, progressData)
+  }
+
+  // 获取当前用户的课程列表（只返回用户已关联/报名的课程条目）
+  async getMyCourses(statusFilter = null) {
+    return await this.request('GET', '/me/courses', null,
+      statusFilter ? { status_filter: statusFilter } : null
+    )
+  }
 }
 
 // 学生API
@@ -165,6 +177,85 @@ export class ProjectsAPI extends BaseAPI {
   }
 }
 
+// 课程API
+export class CoursesAPI extends BaseAPI {
+  constructor() {
+    super('/courses')
+  }
+
+  async getAllCourses() {
+    return await this.request('GET', '/')
+  }
+
+  async getAvailableCourses() {
+    return await this.request('GET', '/available')
+  }
+
+  async getCourseById(courseId) {
+    return await this.request('GET', `/${courseId}`)
+  }
+
+  async createCourse(courseData) {
+    return await this.request('POST', '/', courseData)
+  }
+
+  async updateCourse(courseId, courseData) {
+    return await this.request('PUT', `/${courseId}`, courseData)
+  }
+
+  async getMaterials(courseId, typeFilter = null) {
+    return await this.request('GET', `/${courseId}/materials/`, null,
+      typeFilter ? { type_filter: typeFilter } : null
+    )
+  }
+
+  async getMaterialById(courseId, materialId) {
+    return await this.request('GET', `/${courseId}/materials/${materialId}`)
+  }
+
+  async createMaterial(courseId, materialData, file = null) {
+    if (file) {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('material_data', JSON.stringify(materialData))
+      try {
+        const response = await httpClient.post(`/courses/${courseId}/materials/`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
+        return response.data
+      } catch (error) {
+        throw this.handleError(error)
+      }
+    }
+    return await this.request('POST', `/${courseId}/materials/`, materialData)
+  }
+
+  async updateMaterial(courseId, materialId, materialData, file = null) {
+    if (file) {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('material_data', JSON.stringify(materialData))
+      try {
+        const response = await httpClient.put(`/courses/${courseId}/materials/${materialId}`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
+        return response.data
+      } catch (error) {
+        throw this.handleError(error)
+      }
+    }
+    return await this.request('PUT', `/${courseId}/materials/${materialId}`, materialData)
+  }
+
+  async deleteMaterial(courseId, materialId) {
+    return await this.request('DELETE', `/${courseId}/materials/${materialId}`)
+  }
+
+  async getCompletionCount(courseId) {
+    return await this.request('GET', `/${courseId}/completed-by-count`)
+  }
+}
+
 // 推荐API
 export class RecommendAPI extends BaseAPI {
   constructor() {
@@ -173,6 +264,13 @@ export class RecommendAPI extends BaseAPI {
 
   async recommendProjects(studentId, initialK = 50, finalK = 3) {
     return await this.request('GET', `/projects/${studentId}`, null, {
+      initial_k: initialK,
+      final_k: finalK
+    })
+  }
+
+  async recommendCourses(studentId, initialK = 50, finalK = 3) {
+    return await this.request('GET', `/courses/${studentId}`, null, {
       initial_k: initialK,
       final_k: finalK
     })
@@ -765,6 +863,7 @@ export class RemoteApiService {
   constructor() {
     this.auth = new AuthAPI()
     this.users = new UsersAPI()
+  this.courses = new CoursesAPI()
     this.students = new StudentsAPI()
     this.projects = new ProjectsAPI()
     this.recommend = new RecommendAPI()

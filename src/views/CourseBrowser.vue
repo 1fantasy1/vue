@@ -206,10 +206,25 @@ export default {
     const loadCourses = async () => {
       try {
         loading.value = true
-        const response = await apiService.getAllCourses()
+        const response = await apiService.getPublicCourses()
         
         if (response.data.success) {
-          courses.value = response.data.data || []
+          const list = Array.isArray(response.data.data) ? response.data.data : []
+          // 规范化字段，兼容不同后端返回
+          courses.value = list.map(c => ({
+            id: c.id ?? c.course_id ?? c.pk ?? c.uuid ?? c._id,
+            title: c.title || c.name || '未命名课程',
+            instructor: c.instructor || c.teacher || '未知',
+            description: c.description || c.desc || '',
+            level: c.level || c.difficulty || 'intermediate',
+            category: c.category || c.type || 'programming',
+            duration: c.duration || c.total_hours || c.estimated_hours || 0,
+            thumbnail: c.thumbnail || c.cover_image_url || c.cover || c.image,
+            required_skills: c.required_skills || c.skills || [],
+            enrolled_count: c.enrolled_count || c.students_count || c.enrollments || 0,
+            status: c.status || 'active',
+            enrolled: Boolean(c.enrolled)
+          })).filter(x => x.id)
         } else {
           console.error('加载课程失败:', response.data.message)
         }

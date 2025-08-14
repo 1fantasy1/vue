@@ -3,8 +3,8 @@
 
 import remoteApiService from './remoteApi.js'
 
-// 配置：课程功能仍使用本地数据，因为后端暂无课程API
-const COURSES_USE_LOCAL = true
+// 配置：课程功能默认不使用本地数据（后端若无课程API，则前端显示为空）
+const COURSES_USE_LOCAL = false
 
 // 本地存储工具函数
 const localStorageAPI = {
@@ -107,6 +107,9 @@ export class ApiService {
   static initialize() {
     if (COURSES_USE_LOCAL) {
       initializeCourseData()
+    } else {
+      // 确保关闭本地模式时不残留本地示例课程
+      try { localStorage.removeItem('courses') } catch {}
     }
   }
 
@@ -255,6 +258,17 @@ export class ApiService {
   // ========== 课程相关API（后端API实现） ==========
   
   // 1. 课程核心管理
+  // 获取当前用户关联的课程（仅我参与/已报名/有进度的课程）
+  static async getMyCourses(statusFilter = null) {
+    try {
+      // 后端返回 UserCourseResponse 列表
+      const response = await remoteApiService.users.getMyCourses(statusFilter)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
   static async getCourses() {
     try {
       if (COURSES_USE_LOCAL) {
@@ -270,9 +284,9 @@ export class ApiService {
         return createResponse(enrichedCourses)
       }
       
-      // 调用后端API获取所有课程列表
-      const response = await remoteApiService.request('/courses/', 'GET')
-      return createResponse(response.data)
+  // 调用后端API获取所有课程列表
+  const response = await remoteApiService.courses.getAllCourses()
+  return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
     }
@@ -372,9 +386,20 @@ export class ApiService {
         return createResponse(sampleCourses)
       }
       
-      // 调用后端API获取所有可用课程
-      const response = await remoteApiService.request('/courses/available', 'GET')
-      return createResponse(response.data)
+  // 调用后端API获取所有课程（包含管理员新建的课程）
+  const response = await remoteApiService.courses.getAllCourses()
+  return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  // 获取公开可浏览课程，优先使用 /courses/available，不支持时回退到全部课程
+  static async getPublicCourses() {
+    try {
+      // 直接使用全部课程，避免对不存在的 /available 发起失败请求
+      const all = await remoteApiService.courses.getAllCourses()
+      return createResponse(all)
     } catch (error) {
       return createResponse(null, false, error.message)
     }
@@ -395,9 +420,9 @@ export class ApiService {
         return createResponse(course)
       }
       
-      // 调用后端API获取指定课程详情
-      const response = await remoteApiService.request(`/courses/${courseId}`, 'GET')
-      return createResponse(response.data)
+  // 调用后端API获取指定课程详情
+  const response = await remoteApiService.courses.getCourseById(courseId)
+  return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
     }
@@ -424,9 +449,9 @@ export class ApiService {
         return createResponse(newCourse)
       }
       
-      // 调用后端API创建新课程 - 需要管理员权限
-      const response = await remoteApiService.request('/courses/', 'POST', courseData)
-      return createResponse(response.data)
+  // 调用后端API创建新课程 - 需要管理员权限
+  const response = await remoteApiService.courses.createCourse(courseData)
+  return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
     }
@@ -450,9 +475,9 @@ export class ApiService {
         return createResponse(null, false, '课程不存在')
       }
       
-      // 调用后端API更新指定课程 - 需要管理员权限
-      const response = await remoteApiService.request(`/courses/${courseId}`, 'PUT', courseData)
-      return createResponse(response.data)
+  // 调用后端API更新指定课程 - 需要管理员权限
+  const response = await remoteApiService.courses.updateCourse(courseId, courseData)
+  return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
     }
@@ -462,12 +487,8 @@ export class ApiService {
   static async getRecommendedCourses(studentId, options = {}) {
     try {
       const { initial_k = 50, final_k = 3 } = options
-      const params = new URLSearchParams({ initial_k, final_k }).toString()
-      const response = await remoteApiService.request(
-        `/recommend/courses/${studentId}?${params}`, 
-        'GET'
-      )
-      return createResponse(response.data)
+  const response = await remoteApiService.recommend.recommendCourses(studentId, initial_k, final_k)
+      return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
     }
@@ -477,12 +498,8 @@ export class ApiService {
   static async updateUserCourseProgress(courseId, progressData) {
     try {
       // progressData 包含 progress (0.0-1.0) 和 status ('not_started', 'in_progress', 'completed', 'dropped')
-      const response = await remoteApiService.request(
-        `/users/me/courses/${courseId}`, 
-        'PUT', 
-        progressData
-      )
-      return createResponse(response.data)
+  const response = await remoteApiService.users.updateMyCourseProgress(courseId, progressData)
+  return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
     }
@@ -491,12 +508,8 @@ export class ApiService {
   // 4. 课程材料管理
   static async getCourseMaterials(courseId, typeFilter = null) {
     try {
-      const params = typeFilter ? `?type_filter=${typeFilter}` : ''
-      const response = await remoteApiService.request(
-        `/courses/${courseId}/materials/${params}`, 
-        'GET'
-      )
-      return createResponse(response.data)
+  const response = await remoteApiService.courses.getMaterials(courseId, typeFilter)
+  return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
     }
@@ -504,11 +517,8 @@ export class ApiService {
 
   static async getCourseMaterial(courseId, materialId) {
     try {
-      const response = await remoteApiService.request(
-        `/courses/${courseId}/materials/${materialId}`, 
-        'GET'
-      )
-      return createResponse(response.data)
+  const response = await remoteApiService.courses.getMaterialById(courseId, materialId)
+  return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
     }
@@ -531,13 +541,9 @@ export class ApiService {
         headers['Content-Type'] = 'application/json'
       }
 
-      const response = await remoteApiService.request(
-        `/courses/${courseId}/materials/`,
-        'POST',
-        requestData,
-        { headers }
-      )
-      return createResponse(response.data)
+  // 走课程API封装
+  const response = await remoteApiService.courses.createMaterial(courseId, materialData, file)
+  return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
     }
@@ -558,13 +564,8 @@ export class ApiService {
         headers['Content-Type'] = 'application/json'
       }
 
-      const response = await remoteApiService.request(
-        `/courses/${courseId}/materials/${materialId}`,
-        'PUT',
-        requestData,
-        { headers }
-      )
-      return createResponse(response.data)
+  const response = await remoteApiService.courses.updateMaterial(courseId, materialId, materialData, file)
+  return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
     }
@@ -572,10 +573,7 @@ export class ApiService {
 
   static async deleteCourseMaterial(courseId, materialId) {
     try {
-      await remoteApiService.request(
-        `/courses/${courseId}/materials/${materialId}`,
-        'DELETE'
-      )
+  await remoteApiService.courses.deleteMaterial(courseId, materialId)
       return createResponse(true, true, '材料删除成功')
     } catch (error) {
       return createResponse(null, false, error.message)
@@ -585,11 +583,8 @@ export class ApiService {
   // 5. 课程统计
   static async getCourseCompletionCount(courseId) {
     try {
-      const response = await remoteApiService.request(
-        `/courses/${courseId}/completed-by-count`, 
-        'GET'
-      )
-      return createResponse(response.data)
+  const response = await remoteApiService.courses.getCompletionCount(courseId)
+  return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
     }
@@ -667,7 +662,10 @@ export class ApiService {
   }
 
   static async getDashboardCourses(statusFilter = null) {
-    // 课程仍然使用本地实现，因为后端没有课程API
+    // 若未启用本地课程模式，则不返回本地课程（保持为空）
+    if (!COURSES_USE_LOCAL) {
+      return createResponse([])
+    }
     const courses = localStorageAPI.get('courses') || []
     let filteredCourses = courses
     if (statusFilter) {

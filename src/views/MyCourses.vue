@@ -210,121 +210,53 @@ export default {
       }, 300)
     })
     
-    // 课程数据初始化
+    // 移除视图层默认课程，改为完全依赖后端/服务层返回
     const initializeDefaultCourses = () => {
-      courses.value = [
-      {
-        id: 1,
-        title: 'Vue.js 3.0 完整开发教程',
-        instructor: '张教授',
-        description: '从基础到高级，全面掌握Vue.js 3.0框架开发',
-        category: '前端开发',
-        level: 'intermediate',
-        progress: 75,
-        duration: '24小时',
-        lessons: 48,
-        students: 1250,
-        status: 'learning',
-        lastUpdate: '昨天',
-        startDate: '2024-01-15',
-        coverImage: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=400&h=300&fit=crop'
-      },
-      {
-        id: 2,
-        title: 'Python数据分析与机器学习',
-        instructor: '李博士',
-        description: '使用Python进行数据分析和机器学习实战',
-        category: '数据科学',
-        level: 'advanced',
-        progress: 45,
-        duration: '36小时',
-        lessons: 72,
-        students: 890,
-        status: 'learning',
-        lastUpdate: '3天前',
-        startDate: '2024-02-01',
-        coverImage: 'https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=400&h=300&fit=crop'
-      },
-      {
-        id: 3,
-        title: 'UI/UX设计基础',
-        instructor: '王设计师',
-        description: '学习现代UI/UX设计原则和实践',
-        category: '设计',
-        level: 'beginner',
-        progress: 100,
-        duration: '18小时',
-        lessons: 36,
-        students: 2100,
-        status: 'completed',
-        lastUpdate: '1周前',
-        completedDate: '2024-01-20',
-        coverImage: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=400&h=300&fit=crop'
-      },
-      {
-        id: 4,
-        title: 'Node.js后端开发实战',
-        instructor: '陈工程师',
-        description: '构建高性能的Node.js后端应用',
-        category: '后端开发',
-        level: 'intermediate',
-        progress: 100,
-        duration: '30小时',
-        lessons: 60,
-        students: 750,
-        status: 'completed',
-        lastUpdate: '2周前',
-        completedDate: '2024-01-10',
-        coverImage: 'https://images.unsplash.com/photo-1627398242454-45a1465c2479?w=400&h=300&fit=crop'
-      },
-      {
-        id: 5,
-        title: 'React Native移动开发',
-        instructor: '刘老师',
-        description: '使用React Native开发跨平台移动应用',
-        category: '移动开发',
-        level: 'intermediate',
-        progress: 100,
-        duration: '28小时',
-        lessons: 56,
-        students: 630,
-        status: 'completed',
-        lastUpdate: '3周前',
-        completedDate: '2023-12-25',
-        coverImage: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400&h=300&fit=crop'
-      }]
+      courses.value = []
     }
 
     // 从API加载课程数据
     const loadCourses = async () => {
       try {
         loading.value = true
-        const response = await apiService.getCourses()
+        // 读取“我的课程”（只包含用户报名/有关联的课程）
+        const response = await apiService.getMyCourses()
         if (response.data.success) {
-          // 转换API数据格式到前端格式
-          courses.value = response.data.data.map(course => ({
-            id: course.id,
-            title: course.title,
-            instructor: course.instructor || '未知',
-            description: course.description || '',
-            category: course.category || '其他',
-            level: 'intermediate', // API中暂无level字段，使用默认值
-            progress: 0, // 需要从用户课程进度API获取
-            duration: '未知',
-            lessons: course.total_lessons || 0,
-            students: 0, // 需要从统计API获取
-            status: 'learning', // 需要从用户课程进度API获取
-            lastUpdate: course.updated_at ? new Date(course.updated_at).toLocaleDateString() : '未知',
-            coverImage: course.cover_image_url
-          }))
+          const list = Array.isArray(response.data.data) ? response.data.data : []
+          // UserCourseResponse -> UI 映射
+          courses.value = list.map(uc => {
+            const c = uc.course || {}
+            const statusMap = {
+              not_started: 'learning',
+              in_progress: 'learning',
+              completed: 'completed',
+              dropped: 'learning'
+            }
+            return {
+              id: c.id ?? uc.course_id,
+              title: c.title || '未命名课程',
+              instructor: c.instructor || '未知',
+              description: c.description || '',
+              category: c.category || '其他',
+              level: 'intermediate',
+              progress: Math.round((uc.progress || 0) * 100),
+              duration: c.duration ? `${c.duration}小时` : '未知',
+              lessons: c.total_lessons || 0,
+              students: c.enrolled_count || 0,
+              status: statusMap[uc.status] || 'learning',
+              lastUpdate: uc.last_accessed ? new Date(uc.last_accessed).toLocaleDateString() : (c.updated_at ? new Date(c.updated_at).toLocaleDateString() : '未知'),
+              completedDate: uc.status === 'completed' ? (uc.last_accessed ? new Date(uc.last_accessed).toLocaleDateString() : '') : undefined,
+              coverImage: c.cover_image_url
+            }
+          })
         } else {
-          // 如果API失败，使用默认数据
+          // API失败则展示空状态
           initializeDefaultCourses()
         }
       } catch (error) {
-        console.error('加载课程失败:', error)
-        // 如果API失败，使用默认数据
-        initializeDefaultCourses()
+  console.error('加载课程失败:', error)
+  // API失败则展示空状态
+  initializeDefaultCourses()
       } finally {
         loading.value = false
       }
