@@ -8,6 +8,12 @@
         返回首页
       </button>
       <div class="header-actions">
+        <button class="btn join-btn" @click="openApplyByIdModal">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M13,7H11V11H7V13H11V17H13V13H17V11H13V7Z"/>
+          </svg>
+          加入聊天室
+        </button>
         <button class="primary-btn" @click="openCreateRoomModal">新建聊天室</button>
       </div>
     </div>
@@ -77,7 +83,24 @@
             </div>
             <div>
               <h3 class="chat-name">{{ selectedRoom.name }}</h3>
-              <p class="chat-members">{{ selectedRoom.members_count || 0 }}人 · {{ typeLabel(selectedRoom.type) }}</p>
+              <p class="chat-members">
+                {{ selectedRoom.members_count || 0 }}人 · {{ typeLabel(selectedRoom.type) }}
+                <span v-if="currentUserRole" class="user-role" :class="{ king: currentUserRole === 'king' }">
+                  · 我的角色: {{ getRoleLabel(currentUserRole) }}
+                </span>
+              </p>
+              <p class="chat-id">
+                群聊ID: <span class="id-text">{{ selectedRoom.id }}</span>
+                <el-button 
+                  size="small" 
+                  text 
+                  type="primary" 
+                  @click="copyRoomId"
+                  title="复制群聊ID"
+                >
+                  <el-icon><DocumentCopy /></el-icon>
+                </el-button>
+              </p>
             </div>
           </div>
           <div class="chat-actions">
@@ -86,22 +109,42 @@
                 <path d="M16,4C18.11,4 19.99,5.89 19.99,8C19.99,10.11 18.11,12 16,12C13.89,12 12,10.11 12,8C12,5.89 13.89,4 16,4M16,14C20.42,14 24,15.79 24,18V20H8V18C8,15.79 11.58,14 16,14Z" />
               </svg>
             </button>
-            <button class="action-btn" @click="openApplyModal" title="申请加入">
+            <button 
+              class="action-btn" 
+              @click="openApplyModal" 
+              title="申请加入"
+              v-if="!currentUserRole"
+            >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M10,17L15,12L10,7V17Z" />
               </svg>
             </button>
-            <button class="action-btn" @click="openJoinRequestsModal" title="入群申请">
+            <button 
+              class="action-btn" 
+              @click="openJoinRequestsModal" 
+              title="入群申请"
+              v-if="canManageMembers"
+            >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12,2A10,10 0 1,0 22,12A10,10 0 0,0 12,2M7,9H17V11H7V9M7,13H14V15H7V13Z" />
               </svg>
             </button>
-            <button class="action-btn" @click="openUpdateRoomModal" title="房间设置">
+            <button 
+              class="action-btn" 
+              @click="openUpdateRoomModal" 
+              title="房间设置"
+              v-if="canManageRoom"
+            >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" />
               </svg>
             </button>
-            <button class="action-btn" @click="deleteRoom" title="删除聊天室">
+            <button 
+              class="action-btn" 
+              @click="deleteRoom" 
+              title="删除聊天室"
+              v-if="canDeleteRoom"
+            >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6Z" />
               </svg>
@@ -110,25 +153,34 @@
         </div>
 
         <div class="messages-container" v-if="selectedRoom" ref="messagesContainer">
-          <div class="message" v-for="message in messages" :key="message.id" :class="{ own: message.isOwn }">
-            <div class="message-avatar" v-if="!message.isOwn">
-              {{ (message.sender || '?').charAt(0) }}
-            </div>
-            <div class="message-content">
-              <div class="message-header" v-if="!message.isOwn">
-                <span class="message-sender">{{ message.sender }}</span>
-                <span class="message-time">{{ message.time }}</span>
-              </div>
-              <div class="message-bubble">
-                {{ message.content }}
-              </div>
-              <div class="message-time" v-if="message.isOwn">{{ message.time }}</div>
-            </div>
-          </div>
           <div v-if="messagesLoading" class="loading">消息加载中...</div>
+          <div v-else-if="messages.length === 0" class="empty-messages">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" opacity="0.3">
+              <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4l4 4 4-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+            </svg>
+            <p>暂无消息记录</p>
+            <small v-if="!currentUserRole">加入聊天室后即可查看历史消息</small>
+          </div>
+          <template v-else>
+            <div class="message" v-for="message in messages" :key="message.id" :class="{ own: message.isOwn }">
+              <div class="message-avatar" v-if="!message.isOwn">
+                {{ (message.sender || '?').charAt(0) }}
+              </div>
+              <div class="message-content">
+                <div class="message-header" v-if="!message.isOwn">
+                  <span class="message-sender">{{ message.sender }}</span>
+                  <span class="message-time">{{ message.time }}</span>
+                </div>
+                <div class="message-bubble">
+                  {{ message.content }}
+                </div>
+                <div class="message-time" v-if="message.isOwn">{{ message.time }}</div>
+              </div>
+            </div>
+          </template>
         </div>
 
-        <div class="chat-input" v-if="selectedRoom">
+        <div class="chat-input" v-if="selectedRoom && currentUserRole">
           <div class="input-container">
             <el-button class="attach-btn" circle :disabled="true">
               <el-icon><Paperclip /></el-icon>
@@ -145,6 +197,13 @@
             </el-button>
           </div>
           <div class="error" v-if="errorMsg">{{ errorMsg }}</div>
+        </div>
+
+        <div class="chat-input-disabled" v-else-if="selectedRoom && !currentUserRole">
+          <div class="join-prompt">
+            <p>你还不是该聊天室成员，无法发送消息</p>
+            <el-button type="primary" @click="openApplyModal">申请加入</el-button>
+          </div>
         </div>
 
         <div class="empty-state" v-else>
@@ -198,15 +257,31 @@
             <el-avatar :style="{ background: '#8aa1ff', color: '#fff' }">{{ (m.member_name || String(m.member_id)).charAt(0) }}</el-avatar>
             <div>
               <div class="name">{{ m.member_name || '用户' + m.member_id }}</div>
-              <div class="desc">角色：<el-tag size="small">{{ m.role }}</el-tag> · 状态：{{ m.status }} · 加入：{{ formatTime(m.joined_at) }}</div>
+              <div class="desc">
+                角色：<el-tag size="small" :type="getRoleTagType(m.role)">{{ getRoleLabel(m.role) }}</el-tag> 
+                · 状态：{{ m.status }} · 加入：{{ formatTime(m.joined_at) }}
+              </div>
             </div>
           </div>
           <div class="member-actions">
-            <el-select v-model="memberRoleEdit[m.member_id]" size="small" @change="changeMemberRole(m)">
+            <el-select 
+              v-model="memberRoleEdit[m.member_id]" 
+              size="small" 
+              @change="changeMemberRole(m)"
+              :disabled="!canManageMembers || m.member_id === currentUserId || m.role === 'king'"
+            >
               <el-option label="member" value="member" />
               <el-option label="admin" value="admin" />
+              <el-option label="king" value="king" v-if="isRoomKing" />
             </el-select>
-            <el-button type="danger" size="small" @click="removeMember(m)">移除</el-button>
+            <el-button 
+              type="danger" 
+              size="small" 
+              @click="removeMember(m)"
+              :disabled="!canManageMembers || m.member_id === currentUserId || m.role === 'king'"
+            >
+              移除
+            </el-button>
           </div>
         </div>
       </div>
@@ -233,10 +308,13 @@
             <el-avatar>{{ String(jr.requester_id).charAt(0) }}</el-avatar>
             <div>
               <div class="name">申请人：{{ jr.requester_id }}</div>
-              <div class="desc">理由：{{ jr.reason || '无' }} · 状态：<el-tag size="small">{{ jr.status }}</el-tag> · 时间：{{ formatTime(jr.requested_at) }}</div>
+              <div class="desc">
+                理由：{{ jr.reason || '无' }} · 状态：<el-tag size="small" :type="getStatusTagType(jr.status)">{{ jr.status }}</el-tag> 
+                · 时间：{{ formatTime(jr.requested_at) }}
+              </div>
             </div>
           </div>
-          <div class="member-actions" v-if="jr.status === 'pending'">
+          <div class="member-actions" v-if="jr.status === 'pending' && canManageMembers">
             <el-button type="primary" size="small" @click="processJoin(jr, 'approved')">通过</el-button>
             <el-button type="danger" size="small" @click="processJoin(jr, 'rejected')">拒绝</el-button>
           </div>
@@ -269,6 +347,9 @@
       <el-form label-width="100px">
         <el-form-item label="聊天室ID">
           <el-input v-model.number="applyByIdRoomId" type="number" placeholder="请输入房间ID" />
+          <div style="font-size: 12px; color: #6c757d; margin-top: 4px;">
+            💡 提示：可在任意聊天室页面找到群聊ID，点击复制按钮即可获取
+          </div>
         </el-form-item>
         <el-form-item label="申请理由">
           <el-input v-model="applyByIdReason" placeholder="简单说明加入理由" />
@@ -286,12 +367,13 @@
 <script>
 import { useRouter } from 'vue-router'
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
-import { Search, Paperclip, Position } from '@element-plus/icons-vue'
+import { Search, Paperclip, Position, DocumentCopy } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { ApiService } from '@/services/api.js'
 
 export default {
   name: 'ChatRooms',
-  components: { Search, Paperclip, Position },
+  components: { Search, Paperclip, Position, DocumentCopy },
   setup() {
     const router = useRouter()
     const activeTab = ref('all')
@@ -309,8 +391,11 @@ export default {
   const messagesContainer = ref(null)
     const currentUser = ref(null)
     const currentUserId = ref(null)
-  // 权限标记（若外层或模板存在引用，避免未定义告警）
-  const noAccess = ref(false)
+    // 权限标记（若外层或模板存在引用，避免未定义告警）
+    const noAccess = ref(false)
+    // 当前用户在选中房间的角色信息
+    const currentUserRole = ref(null)
+    const userRoomRoles = ref({})
 
     // Modals state
   const showCreateModal = ref(false)
@@ -342,6 +427,32 @@ export default {
       return filtered
     })
 
+    // 权限计算
+    const isRoomCreator = computed(() => {
+      return selectedRoom.value && currentUserId.value && 
+             selectedRoom.value.creator_id === currentUserId.value
+    })
+
+    const isRoomAdmin = computed(() => {
+      return currentUserRole.value === 'admin' || currentUserRole.value === 'king'
+    })
+
+    const isRoomKing = computed(() => {
+      return currentUserRole.value === 'king'
+    })
+
+    const canManageRoom = computed(() => {
+      return isRoomCreator.value || isRoomAdmin.value
+    })
+
+    const canManageMembers = computed(() => {
+      return canManageRoom.value
+    })
+
+    const canDeleteRoom = computed(() => {
+      return isRoomCreator.value || isRoomKing.value
+    })
+
     const goBack = () => {
       router.push('/')
     }
@@ -350,7 +461,33 @@ export default {
       selectedRoom.value = room
       errorMsg.value = ''
       messages.value = []
+      // 更新当前用户在该房间的角色
+      await updateCurrentUserRole(room.id)
       await loadMessages(room.id)
+    }
+
+    // 更新当前用户在房间的角色
+    const updateCurrentUserRole = async (roomId) => {
+      currentUserRole.value = null
+      if (!currentUserId.value) return
+      
+      // 如果已缓存该房间的角色信息，直接使用
+      if (userRoomRoles.value[roomId]) {
+        currentUserRole.value = userRoomRoles.value[roomId]
+        return
+      }
+
+      try {
+        const resp = await ApiService.getChatRoomMembers(roomId)
+        const data = resp?.data?.data || []
+        const currentMember = data.find(m => m.member_id === currentUserId.value)
+        if (currentMember) {
+          currentUserRole.value = currentMember.role
+          userRoomRoles.value[roomId] = currentMember.role
+        }
+      } catch (e) {
+        console.warn('获取用户角色失败:', e.message)
+      }
     }
 
     const sendMessage = async () => {
@@ -428,6 +565,69 @@ export default {
       return map[t] || t || '聊天'
     }
 
+    const getRoleLabel = (role) => {
+      const map = { 
+        king: '群主',
+        admin: '管理员', 
+        member: '成员' 
+      }
+      return map[role] || role || '成员'
+    }
+
+    const getRoleTagType = (role) => {
+      const map = {
+        king: 'danger',    // 红色 - 最高权限
+        admin: 'warning',  // 橙色 - 管理权限
+        member: ''         // 默认灰色 - 普通成员
+      }
+      return map[role] || ''
+    }
+
+    const getStatusTagType = (status) => {
+      const map = {
+        pending: 'warning',   // 橙色 - 待处理
+        approved: 'success',  // 绿色 - 已通过
+        rejected: 'danger'    // 红色 - 已拒绝
+      }
+      return map[status] || ''
+    }
+
+    const copyRoomId = async () => {
+      if (!selectedRoom.value) return
+      
+      try {
+        await navigator.clipboard.writeText(String(selectedRoom.value.id))
+        // 使用 Element Plus 的消息提示
+        ElMessage({
+          message: '群聊ID已复制到剪贴板',
+          type: 'success',
+          duration: 2000
+        })
+      } catch (err) {
+        // 如果浏览器不支持剪贴板API，使用传统方式
+        const textArea = document.createElement('textarea')
+        textArea.value = String(selectedRoom.value.id)
+        document.body.appendChild(textArea)
+        textArea.select()
+        try {
+          document.execCommand('copy')
+          ElMessage({
+            message: '群聊ID已复制到剪贴板',
+            type: 'success',
+            duration: 2000
+          })
+        } catch {
+          ElMessage({
+            message: '复制失败，请手动复制群聊ID',
+            type: 'error',
+            duration: 3000
+          })
+        } finally {
+          document.body.removeChild(textArea)
+        }
+      }
+    }
+
     const formatTime = (isoStr) => {
       if (!isoStr) return ''
       try {
@@ -480,7 +680,14 @@ export default {
         messages.value = data.map(mapMessageToView)
         scrollToBottom()
       } catch (e) {
-        errorMsg.value = e.message || '消息加载失败'
+        console.warn('消息加载失败:', e.message)
+        // 如果是权限问题，提供友好提示
+        if (e.message?.includes('404') || e.message?.includes('Not Found')) {
+          errorMsg.value = '暂无权限查看历史消息或消息为空'
+        } else {
+          errorMsg.value = e.message || '消息加载失败'
+        }
+        messages.value = []
       } finally {
         messagesLoading.value = false
       }
@@ -648,7 +855,20 @@ export default {
       modalError,
   editMode,
       typeLabel,
+      getRoleLabel,
+      getRoleTagType,
+      getStatusTagType,
+      copyRoomId,
       formatTime,
+      // 权限相关
+      currentUserRole,
+      isRoomCreator,
+      isRoomAdmin,
+      isRoomKing,
+      canManageRoom,
+      canManageMembers,
+      canDeleteRoom,
+      updateCurrentUserRole,
       // members
       showMembersModal,
       members,
@@ -703,7 +923,12 @@ export default {
   margin-bottom: 24px;
 }
 
-.header-actions { margin-left: auto; }
+.header-actions { 
+  margin-left: auto;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
 .primary-btn {
   background: #4facfe;
   color: #fff;
@@ -720,6 +945,25 @@ export default {
   border-radius: 8px;
   padding: 8px 14px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+}
+
+.btn:hover {
+  border-color: #4facfe;
+  color: #4facfe;
+}
+
+.join-btn {
+  border-color: #28a745;
+  color: #28a745;
+}
+
+.join-btn:hover {
+  background: #28a745;
+  color: white;
 }
 .danger-btn {
   background: #dc3545;
@@ -938,6 +1182,34 @@ export default {
   margin: 0;
 }
 
+.chat-id {
+  font-size: 11px;
+  color: #6c757d;
+  margin: 2px 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.id-text {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  background: #f8f9fa;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #495057;
+  font-weight: 500;
+}
+
+.user-role {
+  color: #4facfe;
+  font-weight: 500;
+}
+
+.user-role.king {
+  color: #f56565;
+  font-weight: 600;
+}
+
 .chat-actions {
   display: flex;
   gap: 8px;
@@ -1121,6 +1393,44 @@ export default {
 
 .empty-state p {
   margin: 0;
+  font-size: 14px;
+}
+
+.empty-messages {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px;
+  text-align: center;
+  color: #6c757d;
+}
+
+.empty-messages p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.empty-messages small {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.chat-input-disabled {
+  padding: 20px;
+  border-top: 2px solid #e9ecef;
+  background: #f8f9fa;
+}
+
+.join-prompt {
+  text-align: center;
+  color: #6c757d;
+}
+
+.join-prompt p {
+  margin: 0 0 12px 0;
   font-size: 14px;
 }
 
