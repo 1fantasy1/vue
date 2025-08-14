@@ -25,6 +25,12 @@ httpClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    // 如果是 FormData，移除默认的 application/json 头，让浏览器自动设置 multipart 边界
+    if (config.data instanceof FormData) {
+      if (config.headers && config.headers['Content-Type']) {
+        delete config.headers['Content-Type']
+      }
+    }
     
     console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`)
     return config

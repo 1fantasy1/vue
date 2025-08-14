@@ -10,6 +10,12 @@ import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
+// 导入API服务并初始化
+import { ApiService } from './services/api.js'
+
+// 初始化API服务
+ApiService.initialize()
+
 // 创建应用实例
 const app = createApp(App)
 

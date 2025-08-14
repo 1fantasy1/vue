@@ -32,7 +32,9 @@ export const config = {
     studentMatching: true,
     forum: true,
     chatRooms: true,
-    mobileDebug: true
+  mobileDebug: true,
+  // 是否启用课程完成统计（调用 /courses/{id}/completed-by-count）
+  courseCompletionStats: false
   },
 
   // UI配置

@@ -190,12 +190,13 @@ export default {
     }
   },
   setup(props) {
-    const loading = ref(true)
+  const loading = ref(true)
     const materials = ref([])
     const showCreateModal = ref(false)
     const showEditModal = ref(false)
     const submitting = ref(false)
-    const selectedFile = ref(null)
+  const selectedFile = ref(null)
+  const fileInput = ref(null)
     const editingMaterial = ref(null)
 
     const materialForm = reactive({
@@ -234,8 +235,8 @@ export default {
       materialForm.url = ''
       materialForm.content = ''
       selectedFile.value = null
-      if (props.$refs.fileInput) {
-        props.$refs.fileInput.value = ''
+      if (fileInput.value) {
+        fileInput.value.value = ''
       }
     }
 
@@ -244,6 +245,23 @@ export default {
       try {
         submitting.value = true
         let response
+
+        // 前置校验：确保字段满足各类型要求
+        if (materialForm.type === 'link' && !materialForm.url) {
+          alert('链接类型必须填写URL')
+          submitting.value = false
+          return
+        }
+        if (materialForm.type === 'text' && !materialForm.content) {
+          alert('文档类型必须填写内容')
+          submitting.value = false
+          return
+        }
+        if (!showEditModal.value && materialForm.type === 'file' && !selectedFile.value) {
+          alert('请选择要上传的文件')
+          submitting.value = false
+          return
+        }
 
         if (showEditModal.value) {
           // 更新材料
@@ -360,6 +378,7 @@ export default {
       showEditModal,
       submitting,
       selectedFile,
+  fileInput,
       materialForm,
       handleFileChange,
       clearTypeSpecificFields,

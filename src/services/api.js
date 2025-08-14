@@ -3,8 +3,8 @@
 
 import remoteApiService from './remoteApi.js'
 
-// 配置：课程功能默认不使用本地数据（后端若无课程API，则前端显示为空）
-const COURSES_USE_LOCAL = false
+// 配置：课程功能默认使用本地数据（用于开发测试）
+const COURSES_USE_LOCAL = true
 
 // 本地存储工具函数
 const localStorageAPI = {
@@ -261,9 +261,15 @@ export class ApiService {
   // 获取当前用户关联的课程（仅我参与/已报名/有进度的课程）
   static async getMyCourses(statusFilter = null) {
     try {
-      // 后端返回 UserCourseResponse 列表
-      const response = await remoteApiService.users.getMyCourses(statusFilter)
-      return createResponse(response)
+      // 新：使用工作台端点，返回当前用户课程卡片列表
+      try {
+        const response = await remoteApiService.dashboard.getCourses(statusFilter)
+        return createResponse(response)
+      } catch (err) {
+        // 兼容旧实现：回退到 /users/me/courses（UserCourseResponse 列表）
+        const fallback = await remoteApiService.users.getMyCourses(statusFilter)
+        return createResponse(fallback)
+      }
     } catch (error) {
       return createResponse(null, false, error.message)
     }
@@ -420,9 +426,14 @@ export class ApiService {
         return createResponse(course)
       }
       
-  // 调用后端API获取指定课程详情
-  const response = await remoteApiService.courses.getCourseById(courseId)
-  return createResponse(response)
+      // 调用后端API获取指定课程详情
+      const response = await remoteApiService.courses.getCourseById(courseId)
+      // 检查后端响应是否成功
+      if (response && response.id) {
+        return createResponse(response)
+      } else {
+        return createResponse(null, false, '课程不存在')
+      }
     } catch (error) {
       return createResponse(null, false, error.message)
     }
@@ -497,7 +508,7 @@ export class ApiService {
   // 3. 用户课程交互
   static async updateUserCourseProgress(courseId, progressData) {
     try {
-      // progressData 包含 progress (0.0-1.0) 和 status ('not_started', 'in_progress', 'completed', 'dropped')
+  // progressData 包含 progress (0.0-1.0) 和 status ('registered', 'in_progress', 'completed', 'dropped')
   const response = await remoteApiService.users.updateMyCourseProgress(courseId, progressData)
   return createResponse(response)
     } catch (error) {
@@ -526,23 +537,10 @@ export class ApiService {
 
   static async createCourseMaterial(courseId, materialData, file = null) {
     try {
-      let requestData
-      let headers = {}
-
-      if (file) {
-        // 文件上传使用 FormData
-        requestData = new FormData()
-        requestData.append('file', file)
-        requestData.append('material_data', JSON.stringify(materialData))
-        headers['Content-Type'] = 'multipart/form-data'
-      } else {
-        // 链接或文本材料使用 JSON
-        requestData = materialData
-        headers['Content-Type'] = 'application/json'
-      }
-
-  // 走课程API封装
-  const response = await remoteApiService.courses.createMaterial(courseId, materialData, file)
+  // 若有文件，类型强制为 file，避免后端验证失败
+  const payload = file ? { ...materialData, type: 'file', url: undefined } : { ...materialData }
+  // 走课程API封装（内部已按 file/JSON 选择不同提交方式）
+  const response = await remoteApiService.courses.createMaterial(courseId, payload, file)
   return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
@@ -551,20 +549,9 @@ export class ApiService {
 
   static async updateCourseMaterial(courseId, materialId, materialData, file = null) {
     try {
-      let requestData
-      let headers = {}
-
-      if (file) {
-        requestData = new FormData()
-        requestData.append('file', file)
-        requestData.append('material_data', JSON.stringify(materialData))
-        headers['Content-Type'] = 'multipart/form-data'
-      } else {
-        requestData = materialData
-        headers['Content-Type'] = 'application/json'
-      }
-
-  const response = await remoteApiService.courses.updateMaterial(courseId, materialId, materialData, file)
+  // 若有文件，类型强制为 file
+  const payload = file ? { ...materialData, type: 'file', url: undefined } : { ...materialData }
+  const response = await remoteApiService.courses.updateMaterial(courseId, materialId, payload, file)
   return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
@@ -592,8 +579,19 @@ export class ApiService {
 
   // 兼容性方法
   static async enrollCourse(courseId, studentId) {
-    // 使用用户课程交互API来实现报名功能
-    return this.updateUserCourseProgress(courseId, { status: 'not_started' })
+    try {
+      // 优先使用后端报名端点
+      const response = await remoteApiService.courses.enrollCourse(courseId)
+      return createResponse(response)
+    } catch (error) {
+      // 兼容旧后端：退化为设置当前用户课程状态为 registered
+      try {
+        const fallback = await remoteApiService.users.updateMyCourseProgress(courseId, { status: 'registered', progress: 0.0 })
+        return createResponse(fallback)
+      } catch (e2) {
+        return createResponse(null, false, error.message || e2.message)
+      }
+    }
   }
 
   // ========== 笔记相关API ==========
@@ -662,21 +660,25 @@ export class ApiService {
   }
 
   static async getDashboardCourses(statusFilter = null) {
-    // 若未启用本地课程模式，则不返回本地课程（保持为空）
-    if (!COURSES_USE_LOCAL) {
-      return createResponse([])
+    try {
+      if (COURSES_USE_LOCAL) {
+        const courses = localStorageAPI.get('courses') || []
+        let filteredCourses = courses
+        if (statusFilter) {
+          filteredCourses = courses.filter(c => c.status === statusFilter)
+        }
+        return createResponse(filteredCourses.map(c => ({
+          id: c.id,
+          title: c.title,
+          progress: c.progress || 0,
+          status: c.status || 'active'
+        })))
+      }
+      const response = await remoteApiService.dashboard.getCourses(statusFilter)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
     }
-    const courses = localStorageAPI.get('courses') || []
-    let filteredCourses = courses
-    if (statusFilter) {
-      filteredCourses = courses.filter(c => c.status === statusFilter)
-    }
-    return createResponse(filteredCourses.map(c => ({
-      id: c.id,
-      title: c.title,
-      progress: c.progress || 0,
-      status: c.status || 'active'
-    })))
   }
 
   // ========== 知识库相关API ==========

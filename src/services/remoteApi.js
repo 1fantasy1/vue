@@ -203,6 +203,11 @@ export class CoursesAPI extends BaseAPI {
     return await this.request('PUT', `/${courseId}`, courseData)
   }
 
+  // 报名课程：当前认证用户报名指定课程
+  async enrollCourse(courseId) {
+    return await this.request('POST', `/${courseId}/enroll`)
+  }
+
   async getMaterials(courseId, typeFilter = null) {
     return await this.request('GET', `/${courseId}/materials/`, null,
       typeFilter ? { type_filter: typeFilter } : null
@@ -214,37 +219,57 @@ export class CoursesAPI extends BaseAPI {
   }
 
   async createMaterial(courseId, materialData, file = null) {
+    // 统一构造查询参数（仅包含有值的字段）
+    const q = {}
+    if (materialData?.title) q.title = materialData.title
+    if (materialData?.type) q.type = materialData.type
+    if (materialData?.url) q.url = materialData.url
+    if (materialData?.content) q.content = materialData.content
+
+    // 后端总是期望 multipart/form-data 格式，即使没有文件也要发送空的 file 字段
+    const formData = new FormData()
     if (file) {
-      const formData = new FormData()
       formData.append('file', file)
-      formData.append('material_data', JSON.stringify(materialData))
-      try {
-        const response = await httpClient.post(`/courses/${courseId}/materials/`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        })
-        return response.data
-      } catch (error) {
-        throw this.handleError(error)
-      }
+    } else {
+      // 发送空的 file 字段，匹配后端期望的格式
+      formData.append('file', new Blob([]), '')
     }
-    return await this.request('POST', `/${courseId}/materials/`, materialData)
+    
+    try {
+      const response = await httpClient.post(`/courses/${courseId}/materials/`, formData, {
+        // 不要手动设置 Content-Type，交给浏览器自动带上 boundary
+        params: q
+      })
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
   }
 
   async updateMaterial(courseId, materialId, materialData, file = null) {
+    const q = {}
+    if (materialData?.title) q.title = materialData.title
+    if (materialData?.type) q.type = materialData.type
+    if (materialData?.url) q.url = materialData.url
+    if (materialData?.content) q.content = materialData.content
+
+    // 后端总是期望 multipart/form-data 格式
+    const formData = new FormData()
     if (file) {
-      const formData = new FormData()
       formData.append('file', file)
-      formData.append('material_data', JSON.stringify(materialData))
-      try {
-        const response = await httpClient.put(`/courses/${courseId}/materials/${materialId}`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        })
-        return response.data
-      } catch (error) {
-        throw this.handleError(error)
-      }
+    } else {
+      // 发送空的 file 字段
+      formData.append('file', new Blob([]), '')
     }
-    return await this.request('PUT', `/${courseId}/materials/${materialId}`, materialData)
+    
+    try {
+      const response = await httpClient.put(`/courses/${courseId}/materials/${materialId}`, formData, {
+        params: q
+      })
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
   }
 
   async deleteMaterial(courseId, materialId) {

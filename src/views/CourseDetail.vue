@@ -36,7 +36,7 @@
                 <span class="meta-label">评分：</span>
                 <span class="meta-value rating">{{ course.avg_rating.toFixed(1) }}分</span>
               </div>
-              <div v-if="completionCount !== null" class="meta-item">
+              <div v-if="completionCount !== null && appConfig.features?.courseCompletionStats" class="meta-item">
                 <span class="meta-label">完成：</span>
                 <span class="meta-value">{{ completionCount }}人</span>
               </div>
@@ -153,6 +153,11 @@
           </div>
         </div>
 
+        <!-- 管理课程材料（仅管理员可见） -->
+        <div v-if="activeTab === 'manage-materials' && isAdmin" class="materials-section">
+          <MaterialManager :courseId="courseId" />
+        </div>
+
         <!-- 推荐课程 -->
         <div v-if="activeTab === 'recommendations'" class="recommendations-section">
           <div v-if="loadingRecommendations" class="loading-container">
@@ -195,19 +200,35 @@
       <p>抱歉，您访问的课程不存在或已被删除。</p>
       <button @click="goBack" class="action-btn secondary">返回</button>
     </div>
+
+    <!-- 材料详情模态框 - 移到条件块外面 -->
+    <MaterialDetailModal
+      v-if="showMaterialDetail"
+      :courseId="courseId"
+      :materialId="selectedMaterialId"
+      :visible="showMaterialDetail"
+      @close="closeMaterialDetail"
+    />
   </div>
 </template>
 
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useGlobalStore } from '@/stores/global'
+import MaterialManager from '@/components/MaterialManager.vue'
+import MaterialDetailModal from '@/components/MaterialDetailModal.vue'
 import apiService from '@/services/api.js'
+import appConfig from '@/config/index.js'
 
 export default {
   name: 'CourseDetail',
+  components: { MaterialManager, MaterialDetailModal },
   setup() {
     const route = useRoute()
     const router = useRouter()
+    const globalStore = useGlobalStore()
+  const courseId = computed(() => route.params.id)
     
     // 响应式数据
     const loading = ref(true)
@@ -215,18 +236,34 @@ export default {
     const userProgress = ref(null)
     const materials = ref([])
     const recommendedCourses = ref([])
-    const completionCount = ref(null)
+  const completionCount = ref(null)
     const enrolling = ref(false)
     const isFavorited = ref(false)
     const loadingMaterials = ref(false)
     const loadingRecommendations = ref(false)
     
+    // 材料详情模态框
+    const showMaterialDetail = ref(false)
+    const selectedMaterialId = ref(null)
+    
     // 活动选项卡
     const activeTab = ref('materials')
-    const tabs = [
-      { key: 'materials', label: '课程材料' },
-      { key: 'recommendations', label: '推荐课程' }
-    ]
+    const isAdmin = computed(() => {
+      const lsRole = (localStorage.getItem('userRole') || '').toLowerCase()
+      const u = globalStore?.user || {}
+      const storeRole = (u.role || '').toLowerCase()
+      const roles = Array.isArray(u.roles) ? u.roles.map(r => String(r).toLowerCase()) : []
+      const perms = Array.isArray(u.permissions) ? u.permissions.map(p => String(p).toLowerCase()) : []
+      const flags = [lsRole, storeRole, ...roles, ...perms]
+      return u.is_admin === true || flags.includes('admin')
+    })
+    const tabs = computed(() => {
+      const base = [
+        { key: 'materials', label: '课程材料' },
+        { key: 'recommendations', label: '推荐课程' }
+      ]
+      return isAdmin.value ? [...base, { key: 'manage-materials', label: '材料管理' }] : base
+    })
 
     // 获取课程详情
     const loadCourseDetail = async () => {
@@ -236,18 +273,28 @@ export default {
         
         // 获取课程基本信息
         const courseResponse = await apiService.getCourse(courseId)
-        if (courseResponse.data.success) {
+        
+        if (courseResponse.data.success && courseResponse.data.data) {
           course.value = courseResponse.data.data
           
           // 并行加载其他数据
-          await Promise.all([
+          // 并行加载其他数据（统计受特性开关控制）
+          const tasks = [
             loadCourseMaterials(courseId),
-            loadCourseStatistics(courseId),
             loadRecommendations()
-          ])
+          ]
+          if (appConfig.features?.courseCompletionStats) {
+            tasks.push(loadCourseStatistics(courseId))
+          }
+          await Promise.all(tasks)
+        } else {
+          // API调用成功但课程不存在
+          console.warn('课程不存在或加载失败:', courseId, courseResponse.data?.message)
+          course.value = null
         }
       } catch (error) {
         console.error('加载课程详情失败:', error)
+        course.value = null
       } finally {
         loading.value = false
       }
@@ -276,7 +323,8 @@ export default {
           completionCount.value = response.data.data.count
         }
       } catch (error) {
-        console.error('加载课程统计失败:', error)
+        // 如果后端未实现该接口，静默忽略并不显示统计
+        console.warn('课程完成统计接口不可用，已跳过。', error?.message || error)
       }
     }
 
@@ -332,13 +380,17 @@ export default {
     const openMaterial = (material) => {
       if (material.type === 'link' && material.url) {
         window.open(material.url, '_blank')
-      } else if (material.type === 'file' && material.file_path) {
-        // 处理文件下载或预览
-        alert('文件预览功能开发中...')
       } else {
-        // 显示文本内容
-        alert(material.content || '暂无内容')
+        // 打开材料详情模态框
+        selectedMaterialId.value = material.id
+        showMaterialDetail.value = true
       }
+    }
+
+    // 关闭材料详情模态框
+    const closeMaterialDetail = () => {
+      showMaterialDetail.value = false
+      selectedMaterialId.value = null
     }
 
     // 跳转到课程
@@ -364,6 +416,7 @@ export default {
 
     const getStatusText = (status) => {
       const statusMap = {
+  'registered': '已报名',
         'not_started': '未开始',
         'in_progress': '学习中',
         'completed': '已完成',
@@ -394,6 +447,7 @@ export default {
     })
 
     return {
+  appConfig,
       loading,
       course,
       userProgress,
@@ -406,10 +460,15 @@ export default {
       loadingRecommendations,
       activeTab,
       tabs,
+  isAdmin,
+  courseId,
+      showMaterialDetail,
+      selectedMaterialId,
       enrollCourse,
       continueLearning,
       toggleFavorite,
       openMaterial,
+      closeMaterialDetail,
       goToCourse,
       goBack,
       getSkillLevelClass,
@@ -721,6 +780,11 @@ export default {
 .status-badge.dropped {
   background: #f8d7da;
   color: #721c24;
+}
+
+.status-badge.registered {
+  background: #e7f1ff;
+  color: #0d6efd;
 }
 
 /* 内容区域 */

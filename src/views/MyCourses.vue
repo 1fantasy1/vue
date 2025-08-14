@@ -223,30 +223,60 @@ export default {
         const response = await apiService.getMyCourses()
         if (response.data.success) {
           const list = Array.isArray(response.data.data) ? response.data.data : []
-          // UserCourseResponse -> UI 映射
-          courses.value = list.map(uc => {
-            const c = uc.course || {}
-            const statusMap = {
-              not_started: 'learning',
-              in_progress: 'learning',
-              completed: 'completed',
-              dropped: 'learning'
+          // 统一映射：兼容 DashboardCourseCard 与 UserCourseResponse
+          const statusMap = {
+            registered: 'learning',
+            not_started: 'learning',
+            in_progress: 'learning',
+            completed: 'completed',
+            dropped: 'learning'
+          }
+
+          const toPercent = (p) => {
+            if (p == null || isNaN(p)) return 0
+            return p <= 1 ? Math.round(p * 100) : Math.round(p)
+          }
+
+          courses.value = list.map(item => {
+            // 形态A：UserCourseResponse
+            if (item && (item.course || item.course_id)) {
+              const c = item.course || {}
+              return {
+                id: c.id ?? item.course_id,
+                title: c.title || '未命名课程',
+                instructor: c.instructor || '未知',
+                description: c.description || '',
+                category: c.category || '其他',
+                level: 'intermediate',
+                progress: toPercent(item.progress || 0),
+                duration: c.duration ? `${c.duration}小时` : '未知',
+                lessons: c.total_lessons || 0,
+                students: c.enrolled_count || 0,
+                status: statusMap[item.status] || 'learning',
+                lastUpdate: item.last_accessed ? new Date(item.last_accessed).toLocaleDateString() : (c.updated_at ? new Date(c.updated_at).toLocaleDateString() : '未知'),
+                completedDate: item.status === 'completed' ? (item.last_accessed ? new Date(item.last_accessed).toLocaleDateString() : '') : undefined,
+                coverImage: c.cover_image_url
+              }
             }
+
+            // 形态B：DashboardCourseCard（直接平铺字段）
+            const c = item || {}
+            const status = c.status && statusMap[c.status] ? statusMap[c.status] : (['learning','completed'].includes(c.status) ? c.status : 'learning')
             return {
-              id: c.id ?? uc.course_id,
+              id: c.id,
               title: c.title || '未命名课程',
               instructor: c.instructor || '未知',
               description: c.description || '',
               category: c.category || '其他',
               level: 'intermediate',
-              progress: Math.round((uc.progress || 0) * 100),
+              progress: toPercent(c.progress || 0),
               duration: c.duration ? `${c.duration}小时` : '未知',
-              lessons: c.total_lessons || 0,
-              students: c.enrolled_count || 0,
-              status: statusMap[uc.status] || 'learning',
-              lastUpdate: uc.last_accessed ? new Date(uc.last_accessed).toLocaleDateString() : (c.updated_at ? new Date(c.updated_at).toLocaleDateString() : '未知'),
-              completedDate: uc.status === 'completed' ? (uc.last_accessed ? new Date(uc.last_accessed).toLocaleDateString() : '') : undefined,
-              coverImage: c.cover_image_url
+              lessons: c.total_lessons || c.lessons || 0,
+              students: c.enrolled_count || c.students || 0,
+              status,
+              lastUpdate: c.updated_at ? new Date(c.updated_at).toLocaleDateString() : '未知',
+              completedDate: status === 'completed' ? (c.updated_at ? new Date(c.updated_at).toLocaleDateString() : '') : undefined,
+              coverImage: c.cover_image_url || c.coverImage
             }
           })
         } else {
