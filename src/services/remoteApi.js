@@ -394,6 +394,16 @@ export class KnowledgeBasesAPI extends BaseAPI {
   async deleteDocument(kbId, documentId) {
     return await this.request('DELETE', `/${kbId}/documents/${documentId}`)
   }
+
+  // DEBUG: 文档原文内容
+  async getDocumentContent(kbId, documentId) {
+    return await this.request('GET', `/${kbId}/documents/${documentId}/content`)
+  }
+
+  // DEBUG: 文档分块
+  async getDocumentChunks(kbId, documentId) {
+    return await this.request('GET', `/${kbId}/documents/${documentId}/chunks`)
+  }
 }
 
 // 文章API

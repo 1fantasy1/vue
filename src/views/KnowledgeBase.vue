@@ -5,6 +5,26 @@
       <div class="header-content">
         <h1 class="page-title">📚 知识库</h1>
         <p class="page-subtitle">浏览和搜索项目知识资源</p>
+
+        <!-- 知识库选择与状态过滤 -->
+        <div class="kb-toolbar">
+          <div class="kb-select">
+            <label for="kb">知识库：</label>
+            <select id="kb" v-model="selectedKbId" @change="onKbChange">
+              <option v-for="kb in knowledgeBases" :key="kb.id" :value="kb.id">{{ kb.name }}</option>
+            </select>
+            <button type="button" class="kb-btn" @click="createKbPrompt">新建知识库</button>
+          </div>
+          <div class="kb-status-filter">
+            <label for="status">状态：</label>
+            <select id="status" v-model="statusFilter" @change="loadDocuments">
+              <option value="">全部</option>
+              <option value="processing">processing</option>
+              <option value="completed">completed</option>
+              <option value="failed">failed</option>
+            </select>
+          </div>
+        </div>
         
         <!-- 搜索框 -->
         <div class="search-container">
@@ -35,8 +55,14 @@
       </div>
     </div>
 
+    <!-- 顶部页签：文档 / 文章 -->
+    <div class="tabs">
+      <button class="tab" :class="{ active: activeTab === 'documents' }" @click="switchTab('documents')">文档</button>
+      <button class="tab" :class="{ active: activeTab === 'articles' }" @click="switchTab('articles')">文章</button>
+    </div>
+
     <!-- 分类导航 -->
-    <div class="categories-section">
+    <div v-if="activeTab === 'documents'" class="categories-section">
       <h3 class="section-title">知识分类</h3>
       <div class="categories-grid">
         <div 
@@ -55,8 +81,8 @@
       </div>
     </div>
 
-    <!-- 文档列表 -->
-    <div class="documents-section">
+  <!-- 文档列表 -->
+  <div v-if="activeTab === 'documents'" class="documents-section">
       <div class="section-header">
         <h3 class="section-title">
           {{ selectedCategory ? selectedCategory.name : '全部文档' }}
@@ -102,10 +128,11 @@
               <span class="document-type">{{ document.type }}</span>
               <span class="document-date">{{ document.updatedAt }}</span>
               <span class="document-size">{{ document.size }}</span>
+              <span class="document-status" :class="`status-${document.status}`">{{ document.status }}</span>
             </div>
             <div class="document-tags">
               <span 
-                v-for="tag in document.tags" 
+                v-for="tag in (document.tags || [])" 
                 :key="tag"
                 class="document-tag"
               >
@@ -124,6 +151,11 @@
                 <path d="M18,16.08C17.24,16.08 16.56,16.38 16.04,16.85L8.91,12.7C8.96,12.47 9,12.24 9,12C9,11.76 8.96,11.53 8.91,11.3L15.96,7.19C16.5,7.69 17.21,8 18,8A3,3 0 0,0 21,5A3,3 0 0,0 18,2A3,3 0 0,0 15,5C15,5.24 15.04,5.47 15.09,5.7L8.04,9.81C7.5,9.31 6.79,9 6,9A3,3 0 0,0 3,12A3,3 0 0,0 6,15C6.79,15 7.5,14.69 8.04,14.19L15.16,18.34C15.11,18.55 15.08,18.77 15.08,19C15.08,20.61 16.39,21.91 18,21.91C19.61,21.91 20.92,20.61 20.92,19A2.92,2.92 0 0,0 18,16.08Z"/>
               </svg>
             </button>
+            <button class="action-btn danger" title="删除" @click.stop="deleteDocument(document)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6Z"/>
+              </svg>
+            </button>
           </div>
         </div>
       </div>
@@ -136,13 +168,47 @@
       </div>
     </div>
 
+    <!-- 文章列表 -->
+    <div v-if="activeTab === 'articles'" class="articles-section">
+      <div class="section-header">
+        <h3 class="section-title">知识文章</h3>
+        <div class="actions">
+          <button class="kb-btn" @click="openCreateArticle">新建文章</button>
+        </div>
+      </div>
+
+      <div class="articles-list">
+        <div v-for="a in articles" :key="a.id" class="article-item">
+          <div class="article-main" @click="previewArticle(a)">
+            <div class="article-title">{{ a.title }}</div>
+            <div class="article-meta">
+              <span>{{ a.version || 'v1' }}</span>
+              <span>{{ formatDate(a.updated_at || a.created_at) }}</span>
+              <span v-if="a.tags" class="article-tags">{{ a.tags }}</span>
+            </div>
+          </div>
+          <div class="article-actions">
+            <button class="action-btn" title="编辑" @click.stop="openEditArticle(a)">✏️</button>
+            <button class="action-btn danger" title="删除" @click.stop="deleteArticle(a)">🗑️</button>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="articles.length === 0" class="empty-state">
+        <div class="empty-icon">📝</div>
+        <h3>暂无文章</h3>
+        <p>点击“新建文章”开始创作</p>
+      </div>
+    </div>
+
     <!-- 浮动操作按钮 -->
-    <div class="fab-container">
-      <button class="fab" @click="uploadDocument">
+    <div v-if="activeTab === 'documents'" class="fab-container">
+      <button class="fab" @click="triggerUpload">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
           <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
         </svg>
       </button>
+      <input ref="fileInput" type="file" class="hidden-file-input" @change="onFileSelected" />
     </div>
 
     <!-- 收藏弹窗 -->
@@ -156,11 +222,43 @@
       title-text="收藏知识文档"
       @submit="onCollectionSubmit"
     />
+
+    <!-- 文章编辑弹窗（简单实现） -->
+    <div v-if="articleModalVisible" class="modal-mask">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>{{ isEditingArticle ? '编辑文章' : '新建文章' }}</h3>
+          <button class="close" @click="closeArticleModal">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-row">
+            <label>标题</label>
+            <input v-model="articleForm.title" type="text" placeholder="文章标题" />
+          </div>
+          <div class="form-row">
+            <label>版本</label>
+            <input v-model="articleForm.version" type="text" placeholder="可选，如 v1.0" />
+          </div>
+          <div class="form-row">
+            <label>标签</label>
+            <input v-model="articleForm.tags" type="text" placeholder="用逗号分隔" />
+          </div>
+          <div class="form-row">
+            <label>内容</label>
+            <textarea v-model="articleForm.content" rows="8" placeholder="文章内容..." />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="kb-btn" @click="submitArticle" :disabled="!articleForm.title">{{ isEditingArticle ? '保存' : '创建' }}</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
 import CollectionModal from '@/components/CollectionModal.vue'
+import { ApiService } from '@/services/api.js'
 
 export default {
   name: 'KnowledgeBase',
@@ -169,7 +267,14 @@ export default {
     return {
       searchQuery: '',
       viewMode: 'grid',
-      selectedCategory: null,
+  selectedCategory: null,
+  knowledgeBases: [],
+  selectedKbId: null,
+  statusFilter: '',
+  loadingDocs: false,
+  activeTab: 'documents',
+  articles: [],
+  articlesLoaded: false,
       filterTags: [
         { id: 1, name: '全部', active: true },
         { id: 2, name: '最新', active: false },
@@ -219,81 +324,21 @@ export default {
           color: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
           count: 15
         }
-      ],
-      documents: [
-        {
-          id: 1,
-          title: 'Vue.js 3.0 完整开发指南',
-          description: '从基础到高级的Vue.js 3.0开发教程，包含组合式API、状态管理等内容',
-          type: 'PDF',
-          size: '2.3MB',
-          updatedAt: '2024-08-01',
-          tags: ['Vue', '前端', '教程'],
-          categoryId: 1,
-          favorite: false
-        },
-        {
-          id: 2,
-          title: '项目架构设计文档',
-          description: '系统架构设计原则、模式和最佳实践',
-          type: 'DOC',
-          size: '1.8MB',
-          updatedAt: '2024-07-28',
-          tags: ['架构', '设计', '文档'],
-          categoryId: 2,
-          favorite: true
-        },
-        {
-          id: 3,
-          title: 'UI/UX 设计规范',
-          description: '用户界面和用户体验设计的标准规范和指导原则',
-          type: 'PDF',
-          size: '4.1MB',
-          updatedAt: '2024-07-25',
-          tags: ['UI', 'UX', '设计'],
-          categoryId: 3,
-          favorite: false
-        },
-        {
-          id: 4,
-          title: 'RESTful API 开发规范',
-          description: 'REST API设计原则、最佳实践和示例代码',
-          type: 'MD',
-          size: '856KB',
-          updatedAt: '2024-07-22',
-          tags: ['API', 'REST', '后端'],
-          categoryId: 4,
-          favorite: true
-        },
-        {
-          id: 5,
-          title: 'Git 版本控制入门视频',
-          description: 'Git基础操作、分支管理和协作开发的视频教程',
-          type: 'MP4',
-          size: '125MB',
-          updatedAt: '2024-07-20',
-          tags: ['Git', '版本控制', '视频'],
-          categoryId: 5,
-          favorite: false
-        },
-        {
-          id: 6,
-          title: '开发工具配置指南',
-          description: 'VS Code、Node.js等开发环境的安装和配置说明',
-          type: 'PDF',
-          size: '1.2MB',
-          updatedAt: '2024-07-18',
-          tags: ['工具', '配置', '环境'],
-          categoryId: 6,
-          favorite: false
-        }
-      ],
+  ],
+  documents: [],
   currentDocument: null,
       // 收藏弹窗
       collectionModalVisible: false,
       isEditingCollection: false,
-  collectionForm: { id: null, title: '', type: 'knowledge_article', url: '', content: '', tags: '', folder_id: null }
+  collectionForm: { id: null, title: '', type: 'knowledge_article', url: '', content: '', tags: '', folder_id: null },
+  // 文章弹窗
+  articleModalVisible: false,
+  isEditingArticle: false,
+  articleForm: { id: null, title: '', content: '', version: '', tags: '' }
     }
+  },
+  async created() {
+    await this.init()
   },
   computed: {
     filteredDocuments() {
@@ -309,8 +354,8 @@ export default {
         const query = this.searchQuery.toLowerCase()
         result = result.filter(doc => 
           doc.title.toLowerCase().includes(query) ||
-          doc.description.toLowerCase().includes(query) ||
-          doc.tags.some(tag => tag.toLowerCase().includes(query))
+          (doc.description || '').toLowerCase().includes(query) ||
+          (Array.isArray(doc.tags) ? doc.tags : []).some(tag => String(tag).toLowerCase().includes(query))
         )
       }
 
@@ -334,6 +379,67 @@ export default {
     }
   },
   methods: {
+    switchTab(tab) {
+      this.activeTab = tab
+      if (tab === 'articles' && !this.articlesLoaded) {
+        this.loadArticles()
+      }
+    },
+    async init() {
+      try {
+        const res = await ApiService.getKnowledgeBases()
+        const list = res?.data?.data || []
+        this.knowledgeBases = Array.isArray(list) ? list : []
+        if (this.knowledgeBases.length > 0) {
+          this.selectedKbId = this.knowledgeBases[0].id
+          await this.loadDocuments()
+        }
+      } catch (e) {
+        console.error(e)
+        alert(e.message || '加载知识库失败')
+      }
+    },
+    async onKbChange() {
+      await this.loadDocuments()
+      if (this.activeTab === 'articles') this.loadArticles()
+    },
+    async loadDocuments() {
+      if (!this.selectedKbId) return
+      this.loadingDocs = true
+      try {
+        const res = await ApiService.getKnowledgeBaseDocuments(this.selectedKbId, this.statusFilter || null)
+        const raw = res?.data?.data || []
+        this.documents = (Array.isArray(raw) ? raw : []).map(d => ({
+          id: d.id,
+          title: d.file_name || `文档 #${d.id}`,
+          description: d.processing_message || '',
+          type: d.file_type || '-',
+          size: '-',
+          updatedAt: this.formatDate(d.updated_at || d.created_at),
+          tags: [],
+          categoryId: null,
+          favorite: false,
+          status: d.status || 'processing'
+        }))
+      } catch (e) {
+        console.error(e)
+        alert(e.message || '加载文档失败')
+      } finally {
+        this.loadingDocs = false
+      }
+    },
+    async loadArticles() {
+      if (!this.selectedKbId) return
+      try {
+        const res = await ApiService.getKnowledgeBaseArticles(this.selectedKbId)
+        const list = res?.data?.data || []
+        this.articles = Array.isArray(list) ? list : []
+        this.articlesLoaded = true
+      } catch (e) {
+        console.error(e)
+        alert(e.message || '加载文章失败')
+      }
+    },
     handleSearch() {
       // 搜索逻辑已在computed中处理
     },
@@ -379,8 +485,117 @@ export default {
     shareDocument(document) {
       alert(`分享文档: ${document.title}`)
     },
-    uploadDocument() {
-      alert('上传文档功能开发中...')
+    triggerUpload() {
+      this.$refs.fileInput && this.$refs.fileInput.click()
+    },
+    async onFileSelected(e) {
+      const file = e.target.files && e.target.files[0]
+      if (!file) return
+      if (!this.selectedKbId) {
+        alert('请先选择知识库')
+        return
+      }
+      try {
+        const res = await ApiService.uploadDocument(this.selectedKbId, file)
+        if (res?.data?.success === false) throw new Error(res.data.message || '上传失败')
+        alert('上传成功，后台正在处理...')
+        await this.loadDocuments()
+      } catch (err) {
+        console.error(err)
+        alert(err.message || '上传失败')
+      } finally {
+        e.target.value = ''
+      }
+    },
+    async deleteDocument(document) {
+      if (!this.selectedKbId) return
+      if (!confirm(`确认删除文档：${document.title}？该操作不可恢复`)) return
+      try {
+        const res = await ApiService.deleteKnowledgeDocument(this.selectedKbId, document.id)
+        if (res?.data?.success === false) throw new Error(res.data.message || '删除失败')
+        this.documents = this.documents.filter(d => d.id !== document.id)
+      } catch (e) {
+        console.error(e)
+        alert(e.message || '删除失败')
+      }
+    },
+    openCreateArticle() {
+      this.isEditingArticle = false
+      this.articleForm = { id: null, title: '', content: '', version: '', tags: '' }
+      this.articleModalVisible = true
+    },
+    openEditArticle(article) {
+      this.isEditingArticle = true
+      this.articleForm = {
+        id: article.id,
+        title: article.title || '',
+        content: article.content || '',
+        version: article.version || '',
+        tags: article.tags || ''
+      }
+      this.articleModalVisible = true
+    },
+    closeArticleModal() {
+      this.articleModalVisible = false
+    },
+    async submitArticle() {
+      if (!this.selectedKbId) return
+      try {
+        const payload = {
+          title: this.articleForm.title,
+          content: this.articleForm.content || undefined,
+          version: this.articleForm.version || undefined,
+          tags: this.articleForm.tags || undefined
+        }
+        let res
+        if (this.isEditingArticle && this.articleForm.id) {
+          res = await ApiService.updateArticle(this.articleForm.id, payload)
+        } else {
+          res = await ApiService.createKnowledgeBaseArticle(this.selectedKbId, payload)
+        }
+        if (res?.data?.success === false) throw new Error(res.data.message || '保存失败')
+        this.articleModalVisible = false
+        await this.loadArticles()
+      } catch (e) {
+        console.error(e)
+        alert(e.message || '保存失败')
+      }
+    },
+    previewArticle(article) {
+      alert(`预览文章：${article.title}`)
+    },
+    async deleteArticle(article) {
+      if (!confirm(`确认删除文章：${article.title}？`)) return
+      try {
+        const res = await ApiService.deleteArticle(article.id)
+        if (res?.data?.success === false) throw new Error(res.data.message || '删除失败')
+        this.articles = this.articles.filter(a => a.id !== article.id)
+      } catch (e) {
+        console.error(e)
+        alert(e.message || '删除失败')
+      }
+    },
+    async createKbPrompt() {
+      const name = prompt('请输入知识库名称')
+      if (!name) return
+      try {
+        const res = await ApiService.createKnowledgeBase({ name })
+        if (res?.data?.success === false) throw new Error(res.data.message || '创建失败')
+        await this.init()
+      } catch (e) {
+        console.error(e)
+        alert(e.message || '创建失败')
+      }
+    },
+    formatDate(dt) {
+      if (!dt) return ''
+      try {
+        const d = new Date(dt)
+        const y = d.getFullYear()
+        const m = String(d.getMonth() + 1).padStart(2, '0')
+        const da = String(d.getDate()).padStart(2, '0')
+        return `${y}-${m}-${da}`
+      } catch { return '' }
     }
   }
 }
@@ -392,6 +607,12 @@ export default {
   background: #f8f9fa;
   min-height: calc(100vh - 48px);
 }
+
+/* KB 工具栏 */
+.kb-toolbar { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 8px 0 0; }
+.kb-select select, .kb-status-filter select { padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; }
+.kb-btn { margin-left: 8px; padding: 6px 10px; background: #4f46e5; color: #fff; border: 0; border-radius: 8px; cursor: pointer; }
+.hidden-file-input { display: none; }
 
 /* 头部区域 */
 .header-section {
@@ -420,6 +641,10 @@ export default {
   font-size: 1.1rem;
   margin-bottom: 32px;
 }
+
+.tabs { display: flex; gap: 8px; justify-content: center; margin: 12px 0 24px; }
+.tab { padding: 8px 14px; border: 2px solid #e9ecef; border-radius: 20px; background: #fff; cursor: pointer; color: #6b7280; }
+.tab.active, .tab:hover { border-color: #667eea; background: #667eea; color: #fff; }
 
 .search-container {
   margin-bottom: 16px;
@@ -646,6 +871,11 @@ export default {
   flex-wrap: wrap;
 }
 
+.document-status { padding: 2px 6px; border-radius: 6px; background: #eef2ff; color: #4338ca; font-size: 12px; }
+.document-status.status-processing { background: #fff7ed; color: #c2410c; }
+.document-status.status-completed { background: #ecfdf5; color: #047857; }
+.document-status.status-failed { background: #fef2f2; color: #b91c1c; }
+
 .document-type,
 .document-date,
 .document-size {
@@ -700,6 +930,9 @@ export default {
   color: white;
 }
 
+.action-btn.danger { color: #ef4444; border-color: #fecaca; }
+.action-btn.danger:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
+
 /* 空状态 */
 .empty-state {
   text-align: center;
@@ -743,6 +976,24 @@ export default {
   transform: scale(1.1);
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
+
+/* 文章区域 */
+.articles-section .articles-list { display: flex; flex-direction: column; gap: 8px; }
+.article-item { display: flex; align-items: center; justify-content: space-between; background: #fff; border: 2px solid #e9ecef; border-radius: 12px; padding: 14px 16px; }
+.article-main { flex: 1; cursor: pointer; }
+.article-title { font-weight: 600; color: #1f2937; margin-bottom: 6px; }
+.article-meta { display: flex; gap: 12px; font-size: 12px; color: #6b7280; }
+.article-actions { display: flex; gap: 8px; }
+
+/* 简易弹窗 */
+.modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 50; }
+.modal-card { width: min(720px, 92vw); background: #fff; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.15); overflow: hidden; }
+.modal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; }
+.modal-header .close { background: transparent; border: 0; font-size: 20px; cursor: pointer; color: #6b7280; }
+.modal-body { padding: 12px 16px; display: grid; gap: 12px; }
+.form-row { display: grid; gap: 6px; }
+.form-row input, .form-row textarea { padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; }
+.modal-footer { display: flex; justify-content: flex-end; padding: 10px 16px; border-top: 1px solid #e5e7eb; }
 
 /* 响应式设计 */
 @media (max-width: 768px) {

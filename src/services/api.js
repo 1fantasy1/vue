@@ -689,9 +689,36 @@ export class ApiService {
     }
   }
 
+  static async getKnowledgeBase(kbId) {
+    try {
+      const response = await remoteApiService.knowledgeBases.getKnowledgeBaseById(kbId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
   static async createKnowledgeBase(kbData) {
     try {
       const response = await remoteApiService.knowledgeBases.createKnowledgeBase(kbData)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async updateKnowledgeBase(kbId, kbData) {
+    try {
+      const response = await remoteApiService.knowledgeBases.updateKnowledgeBase(kbId, kbData)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async deleteKnowledgeBase(kbId) {
+    try {
+      const response = await remoteApiService.knowledgeBases.deleteKnowledgeBase(kbId)
       return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
@@ -1105,6 +1132,89 @@ export class ApiService {
   static async getKnowledgeBaseDocuments(kbId, statusFilter = null) {
     try {
       const response = await remoteApiService.knowledgeBases.getDocuments(kbId, statusFilter)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async getKnowledgeDocumentDetail(kbId, documentId) {
+    try {
+      const response = await remoteApiService.knowledgeBases.getDocumentDetail(kbId, documentId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async deleteKnowledgeDocument(kbId, documentId) {
+    try {
+      const response = await remoteApiService.knowledgeBases.deleteDocument(kbId, documentId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  // DEBUG: 文档原文与分块
+  static async getKnowledgeDocumentContent(kbId, documentId) {
+    try {
+      const response = await remoteApiService.knowledgeBases.getDocumentContent(kbId, documentId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async getKnowledgeDocumentChunks(kbId, documentId) {
+    try {
+      const response = await remoteApiService.knowledgeBases.getDocumentChunks(kbId, documentId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  // ========== 知识文章（Articles）相关API ==========
+  static async getKnowledgeBaseArticles(kbId) {
+    try {
+      const response = await remoteApiService.knowledgeBases.getArticles(kbId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async createKnowledgeBaseArticle(kbId, articleData) {
+    try {
+      const response = await remoteApiService.knowledgeBases.createArticle(kbId, articleData)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async getArticle(articleId) {
+    try {
+      const response = await remoteApiService.articles.getArticleById(articleId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async updateArticle(articleId, articleData) {
+    try {
+      const response = await remoteApiService.articles.updateArticle(articleId, articleData)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async deleteArticle(articleId) {
+    try {
+      const response = await remoteApiService.articles.deleteArticle(articleId)
       return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
