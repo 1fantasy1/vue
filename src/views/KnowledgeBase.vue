@@ -606,7 +606,8 @@ export default {
       this.selectedCategory = this.selectedCategory?.id === category.id ? null : category
     },
     openDocument(document) {
-      alert(`打开文档: ${document.title}`)
+      if (!this.selectedKbId) return
+      this.$router.push({ name: 'DocumentDetail', params: { kbId: this.selectedKbId, docId: document.id } })
     },
     openCollectionModal(document) {
       this.isEditingCollection = false

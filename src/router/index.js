@@ -18,6 +18,7 @@ import Favorites from '../views/Favorites.vue'
 import QuickNotes from '../views/QuickNotes.vue'
 import DevTools from '../views/DevTools.vue'
 import CollectionDetail from '../views/CollectionDetail.vue'
+import DocumentDetail from '../views/DocumentDetail.vue'
 
 const routes = [
   {
@@ -118,6 +119,12 @@ const routes = [
     path: '/knowledge-hub',
     name: 'KnowledgeBase',
     component: KnowledgeBase,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/knowledge-bases/:kbId/documents/:docId',
+    name: 'DocumentDetail',
+    component: DocumentDetail,
     meta: { requiresAuth: true }
   },
   {
