@@ -1136,7 +1136,7 @@
             <label class="input-label">技能标签</label>
             <div class="skill-edit-wrapper">
               <div class="skill-edit-list">
-                <div class="skill-edit-item" v-for="(s,idx) in editProfile.skillsList" :key="idx">
+                <div class="skill-edit-item" v-for="(s,idx) in (editProfile.skillsList || [])" :key="idx">
                   <input class="skill-name-input" v-model="s.name" placeholder="技能名称 如：Python" />
                   <select class="skill-level-select" v-model="s.level">
                     <option disabled value="">选择等级</option>
@@ -1147,7 +1147,7 @@
                   </div>
                   <button type="button" class="skill-remove-btn" @click="removeSkill(idx)">✕</button>
                 </div>
-                <div v-if="!editProfile.skillsList.length" class="skill-empty-hint">暂无技能，点击下方按钮添加</div>
+                <div v-if="!(editProfile.skillsList && editProfile.skillsList.length)" class="skill-empty-hint">暂无技能，点击下方按钮添加</div>
               </div>
               <div class="skill-edit-actions">
                 <button type="button" class="skill-add-btn" @click="addSkill">+ 添加技能</button>
@@ -1351,7 +1351,12 @@ export default {
           major: userProfile.value.major,
           school: userProfile.value.school,
           phone: userProfile.value.phone,
-          skillsString: Array.isArray(userProfile.value.skills) ? userProfile.value.skills.join(', ') : userProfile.value.skills,
+          skillsString: Array.isArray(userProfile.value.skills) 
+            ? userProfile.value.skills.map(s => typeof s === 'object' ? s.name : s).join(', ') 
+            : userProfile.value.skills,
+          skillsList: Array.isArray(userProfile.value.skills) 
+            ? userProfile.value.skills.filter(s => typeof s === 'object' && s.name && s.level)
+            : [],
           interests: userProfile.value.interests,
           bio: userProfile.value.bio,
           awards_competitions: userProfile.value.awards_competitions,
@@ -2201,7 +2206,7 @@ export default {
         // 构建更新数据 - 根据后端API的字段要求
         // 技能数据：直接发送数组格式，与注册时保持一致
         const allowedLevels = ['初窥门径','登堂入室','融会贯通','炉火纯青']
-        const validSkills = editProfile.value.skillsList.filter(s => s.name && s.name.trim() && s.level)
+        const validSkills = (editProfile.value.skillsList || []).filter(s => s && s.name && s.name.trim() && s.level)
           .map(s => ({
             name: s.name.trim(),
             level: allowedLevels.includes(s.level) ? s.level : '初窥门径'
@@ -2216,6 +2221,7 @@ export default {
         
         const updateData = {
           name: editProfile.value.name?.trim() || '',
+          username: editProfile.value.username?.trim() || '',
           major: editProfile.value.major?.trim() || '',
           skills: Array.isArray(validSkills) ? validSkills : [],
           bio: editProfile.value.bio?.trim() || '',
@@ -2283,12 +2289,17 @@ export default {
 
     // 添加技能
     const addSkill = () => {
+      if (!editProfile.value.skillsList) {
+        editProfile.value.skillsList = []
+      }
       editProfile.value.skillsList.push({ name: '', level: '初窥门径' })
     }
 
     // 移除技能
     const removeSkill = (index) => {
-      editProfile.value.skillsList.splice(index, 1)
+      if (editProfile.value.skillsList && editProfile.value.skillsList.length > index) {
+        editProfile.value.skillsList.splice(index, 1)
+      }
     }
 
     // 保存LLM配置
