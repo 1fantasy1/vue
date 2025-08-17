@@ -56,13 +56,48 @@
 
 					<div class="pf-field full">
 						<label>关键词</label>
-						<input v-model.trim="form.keywords" type="text" placeholder="用逗号分隔，如：AI, 前端, 数据分析" />
+						<div class="tags-input">
+							<div class="tags-container">
+								<span v-for="(keyword, index) in keywords" :key="index" class="tag">
+									{{ keyword }}
+									<button type="button" @click="removeKeyword(index)" class="tag-remove">×</button>
+								</span>
+								<input 
+									v-model="keywordInput" 
+									@keydown.enter.prevent="addKeyword"
+									@keydown.comma.prevent="addKeyword"
+									@keydown.backspace="handleKeywordBackspace"
+									@paste="handleKeywordPaste"
+									type="text" 
+									placeholder="输入关键词后按回车或逗号添加"
+									class="tag-input"
+								/>
+							</div>
+						</div>
+						<small class="pf-hint">可以直接粘贴逗号分隔的文本，例如：AI, 前端, 数据分析</small>
 					</div>
 
 					<div class="pf-field full">
 						<label>项目所需角色</label>
-						<input v-model.trim="rolesInput" type="text" placeholder="用逗号分隔，如：前端, 后端, PM" />
-						<small class="pf-hint">将转换为字符串数组提交</small>
+						<div class="tags-input">
+							<div class="tags-container">
+								<span v-for="(role, index) in roles" :key="index" class="tag">
+									{{ role }}
+									<button type="button" @click="removeRole(index)" class="tag-remove">×</button>
+								</span>
+								<input 
+									v-model="roleInput" 
+									@keydown.enter.prevent="addRole"
+									@keydown.comma.prevent="addRole"
+									@keydown.backspace="handleRoleBackspace"
+									@paste="handleRolePaste"
+									type="text" 
+									placeholder="输入角色后按回车或逗号添加"
+									class="tag-input"
+								/>
+							</div>
+						</div>
+						<small class="pf-hint">可以直接粘贴逗号分隔的文本，例如：前端开发, 后端开发, 产品经理</small>
 					</div>
 
 								<div class="pf-field full">
@@ -146,6 +181,63 @@ export default {
 
 		// 角色与技能的本地输入辅助
 		const rolesInput = ref('')
+		const keywords = ref([])
+		const keywordInput = ref('')
+		const roles = ref([])
+		const roleInput = ref('')
+
+		// 标签输入相关方法
+		const addKeyword = () => {
+			const keyword = keywordInput.value.trim()
+			if (keyword && !keywords.value.includes(keyword)) {
+				keywords.value.push(keyword)
+				keywordInput.value = ''
+			}
+		}
+
+		const removeKeyword = (index) => {
+			keywords.value.splice(index, 1)
+		}
+
+		const handleKeywordPaste = (e) => {
+			e.preventDefault()
+			const pastedText = (e.clipboardData || window.clipboardData).getData('text')
+			const newKeywords = pastedText.split(/[,，\n]/).map(k => k.trim()).filter(k => k && !keywords.value.includes(k))
+			keywords.value.push(...newKeywords)
+			keywordInput.value = ''
+		}
+
+		const handleKeywordBackspace = () => {
+			if (keywordInput.value === '' && keywords.value.length > 0) {
+				keywords.value.pop()
+			}
+		}
+
+		const addRole = () => {
+			const role = roleInput.value.trim()
+			if (role && !roles.value.includes(role)) {
+				roles.value.push(role)
+				roleInput.value = ''
+			}
+		}
+
+		const removeRole = (index) => {
+			roles.value.splice(index, 1)
+		}
+
+		const handleRolePaste = (e) => {
+			e.preventDefault()
+			const pastedText = (e.clipboardData || window.clipboardData).getData('text')
+			const newRoles = pastedText.split(/[,，\n]/).map(r => r.trim()).filter(r => r && !roles.value.includes(r))
+			roles.value.push(...newRoles)
+			roleInput.value = ''
+		}
+
+		const handleRoleBackspace = () => {
+			if (roleInput.value === '' && roles.value.length > 0) {
+				roles.value.pop()
+			}
+		}
 			const LEVEL_OPTIONS = ['初窥门径', '登堂入室', '融会贯通', '炉火纯青']
 			const toLevelStr = (val) => {
 				if (!val && val !== 0) return LEVEL_OPTIONS[0]
@@ -181,13 +273,27 @@ export default {
 				location: p.location || ''
 			}
 
+			// 处理角色标签
+			roles.value = Array.isArray(p.required_roles) ? [...p.required_roles] : []
 			rolesInput.value = Array.isArray(p.required_roles) ? p.required_roles.join(',') : ''
-							skills.value = Array.isArray(p.required_skills)
-								? p.required_skills.map(it => ({
-										name: it.name ?? it.skill_name ?? '',
-										level: toLevelStr(it.level ?? it.proficiency)
-									}))
-								: []
+			
+			// 处理关键词标签
+			if (p.keywords) {
+				if (typeof p.keywords === 'string') {
+					keywords.value = p.keywords.split(',').map(k => k.trim()).filter(Boolean)
+				} else if (Array.isArray(p.keywords)) {
+					keywords.value = [...p.keywords]
+				}
+			} else {
+				keywords.value = []
+			}
+			
+			skills.value = Array.isArray(p.required_skills)
+				? p.required_skills.map(it => ({
+						name: it.name ?? it.skill_name ?? '',
+						level: toLevelStr(it.level ?? it.proficiency)
+					}))
+				: []
 		}
 
 		watch(() => props.project, loadFromProject, { immediate: true })
@@ -202,13 +308,20 @@ export default {
 
 			const buildPayload = () => {
 			const payload = { ...form.value }
-			// roles
-			const roles = rolesInput.value
-				.split(',')
-				.map(r => r.trim())
-				.filter(Boolean)
-			if (roles.length) payload.required_roles = roles
-			else delete payload.required_roles
+			
+			// roles - 使用标签数组
+			if (roles.value.length) {
+				payload.required_roles = [...roles.value]
+			} else {
+				delete payload.required_roles
+			}
+
+			// keywords - 使用标签数组
+			if (keywords.value.length) {
+				payload.keywords = keywords.value.join(',')
+			} else {
+				delete payload.keywords
+			}
 
 			// skills
 							const cleanSkills = skills.value
@@ -257,10 +370,22 @@ export default {
 			submitting,
 			form,
 			rolesInput,
+			keywords,
+			keywordInput,
+			roles,
+			roleInput,
 			skills,
 			LEVEL_OPTIONS,
 			addSkill,
 			removeSkill,
+			addKeyword,
+			removeKeyword,
+			handleKeywordPaste,
+			handleKeywordBackspace,
+			addRole,
+			removeRole,
+			handleRolePaste,
+			handleRoleBackspace,
 			handleSubmit
 		}
 	}
@@ -319,5 +444,101 @@ input:focus, select:focus, textarea:focus { border-color: #667eea; box-shadow: 0
 
 @media (max-width: 640px) {
 	.pf-grid { grid-template-columns: 1fr; }
+}
+
+/* 标签输入框样式 */
+.tags-input {
+	border: 1px solid #e5e7eb;
+	border-radius: 10px;
+	padding: 4px;
+	background: white;
+	min-height: 44px;
+	display: flex;
+	align-items: center;
+}
+
+.tags-input:focus-within {
+	border-color: #667eea;
+	box-shadow: 0 0 0 3px rgba(102,126,234,0.15);
+}
+
+.tags-container {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	align-items: center;
+	width: 100%;
+	padding: 2px;
+}
+
+.tag {
+	display: inline-flex;
+	align-items: center;
+	background: #667eea;
+	color: white;
+	padding: 4px 8px;
+	border-radius: 6px;
+	font-size: 13px;
+	font-weight: 500;
+	gap: 4px;
+	max-width: 200px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.tag-remove {
+	background: none;
+	border: none;
+	color: white;
+	cursor: pointer;
+	font-size: 16px;
+	line-height: 1;
+	padding: 0;
+	margin-left: 4px;
+	border-radius: 50%;
+	width: 16px;
+	height: 16px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0.8;
+	transition: opacity 0.2s;
+}
+
+.tag-remove:hover {
+	opacity: 1;
+	background: rgba(255, 255, 255, 0.2);
+}
+
+.tag-input {
+	border: none;
+	outline: none;
+	padding: 6px 4px;
+	font-size: 14px;
+	flex: 1;
+	min-width: 120px;
+	background: transparent;
+}
+
+.tag-input::placeholder {
+	color: #9ca3af;
+}
+
+@media (max-width: 640px) {
+	.tags-container {
+		gap: 4px;
+	}
+	
+	.tag {
+		font-size: 12px;
+		padding: 3px 6px;
+		max-width: 150px;
+	}
+	
+	.tag-input {
+		min-width: 100px;
+		font-size: 13px;
+	}
 }
 </style>
