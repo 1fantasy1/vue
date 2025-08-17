@@ -222,7 +222,9 @@
     </div>
 
     <!-- 创建/编辑课程模态框 -->
-    <div v-if="showCreateModal || showEditModal" class="modal-overlay" @click="closeModal">
+    <div v-if="showCreateModal || showEditModal" class="modal-overlay" 
+         @mousedown="handleOverlayMouseDown" 
+         @mouseup="handleOverlayMouseUp">
       <div class="modal-content large" @click.stop>
         <div class="modal-header">
           <h3>{{ showCreateModal ? '创建新课程' : '编辑课程' }}</h3>
@@ -547,6 +549,23 @@ export default {
       })
     }
 
+    // 处理模态框覆盖层的鼠标事件，防止文字选择时意外关闭
+    let overlayMouseDownTarget = null
+    
+    const handleOverlayMouseDown = (event) => {
+      // 记录鼠标按下时的目标元素
+      overlayMouseDownTarget = event.target
+    }
+    
+    const handleOverlayMouseUp = (event) => {
+      // 只有当鼠标按下和抬起都在覆盖层上时，才关闭模态框
+      // 这避免了文字选择时意外关闭模态框
+      if (overlayMouseDownTarget === event.target && event.target.classList.contains('modal-overlay')) {
+        closeModal()
+      }
+      overlayMouseDownTarget = null
+    }
+
     const addSkill = () => {
       courseForm.required_skills.push({ name: '', level: '初窥门径' })
     }
@@ -610,6 +629,8 @@ export default {
       deleteCourse,
       submitCourse,
       closeModal,
+      handleOverlayMouseDown,
+      handleOverlayMouseUp,
       addSkill,
       removeSkill,
       truncateText,
