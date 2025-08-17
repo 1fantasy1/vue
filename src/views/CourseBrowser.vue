@@ -89,7 +89,7 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z"/>
               </svg>
-              <span>{{ course.duration }}小时</span>
+              <span>{{ formatDuration(course) }}</span>
             </div>
             
             <div class="meta-item">
@@ -98,15 +98,22 @@
               </svg>
               <span>{{ course.enrolled_count || 0 }}人报名</span>
             </div>
+            
+            <div class="meta-item" v-if="course.avg_rating && course.avg_rating > 0">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.46,13.97L5.82,21L12,17.27Z"/>
+              </svg>
+              <span>{{ course.avg_rating.toFixed(1) }}分</span>
+            </div>
           </div>
           
           <div class="course-skills">
             <span 
               v-for="skill in course.required_skills?.slice(0, 3) || []" 
-              :key="skill" 
+              :key="skill.name || skill" 
               class="skill-tag"
             >
-              {{ skill }}
+              {{ typeof skill === 'object' ? skill.name : skill }}
             </span>
           </div>
         </div>
@@ -175,9 +182,10 @@ export default {
           course.title.toLowerCase().includes(query) ||
           course.instructor.toLowerCase().includes(query) ||
           course.description.toLowerCase().includes(query) ||
-          (course.required_skills && course.required_skills.some(skill => 
-            skill.toLowerCase().includes(query)
-          ))
+          (course.required_skills && course.required_skills.some(skill => {
+            const skillName = typeof skill === 'object' ? skill.name : skill
+            return skillName && skillName.toLowerCase().includes(query)
+          }))
         )
       }
 
@@ -217,8 +225,10 @@ export default {
             instructor: c.instructor || c.teacher || '未知',
             description: c.description || c.desc || '',
             level: c.level || c.difficulty || 'intermediate',
-            category: c.category || c.type || 'programming',
+            category: c.category || c.type || '其他',
             duration: c.duration || c.total_hours || c.estimated_hours || 0,
+            total_lessons: c.total_lessons || c.lessons_count || 0,
+            avg_rating: c.avg_rating || c.rating || 0,
             thumbnail: c.thumbnail || c.cover_image_url || c.cover || c.image,
             required_skills: c.required_skills || c.skills || [],
             enrolled_count: c.enrolled_count || c.students_count || c.enrollments || 0,
@@ -266,6 +276,16 @@ export default {
       router.push('/admin/courses')
     }
 
+    const formatDuration = (course) => {
+      // 优先显示课时数，如果没有则显示小时数
+      if (course.total_lessons && course.total_lessons > 0) {
+        return `${course.total_lessons}课时`
+      } else if (course.duration && course.duration > 0) {
+        return `${course.duration}小时`
+      }
+      return '时长待定'
+    }
+
     // 组件挂载时加载课程
     onMounted(() => {
       loadCourses()
@@ -280,6 +300,7 @@ export default {
       filteredCourses,
       isAdmin,
       getLevelText,
+      formatDuration,
       viewCourse,
       enrollCourse,
       navigateToManagement
