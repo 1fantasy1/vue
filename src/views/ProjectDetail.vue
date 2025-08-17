@@ -65,6 +65,8 @@
           <li v-if="project.estimated_weekly_hours !== undefined"><label>每周工时</label><span>{{ project.estimated_weekly_hours }}</span></li>
           <li v-if="project.start_date"><label>开始</label><span>{{ fmtDate(project.start_date) }}</span></li>
           <li v-if="project.end_date"><label>结束</label><span>{{ fmtDate(project.end_date) }}</span></li>
+          <li v-if="project.created_at"><label>创建日期</label><span>{{ fmtDateTime(project.created_at) }}</span></li>
+          <li v-if="shouldShowUpdatedAt"><label>更新日期</label><span>{{ fmtDateTime(project.updated_at) }}</span></li>
         </ul>
       </div>
 
@@ -227,11 +229,36 @@ export default {
     const fmtDate = (d) => {
       try { return new Date(d).toLocaleString() } catch { return d }
     }
+    
+    // 专门用于显示创建/更新时间的格式化函数
+    const fmtDateTime = (d) => {
+      try { 
+        const date = new Date(d)
+        return date.toLocaleString('zh-CN', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      } catch { 
+        return d 
+      }
+    }
     const statusText = (s) => ({ planning: '计划中', active: '进行中', paused: '已暂停', completed: '已完成' }[s] || s)
     const dateRange = computed(() => {
       const s = project.value?.start_date ? fmtDate(project.value.start_date) : '-'
       const e = project.value?.end_date ? fmtDate(project.value.end_date) : '-'
       return `${s} ~ ${e}`
+    })
+    
+    // 判断是否显示更新日期（避免与创建日期重复）
+    const shouldShowUpdatedAt = computed(() => {
+      if (!project.value?.updated_at || !project.value?.created_at) return false
+      const created = new Date(project.value.created_at).getTime()
+      const updated = new Date(project.value.updated_at).getTime()
+      // 如果更新时间与创建时间相差超过1分钟，则显示更新时间
+      return Math.abs(updated - created) > 60000
     })
     const goBack = () => router.back()
     const levelClass = (lvl) => {
@@ -419,8 +446,10 @@ export default {
       roles,
       keywords,
       fmtDate,
+      fmtDateTime,
       statusText,
       dateRange,
+      shouldShowUpdatedAt,
       goBack,
       levelClass,
       // 编辑
