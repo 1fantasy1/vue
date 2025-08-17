@@ -5,17 +5,17 @@
     <div class="quick-actions-section">
       <h3 class="section-title">快速操作</h3>
       <div class="quick-actions-grid">
-        <button class="quick-action-btn" @click="createProject">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
-          </svg>
-          创建项目
-        </button>
         <button class="quick-action-btn" @click="addNote">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
             <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
           </svg>
           新建笔记
+        </button>
+        <button class="quick-action-btn" @click="addQuickRecord">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3,17V19H9V17H3M3,5V7H13V5H3M13,21V19H21V17H13V15H11V21H13M7,9V11H3V13H7V15H9V9H7M21,13V11H11V13H21M15,9H17V7H21V5H17V3H15V9Z"/>
+          </svg>
+          添加随手记录
         </button>
         <button class="quick-action-btn" @click="joinGroup">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -205,12 +205,12 @@ export default {
       router.push(path)
     }
 
-    const createProject = () => {
-      router.push('/my-projects?action=create')
-    }
-
     const addNote = () => {
       router.push('/course-notes?action=create')
+    }
+
+    const addQuickRecord = () => {
+      router.push('/quick-notes?action=create')
     }
 
     const joinGroup = () => {
@@ -256,8 +256,8 @@ export default {
     return {
       stats,
       navigateTo,
-      createProject,
       addNote,
+      addQuickRecord,
       joinGroup,
       searchResources
     }
