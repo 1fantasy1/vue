@@ -108,8 +108,18 @@
       <p class="desc">{{ project.contact_person_info }}</p>
     </div>
 
+    <!-- 项目申请和成员管理 -->
+    <ProjectApplications
+      :project-id="projectId"
+      :is-project-creator="isProjectCreator"
+      :can-apply="canApply"
+      :show-members="true"
+      @application-submitted="onApplicationSubmitted"
+      @application-processed="onApplicationProcessed"
+    />
+
     <!-- 学生匹配推荐 -->
-    <div class="card">
+    <div class="card" v-if="isProjectCreator">
       <div class="match-header">
         <h3>为该项目推荐学生</h3>
         <div class="match-controls">
@@ -180,10 +190,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { ApiService } from '@/services/api.js'
 import CollectionModal from '@/components/CollectionModal.vue'
 import ProjectForm from '@/components/ProjectForm.vue'
+import ProjectApplications from '@/components/ProjectApplications.vue'
 
 export default {
   name: 'ProjectDetail',
-  components: { ProjectForm, CollectionModal },
+  components: { ProjectForm, CollectionModal, ProjectApplications },
   setup() {
   const route = useRoute()
   const router = useRouter()
@@ -193,6 +204,25 @@ export default {
     const skills = ref([])
   const roles = ref([])
   const keywords = ref([])
+
+    // 项目权限判断
+    const projectId = computed(() => route.params.id)
+    const currentUserId = computed(() => {
+      // 这里应该从认证状态获取当前用户ID，暂时使用模拟值
+      // 实际应该从store或者认证服务获取
+      return localStorage.getItem('userId') || '1'
+    })
+    const isProjectCreator = computed(() => {
+      return project.value && project.value.creator_id && 
+             project.value.creator_id.toString() === currentUserId.value.toString()
+    })
+    const canApply = computed(() => {
+      // 项目创建者不能申请自己的项目
+      // 项目状态为"招募中"才能申请
+      return !isProjectCreator.value && 
+             project.value && 
+             project.value.project_status === '招募中'
+    })
 
     const fmtDate = (d) => {
       try { return new Date(d).toLocaleString() } catch { return d }
@@ -365,10 +395,26 @@ export default {
       }
     }
 
+    // 申请相关回调
+    const onApplicationSubmitted = (applicationData) => {
+      console.log('Application submitted:', applicationData)
+      // 可以显示成功提示
+      // 可以刷新项目数据或做其他处理
+    }
+
+    const onApplicationProcessed = (applicationData) => {
+      console.log('Application processed:', applicationData)
+      // 可以显示处理结果提示
+      // 可以刷新相关数据
+    }
+
     return { 
       loading,
       error,
       project,
+      projectId,
+      isProjectCreator,
+      canApply,
       skills,
       roles,
       keywords,
@@ -398,7 +444,10 @@ export default {
       recError,
       matchedStudents,
       fetchMatches,
-      fmtScore
+      fmtScore,
+      // 申请
+      onApplicationSubmitted,
+      onApplicationProcessed
     }
   }
 }

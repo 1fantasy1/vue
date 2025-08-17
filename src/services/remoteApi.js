@@ -153,22 +153,53 @@ export class ProjectsAPI extends BaseAPI {
     super('/projects')
   }
 
+  // 3.4.2 获取所有项目列表
   async getAllProjects() {
     return await this.request('GET', '/')
   }
 
+  // 3.4.3 获取指定项目详情
   async getProjectById(projectId) {
     return await this.request('GET', `/${projectId}`)
   }
 
+  // 3.4.1 创建新项目
   async createProject(projectData) {
     return await this.request('POST', '/', projectData)
   }
 
+  // 3.4.4 更新指定项目
   async updateProject(projectId, projectData) {
     return await this.request('PUT', `/${projectId}`, projectData)
   }
 
+  // 3.4.5 删除指定项目
+  async deleteProject(projectId) {
+    return await this.request('DELETE', `/${projectId}`)
+  }
+
+  // 3.4.6 学生申请加入项目
+  async applyToProject(projectId, applicationData) {
+    return await this.request('POST', `/${projectId}/apply`, applicationData)
+  }
+
+  // 3.4.7 获取项目所有申请列表
+  async getProjectApplications(projectId, statusFilter = null) {
+    const params = statusFilter ? { status_filter: statusFilter } : null
+    return await this.request('GET', `/${projectId}/applications`, null, params)
+  }
+
+  // 3.4.8 处理项目申请
+  async processProjectApplication(applicationId, processData) {
+    return await this.request('POST', `/applications/${applicationId}/process`, processData)
+  }
+
+  // 3.4.9 获取项目成员列表
+  async getProjectMembers(projectId) {
+    return await this.request('GET', `/${projectId}/members`)
+  }
+
+  // 3.4.11 为指定项目推荐学生
   async matchStudents(projectId, initialK = 50, finalK = 3) {
     return await this.request('GET', `/${projectId}/match-students`, null, {
       initial_k: initialK,

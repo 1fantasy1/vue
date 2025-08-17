@@ -15,6 +15,12 @@
           </div>
         </div>
         <div class="header-right">
+          <button class="view-all-btn" @click="navigateToAllProjects">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/>
+            </svg>
+            全部项目
+          </button>
           <button class="create-btn" @click="openCreateForm">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
               <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
@@ -166,9 +172,12 @@
                       </svg>
                       编辑项目
                     </button>
-                    <!-- 预留更多项
-                    <button class="menu-item" @click="viewProject(project)">查看详情</button>
-                    -->
+                    <button class="menu-item danger" @click="confirmDeleteProject(project)">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 8px;">
+                        <path d="M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19M8,9H16V19H8V9M15.5,4L14.5,3H9.5L8.5,4H5V6H19V4H15.5Z"/>
+                      </svg>
+                      删除项目
+                    </button>
                   </div>
                 </div>
               </div>
@@ -266,6 +275,35 @@
         </transition-group>
       </div>
     </div>
+
+    <!-- 删除确认对话框 -->
+    <teleport to="body">
+      <div v-if="showDeleteDialog" class="modal-overlay" @click="cancelDelete">
+        <div class="modal-card" @click.stop>
+          <div class="modal-header">
+            <h3>删除项目</h3>
+            <button class="close-btn" @click="cancelDelete">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="warning-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2L1 21H23M12 6L19.53 19H4.47M11 10V14H13V10M11 16V18H13V16"/>
+              </svg>
+            </div>
+            <p class="warning-text">
+              确定要删除项目 <strong>{{ deletingProject?.title }}</strong> 吗？
+            </p>
+            <p class="warning-sub">此操作不可撤销，项目的所有数据都将被永久删除。</p>
+          </div>
+          <div class="modal-actions">
+            <button class="btn secondary" @click="cancelDelete">取消</button>
+            <button class="btn danger" @click="deleteProject" :disabled="deleting">
+              {{ deleting ? '删除中...' : '确定删除' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </teleport>
   </div>
 </template>
 
@@ -292,6 +330,11 @@ export default {
   const showForm = ref(false)
   const editingProject = ref(null)
   const openMenuId = ref(null)
+
+  // 删除相关状态
+  const showDeleteDialog = ref(false)
+  const deletingProject = ref(null)
+  const deleting = ref(false)
 
     // 筛选配置
     const filters = ref([
@@ -522,13 +565,13 @@ export default {
     const mapProject = (p) => ({
       id: p.id,
       title: p.title,
-      description: p.description,
+      description: p.description || '暂无描述', // DashboardProjectCard 没有 description，提供默认值
       status: p.project_status || 'active',
-      progress: p.progress ?? 0,
+      progress: p.progress ?? 0, // DashboardProjectCard 有 progress 字段
       role: p.my_role || '成员',
       priority: p.priority || 'medium',
       deadline: p.end_date || null,
-      lastUpdate: p.updated_at || '',
+      lastUpdate: p.updated_at || new Date().toISOString(),
       isFavorite: p.is_favorite || false,
       team: p.team || []
     })
@@ -547,9 +590,9 @@ export default {
     const loadProjects = async () => {
       loading.value = true
       try {
-        const res = await ApiService.getProjects()
+        const res = await ApiService.getDashboardProjects()
         if (res?.data?.success) {
-          // 后端返回 schemas.ProjectResponse[]
+          // 后端返回 schemas.DashboardProjectCard[]
           projects.value = (res.data.data || []).map(mapProject)
         } else {
           console.warn(res?.data?.message || '获取项目失败')
@@ -581,6 +624,45 @@ export default {
       showForm.value = true
     }
 
+    // 删除项目相关方法
+    const confirmDeleteProject = (project) => {
+      closeMenus()
+      deletingProject.value = project
+      showDeleteDialog.value = true
+    }
+
+    const cancelDelete = () => {
+      showDeleteDialog.value = false
+      deletingProject.value = null
+      deleting.value = false
+    }
+
+    const deleteProject = async () => {
+      if (!deletingProject.value?.id) return
+      
+      deleting.value = true
+      try {
+        const response = await ApiService.deleteProject(deletingProject.value.id)
+        if (response.data.success) {
+          // 从列表中移除项目
+          projects.value = projects.value.filter(p => p.id !== deletingProject.value.id)
+          cancelDelete()
+          // 可以添加成功提示
+        } else {
+          alert(response.data.message || '删除项目失败')
+        }
+      } catch (error) {
+        alert(error.message || '删除项目失败')
+      } finally {
+        deleting.value = false
+      }
+    }
+
+    // 导航到全部项目页面
+    const navigateToAllProjects = () => {
+      router.push('/all-projects')
+    }
+
     return {
       // 响应式数据
       searchQuery,
@@ -593,6 +675,14 @@ export default {
       filteredProjects,
       statsData,
       hasActiveFilters,
+      
+      // UI状态
+      showForm,
+      editingProject,
+      openMenuId,
+      showDeleteDialog,
+      deletingProject,
+      deleting,
       
       // 方法
       getFilterCount,
@@ -612,20 +702,152 @@ export default {
       openChat,
       viewTasks,
       viewFiles,
-  openCreateForm,
-  closeForm,
-  onFormSuccess,
-  showForm,
-  editingProject,
-  openMenuId,
-  openProjectMenu,
-  openEditForm
+      openCreateForm,
+      closeForm,
+      onFormSuccess,
+      openEditForm,
+      navigateToAllProjects,
+      confirmDeleteProject,
+      cancelDelete,
+      deleteProject
     }
   }
 }
 </script>
 
 <style scoped>
+/* 模态对话框样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+
+.modal-card {
+  background: white;
+  border-radius: 16px;
+  padding: 0;
+  width: min(450px, 90vw);
+  max-height: 80vh;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.2s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.close-btn {
+  border: none;
+  background: transparent;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 4px;
+  line-height: 1;
+}
+
+.close-btn:hover {
+  color: #374151;
+}
+
+.modal-body {
+  padding: 24px;
+  text-align: center;
+}
+
+.warning-icon {
+  color: #f59e0b;
+  margin-bottom: 16px;
+}
+
+.warning-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 8px 0;
+  line-height: 1.5;
+}
+
+.warning-sub {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 16px 24px 24px;
+  background: #f9fafb;
+}
+
+.btn {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.btn.secondary {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.btn.secondary:hover {
+  background: #e5e7eb;
+}
+
+.btn.danger {
+  background: #ef4444;
+  color: white;
+}
+
+.btn.danger:hover {
+  background: #dc2626;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* 页面基础样式 */
 .my-projects-page {
   min-height: 100vh;
@@ -656,6 +878,12 @@ export default {
   display: flex;
   align-items: center;
   gap: 20px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .page-icon {
@@ -699,6 +927,29 @@ export default {
   background: #5a67d8;
   transform: translateY(-2px);
   box-shadow: 0 8px 30px rgba(102, 126, 234, 0.3);
+}
+
+.view-all-btn {
+  background: #ffffff;
+  color: #667eea;
+  border: 2px solid #667eea;
+  border-radius: 12px;
+  padding: 14px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.1);
+}
+
+.view-all-btn:hover {
+  background: #667eea;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(102, 126, 234, 0.2);
 }
 
 /* 统计卡片区域 */
@@ -961,7 +1212,7 @@ export default {
   cursor: pointer;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-  overflow: hidden;
+  overflow: visible; /* 改为visible，避免裁剪下拉菜单 */
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
@@ -1101,7 +1352,12 @@ export default {
   color: #f87171;
 }
 
-.menu-wrapper { position: relative; display: inline-block; }
+.menu-wrapper { 
+  position: relative; 
+  display: inline-block; 
+  z-index: 10; /* 确保菜单包装器在较高层级 */
+}
+
 .project-menu {
   position: absolute;
   right: 0;
@@ -1112,9 +1368,13 @@ export default {
   min-width: 160px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
   padding: 8px;
-  z-index: 10;
+  z-index: 100; /* 增加z-index确保在最上层 */
   backdrop-filter: blur(8px);
   animation: menuFadeIn 0.2s ease-out;
+  /* 确保菜单不会被裁剪 */
+  overflow: visible;
+  /* 确保菜单可以接收点击事件 */
+  pointer-events: auto;
 }
 
 @keyframes menuFadeIn {
@@ -1137,12 +1397,15 @@ export default {
   color: #333;
   cursor: pointer;
   font-size: 14px;
-  display: block;
   line-height: 1.4;
   min-height: 44px; /* 确保足够的点击区域 */
   display: flex;
   align-items: center;
   transition: all 0.2s ease;
+  /* 确保整个区域可点击 */
+  box-sizing: border-box;
+  position: relative;
+  pointer-events: auto;
 }
 
 .menu-item:focus {
@@ -1161,11 +1424,25 @@ export default {
   transform: translateX(1px);
 }
 
+.menu-item.danger {
+  color: #ef4444;
+}
+
+.menu-item.danger:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.menu-item.danger:focus {
+  outline-color: #ef4444;
+  background: #fef2f2;
+}
+
 /* 项目内容 */
 .project-content {
   margin-bottom: 24px;
   position: relative;
-  z-index: 1;
+  z-index: 0; /* 降低z-index，确保不会遮挡菜单 */
 }
 
 .project-title {
@@ -1239,7 +1516,7 @@ export default {
 .project-progress {
   margin-bottom: 24px;
   position: relative;
-  z-index: 1;
+  z-index: 0; /* 降低z-index，确保不会遮挡菜单 */
 }
 
 .progress-header {
@@ -1372,7 +1649,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   position: relative;
-  z-index: 1;
+  z-index: 0; /* 降低z-index，确保不会遮挡菜单 */
 }
 
 .footer-info {
@@ -1532,6 +1809,19 @@ export default {
 
   .header-left {
     justify-content: center;
+  }
+
+  .header-right {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .header-right .view-all-btn,
+  .header-right .create-btn {
+    flex: 1;
+    max-width: 200px;
+    font-size: 14px;
+    padding: 12px 16px;
   }
 
   .header-text h1 {

@@ -229,6 +229,51 @@ export class ApiService {
     }
   }
 
+  static async deleteProject(projectId) {
+    try {
+      const response = await remoteApiService.projects.deleteProject(projectId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async applyToProject(projectId, applicationData) {
+    try {
+      const response = await remoteApiService.projects.applyToProject(projectId, applicationData)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async getProjectApplications(projectId, statusFilter = null) {
+    try {
+      const response = await remoteApiService.projects.getProjectApplications(projectId, statusFilter)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async processProjectApplication(applicationId, processData) {
+    try {
+      const response = await remoteApiService.projects.processProjectApplication(applicationId, processData)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async getProjectMembers(projectId) {
+    try {
+      const response = await remoteApiService.projects.getProjectMembers(projectId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
   static async recommendProjects(studentId, options = {}) {
     try {
       const response = await remoteApiService.recommend.recommendProjects(

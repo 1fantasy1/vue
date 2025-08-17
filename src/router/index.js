@@ -8,6 +8,8 @@ import Plaza from '../views/Plaza.vue'
 import Profile from '../views/Profile.vue'
 import MyProjects from '../views/MyProjects.vue'
 import ProjectDetail from '../views/ProjectDetail.vue'
+import ProjectRecommendations from '../views/ProjectRecommendations.vue'
+import AllProjects from '../views/AllProjects.vue'
 import MyCourses from '../views/MyCourses.vue'
 import CourseDetail from '../views/CourseDetail.vue'
 import CourseBrowser from '../views/CourseBrowser.vue'
@@ -65,6 +67,18 @@ const routes = [
     path: '/projects/:id',
     name: 'ProjectDetail',
     component: ProjectDetail,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/project-recommendations',
+    name: 'ProjectRecommendations',
+    component: ProjectRecommendations,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/all-projects',
+    name: 'AllProjects',
+    component: AllProjects,
     meta: { requiresAuth: true }
   },
   {

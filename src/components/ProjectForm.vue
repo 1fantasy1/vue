@@ -27,10 +27,10 @@
 					<div class="pf-field">
 						<label>项目状态</label>
 						<select v-model="form.project_status">
-							<option value="planning">计划中</option>
-							<option value="active">进行中</option>
-							<option value="paused">已暂停</option>
-							<option value="completed">已完成</option>
+							<option value="招募中">招募中</option>
+							<option value="进行中">进行中</option>
+							<option value="已完成">已完成</option>
+							<option value="暂停">暂停</option>
 						</select>
 					</div>
 
@@ -137,7 +137,7 @@ export default {
 			contact_person_info: '',
 			learning_outcomes: '',
 			team_size_preference: '',
-			project_status: 'planning',
+			project_status: '招募中',
 			start_date: '',
 			end_date: '',
 			estimated_weekly_hours: null,
@@ -174,7 +174,7 @@ export default {
 				contact_person_info: p.contact_person_info || '',
 				learning_outcomes: p.learning_outcomes || '',
 				team_size_preference: p.team_size_preference || '',
-				project_status: p.project_status || 'planning',
+				project_status: p.project_status || '招募中',
 				start_date: p.start_date ? p.start_date.substring(0,10) : '',
 				end_date: p.end_date ? p.end_date.substring(0,10) : '',
 				estimated_weekly_hours: p.estimated_weekly_hours ?? null,
