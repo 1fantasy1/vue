@@ -157,6 +157,15 @@ export default {
 	props: {
 		project: { type: Object, default: null }
 	},
+	emits: {
+		// 取消操作，关闭表单
+		cancel: null,
+		// 成功创建或更新项目
+		success: (projectData) => {
+			// 验证返回的项目数据是否包含必要字段
+			return projectData && typeof projectData === 'object' && projectData.id
+		}
+	},
 	setup(props, { emit }) {
 		const isEdit = computed(() => !!props.project?.id)
 		const submitting = ref(false)
