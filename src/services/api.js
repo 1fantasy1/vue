@@ -4,7 +4,7 @@
 import remoteApiService from './remoteApi.js'
 
 // 配置：课程功能默认使用本地数据（用于开发测试）
-const COURSES_USE_LOCAL = true
+const COURSES_USE_LOCAL = false
 
 // 本地存储工具函数
 const localStorageAPI = {
@@ -335,9 +335,10 @@ export class ApiService {
         return createResponse(enrichedCourses)
       }
       
-  // 调用后端API获取所有课程列表
-  const response = await remoteApiService.courses.getAllCourses()
-  return createResponse(response)
+      // 调用后端API获取所有课程列表
+      const response = await remoteApiService.courses.getAllCourses()
+      // 后端API直接返回课程数组，按照API文档格式处理
+      return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
     }
@@ -505,9 +506,9 @@ export class ApiService {
         return createResponse(newCourse)
       }
       
-  // 调用后端API创建新课程 - 需要管理员权限
-  const response = await remoteApiService.courses.createCourse(courseData)
-  return createResponse(response)
+      // 调用后端API创建新课程 - 需要管理员权限
+      const response = await remoteApiService.courses.createCourse(courseData)
+      return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
     }
@@ -531,9 +532,9 @@ export class ApiService {
         return createResponse(null, false, '课程不存在')
       }
       
-  // 调用后端API更新指定课程 - 需要管理员权限
-  const response = await remoteApiService.courses.updateCourse(courseId, courseData)
-  return createResponse(response)
+      // 调用后端API更新指定课程 - 需要管理员权限
+      const response = await remoteApiService.courses.updateCourse(courseId, courseData)
+      return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
     }
