@@ -199,7 +199,7 @@ export class ProjectsAPI extends BaseAPI {
     return await this.request('GET', `/${projectId}/members`)
   }
 
-  // 3.4.11 为指定项目推荐学生
+  // 5.2.3 为指定项目推荐学生
   async matchStudents(projectId, initialK = 50, finalK = 3) {
     return await this.request('GET', `/${projectId}/match-students`, null, {
       initial_k: initialK,

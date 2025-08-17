@@ -124,16 +124,24 @@
     <div class="card" v-if="isProjectCreator">
       <div class="match-header">
         <h3>为该项目推荐学生</h3>
+        <div class="match-description">
+          <p>基于项目需求的技能、角色和关键词，为您智能推荐最合适的学生。</p>
+        </div>
         <div class="match-controls">
           <label>
             初筛数量
             <input type="number" min="1" max="200" v-model.number="initialK" />
+            <small>从所有学生中初步筛选的数量</small>
           </label>
           <label>
             最终数量
             <input type="number" min="1" max="50" v-model.number="finalK" />
+            <small>最终推荐的学生数量</small>
           </label>
-          <button class="match-btn" :disabled="recLoading" @click="fetchMatches">{{ recLoading ? '推荐中…' : '推荐学生' }}</button>
+          <button class="match-btn" :disabled="recLoading" @click="fetchMatches">
+            <span v-if="recLoading">🔄 推荐中…</span>
+            <span v-else>🎯 推荐学生</span>
+          </button>
         </div>
       </div>
 
@@ -422,6 +430,27 @@ export default {
       }
     }
 
+    // 联系学生功能
+    const contactStudent = (student) => {
+      // 这里可以实现联系学生的功能
+      // 比如发送邮件或显示联系信息
+      const subject = encodeURIComponent(`项目合作邀请：${project.value.title}`)
+      const body = encodeURIComponent(`您好 ${student.name}，
+
+我看到您的技能和经验非常符合我的项目需求。项目详情：
+
+项目名称：${project.value.title}
+项目描述：${project.value.description || '详见项目页面'}
+
+希望能与您进一步交流合作可能性。
+
+此致
+敬礼！`)
+      
+      // 尝试打开邮件客户端
+      window.open(`mailto:?subject=${subject}&body=${body}`, '_blank')
+    }
+
     // 申请相关回调
     const onApplicationSubmitted = (applicationData) => {
       console.log('Application submitted:', applicationData)
@@ -473,6 +502,7 @@ export default {
       recError,
       matchedStudents,
       fetchMatches,
+      contactStudent,
       fmtScore,
       // 申请
       onApplicationSubmitted,
@@ -526,23 +556,304 @@ export default {
 .l-expert { background: rgba(59,130,246,.12); color: #2563eb; border-color: rgba(59,130,246,.3); }
 
 /* 推荐学生 */
-.match-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.match-controls { display: flex; align-items: center; gap: 10px; }
-.match-controls label { display: inline-flex; align-items: center; gap: 6px; color: #6b7280; font-size: 13px; }
-.match-controls input { width: 80px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px 8px; }
-.match-btn { border: none; background: #667eea; color: #fff; padding: 8px 12px; border-radius: 10px; cursor: pointer; }
-.match-btn:disabled { opacity: .7; cursor: not-allowed; }
-.match-list { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 12px; }
-.match-item { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; background: #fafafa; }
-.match-main { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
-.match-name { font-weight: 700; color: #111827; }
-.match-sub { color: #6b7280; font-size: 13px; }
-.match-chips { display: flex; flex-wrap: wrap; gap: 6px; width: 100%; }
-.match-scores { display: flex; gap: 16px; margin-top: 8px; }
-.score label { color: #6b7280; font-size: 12px; margin-right: 6px; }
-.match-rationale { margin-top: 8px; color: #374151; line-height: 1.6; }
-.loading-inline { color: #6b7280; font-size: 14px; }
-.empty { color: #6b7280; font-size: 14px; }
+.match-header { 
+  display: flex; 
+  flex-direction: column;
+  gap: 12px; 
+}
+
+.match-description {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 8px 0;
+}
+
+.match-description p {
+  margin: 0;
+}
+
+.match-controls { 
+  display: flex; 
+  align-items: flex-end; 
+  gap: 16px; 
+  flex-wrap: wrap;
+}
+
+.match-controls label { 
+  display: flex; 
+  flex-direction: column;
+  gap: 4px; 
+  color: #374151; 
+  font-size: 13px; 
+  font-weight: 500;
+}
+
+.match-controls label small {
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: normal;
+}
+
+.match-controls input { 
+  width: 100px; 
+  border: 1px solid #e5e7eb; 
+  border-radius: 8px; 
+  padding: 8px 10px; 
+  font-size: 14px;
+}
+
+.match-controls input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.match-btn { 
+  border: none; 
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff; 
+  padding: 10px 20px; 
+  border-radius: 10px; 
+  cursor: pointer; 
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.match-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+.match-btn:disabled { 
+  opacity: .7; 
+  cursor: not-allowed; 
+  transform: none;
+}
+
+.error-tip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #ef4444;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 12px 0;
+}
+
+.loading-inline { 
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6b7280; 
+  font-size: 14px; 
+  padding: 20px;
+  text-align: center;
+  background: #f9fafb;
+  border-radius: 8px;
+  margin: 12px 0;
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-text {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  color: #374151;
+}
+
+.empty-hint {
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.match-list { 
+  list-style: none; 
+  padding: 0; 
+  margin: 16px 0 0; 
+  display: grid; 
+  gap: 16px; 
+}
+
+.match-item { 
+  border: 1px solid #e5e7eb; 
+  border-radius: 12px; 
+  padding: 20px; 
+  background: #fff;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.match-item:hover {
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  transform: translateY(-2px);
+}
+
+.match-rank {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.match-main { 
+  display: grid; 
+  gap: 8px; 
+  margin-bottom: 12px;
+  padding-right: 50px;
+}
+
+.match-name { 
+  font-weight: 700; 
+  color: #111827; 
+  font-size: 16px;
+}
+
+.match-sub { 
+  color: #6b7280; 
+  font-size: 14px; 
+}
+
+.match-chips { 
+  display: flex; 
+  flex-wrap: wrap; 
+  gap: 8px; 
+  margin-top: 8px;
+}
+
+.match-chips .chip {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.skill-level {
+  background: #667eea;
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.match-scores { 
+  display: flex; 
+  gap: 20px; 
+  margin: 12px 0;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.score label { 
+  color: #6b7280; 
+  font-size: 12px; 
+  font-weight: 500;
+}
+
+.score span {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.score.primary span {
+  color: #667eea;
+}
+
+.score.secondary span {
+  color: #10b981;
+}
+
+.match-rationale { 
+  margin: 12px 0; 
+  background: #fef7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.rationale-label {
+  font-weight: 600;
+  color: #ea580c;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.rationale-text {
+  color: #9a3412; 
+  line-height: 1.6; 
+  font-size: 14px;
+}
+
+.match-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.contact-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.contact-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
 
 .loading-card { max-width: 1000px; margin: 24px auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 18px; }
 .skeleton { background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 37%, #f3f4f6 63%); background-size: 400% 100%; animation: shine 1.4s ease infinite; border-radius: 10px; }
