@@ -541,7 +541,7 @@
                             <option value="google_cse">Google CSE</option>
                             <option value="custom">自定义</option>
                           </select>
-                          <small class="form-hint">仅用于提供基础URL示例，不会自动修改任何字段</small>
+                          <small class="form-hint">选择类型后将自动填写对应的基础URL</small>
                         </div>
                         
                         <div class="form-group">
@@ -563,10 +563,7 @@
                               v-model="configForm.base_url" 
                               :placeholder="exampleBaseUrl || '搜索引擎API基础URL（可选）'"
                             >
-                            <div style="display:flex; gap:8px; align-items:center;">
-                              <small class="form-hint" style="flex:1;">示例：{{ exampleBaseUrl || '选择类型查看示例' }}</small>
-                              <button type="button" class="example-fill-btn" @click="fillExampleBaseUrl" :disabled="!exampleBaseUrl">使用示例URL</button>
-                            </div>
+                            <small class="form-hint">示例：{{ exampleBaseUrl || '选择类型查看示例' }}</small>
                           </div>
                         </div>
                         
@@ -1632,18 +1629,25 @@ export default {
       return engineBaseUrlExamples[configForm.value.engine_type || 'custom'] || ''
     })
 
-    const fillExampleBaseUrl = () => {
-      if (!exampleBaseUrl.value) return
-      // 仅在用户点击时填充示例
-      if (!configForm.value.base_url) {
-        configForm.value.base_url = exampleBaseUrl.value
-      } else {
-        // 若已有内容，提示是否覆盖
-        if (confirm('基础URL已填写，是否用示例覆盖？')) {
-          configForm.value.base_url = exampleBaseUrl.value
+    // 监听搜索引擎类型变化，自动填充基础URL
+    watch(() => configForm.value.engine_type, (newType) => {
+      if (newType && engineBaseUrlExamples[newType]) {
+        // 如果已有内容，询问是否覆盖
+        if (configForm.value.base_url && configForm.value.base_url !== engineBaseUrlExamples[newType]) {
+          if (confirm('基础URL已填写，是否用新的示例覆盖？')) {
+            configForm.value.base_url = engineBaseUrlExamples[newType]
+          }
+        } else {
+          // 没有内容或内容相同，直接填充
+          configForm.value.base_url = engineBaseUrlExamples[newType]
+        }
+      } else if (newType === 'custom') {
+        // 选择自定义时，清空基础URL让用户自己填写
+        if (configForm.value.base_url && confirm('切换到自定义类型，是否清空基础URL？')) {
+          configForm.value.base_url = ''
         }
       }
-    }
+    })
 
     // 加载搜索引擎配置
     const loadSearchEngineConfigs = async (showMessage = true) => {
@@ -2727,7 +2731,6 @@ export default {
   closeTTSConfigForm,
   // 示例URL联动
   exampleBaseUrl,
-  fillExampleBaseUrl,
   // 测试状态联动
   getConfigStatus,
   getStatusLabel,
@@ -5584,21 +5587,6 @@ textarea.form-input {
   gap: 12px;
   margin-top: 8px;
 }
-
-  .example-fill-btn {
-    padding: 6px 10px;
-    border: none;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
-    background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
-    color: #fff;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    white-space: nowrap;
-  }
-  .example-fill-btn:disabled { opacity: .5; cursor: not-allowed; }
-  .example-fill-btn:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(66,153,225,.35); }
 
 .cancel-btn, .save-btn {
   flex: 1;
