@@ -4995,12 +4995,14 @@ textarea.form-input {
 /* LLM配置按钮样式 */
 .setting-actions {
   display: flex;
+  flex-direction: row;
   gap: 12px;
   margin-top: 8px;
+  flex-wrap: nowrap;
 }
 
 .save-llm-config-btn, .test-llm-config-btn, .refresh-llm-config-btn {
-  padding: 10px 18px;
+  padding: 10px 16px;
   border: none;
   border-radius: 8px;
   font-size: 14px;
@@ -5010,6 +5012,8 @@ textarea.form-input {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .save-llm-config-btn {
@@ -5047,13 +5051,29 @@ textarea.form-input {
 
 @media (max-width: 768px) {
   .setting-actions {
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: nowrap;
     gap: 8px;
+    justify-content: flex-start;
   }
   
   .save-llm-config-btn, .test-llm-config-btn, .refresh-llm-config-btn {
-    width: 100%;
+    flex: 1 1 0;
+    min-width: 0;
     justify-content: center;
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .setting-actions {
+    gap: 6px;
+  }
+  
+  .save-llm-config-btn, .test-llm-config-btn, .refresh-llm-config-btn {
+    font-size: 12px;
+    padding: 6px 10px;
   }
 }
 
