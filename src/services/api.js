@@ -140,6 +140,15 @@ export class ApiService {
     localStorageAPI.remove('currentUser')
   }
 
+  static async getMe() {
+    try {
+      const response = await remoteApiService.users.getMe()
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
   static async sendSmsCode(phoneData) {
     try {
       const response = await remoteApiService.auth.sendSmsCode(phoneData)
@@ -628,8 +637,10 @@ export class ApiService {
     try {
       // 优先使用后端报名端点
       const response = await remoteApiService.courses.enrollCourse(courseId)
+      // 后端直接返回报名信息，包装成统一格式
       return createResponse(response)
     } catch (error) {
+      console.error('报名失败:', error)
       // 兼容旧后端：退化为设置当前用户课程状态为 registered
       try {
         const fallback = await remoteApiService.users.updateMyCourseProgress(courseId, { status: 'registered', progress: 0.0 })
@@ -777,6 +788,52 @@ export class ApiService {
   static async aiQA(query, options = {}) {
     try {
       const response = await remoteApiService.ai.qa(query, options)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  // ========== AI对话管理API ==========
+  static async getAIConversations(limit = 10, offset = 0) {
+    try {
+      const response = await remoteApiService.userMe.getAIConversations(limit, offset)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async getAIConversation(conversationId) {
+    try {
+      const response = await remoteApiService.userMe.getAIConversation(conversationId)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async getAIConversationMessages(conversationId, limit = 50, offset = 0) {
+    try {
+      const response = await remoteApiService.userMe.getAIConversationMessages(conversationId, limit, offset)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async updateAIConversationTitle(conversationId, title) {
+    try {
+      const response = await remoteApiService.userMe.updateAIConversationTitle(conversationId, title)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
+
+  static async deleteAIConversation(conversationId) {
+    try {
+      const response = await remoteApiService.userMe.deleteAIConversation(conversationId)
       return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)

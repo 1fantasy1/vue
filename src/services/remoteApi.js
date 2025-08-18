@@ -488,16 +488,53 @@ export class AIAPI extends BaseAPI {
   }
 
   async qa(query, options = {}) {
-    const requestData = {
-      query,
-      kb_ids: options.kbIds || null,
-      note_ids: options.noteIds || null,
-      use_tools: options.useTools || false,
-      preferred_tools: options.preferredTools || null,
-      llm_model_id: options.llmModelId || null
+    // 根据API文档，使用 multipart/form-data 格式
+    const formData = new FormData()
+    
+    // 必需字段
+    formData.append('query', query)
+    
+    // 可选字段 - 只有在有值时才添加
+    if (options.conversationId) {
+      formData.append('conversation_id', options.conversationId.toString())
     }
     
-    return await this.request('POST', '/qa', requestData)
+    if (options.kbIds && Array.isArray(options.kbIds) && options.kbIds.length > 0) {
+      formData.append('kb_ids', JSON.stringify(options.kbIds))
+    }
+    
+    if (options.noteIds && Array.isArray(options.noteIds) && options.noteIds.length > 0) {
+      formData.append('note_ids', JSON.stringify(options.noteIds))
+    }
+    
+    if (typeof options.useTools === 'boolean') {
+      formData.append('use_tools', options.useTools.toString())
+    }
+    
+    if (options.preferredTools && Array.isArray(options.preferredTools) && options.preferredTools.length > 0) {
+      formData.append('preferred_tools', JSON.stringify(options.preferredTools))
+    }
+    
+    if (options.llmModelId) {
+      formData.append('llm_model_id', options.llmModelId)
+    }
+    
+    if (options.uploadedFile) {
+      formData.append('uploaded_file', options.uploadedFile)
+    }
+    
+    try {
+      const config = {
+        method: 'POST',
+        url: `${this.endpoint}/qa`,
+        data: formData
+      }
+      
+      const response = await httpClient(config)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
   }
 
   async webSearch(query, engineConfigId, limit = 5) {
@@ -506,6 +543,34 @@ export class AIAPI extends BaseAPI {
       engine_config_id: engineConfigId,
       limit
     })
+  }
+}
+
+// 用户API - 处理用户相关的接口
+export class UserAPI extends BaseAPI {
+  constructor() {
+    super('/users/me')
+  }
+
+  // AI对话管理相关API
+  async getAIConversations(limit = 10, offset = 0) {
+    return await this.request('GET', '/ai-conversations', null, { limit, offset })
+  }
+
+  async getAIConversation(conversationId) {
+    return await this.request('GET', `/ai-conversations/${conversationId}`)
+  }
+
+  async getAIConversationMessages(conversationId, limit = 50, offset = 0) {
+    return await this.request('GET', `/ai-conversations/${conversationId}/messages`, null, { limit, offset })
+  }
+
+  async updateAIConversationTitle(conversationId, title) {
+    return await this.request('PUT', `/ai-conversations/${conversationId}`, { title })
+  }
+
+  async deleteAIConversation(conversationId) {
+    return await this.request('DELETE', `/ai-conversations/${conversationId}`)
   }
 }
 
@@ -929,7 +994,8 @@ export class RemoteApiService {
   constructor() {
     this.auth = new AuthAPI()
     this.users = new UsersAPI()
-  this.courses = new CoursesAPI()
+    this.userMe = new UserAPI() // 当前用户相关的API
+    this.courses = new CoursesAPI()
     this.students = new StudentsAPI()
     this.projects = new ProjectsAPI()
     this.recommend = new RecommendAPI()

@@ -26,6 +26,11 @@ httpClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
     
+    // 如果数据是FormData，删除默认的Content-Type让axios自动设置
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type']
+    }
+    
     console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`)
     return config
   },

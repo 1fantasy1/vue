@@ -251,7 +251,16 @@ export default {
 
     const enrollCourse = async (courseId) => {
       try {
+        // 检查用户是否已登录
+        const token = localStorage.getItem('access_token')
+        if (!token) {
+          alert('请先登录后再报名课程')
+          router.push('/login')
+          return
+        }
+
         const response = await apiService.enrollCourse(courseId)
+        console.log('报名响应:', response)
         
         if (response.data.success) {
           // 更新本地状态
@@ -261,14 +270,39 @@ export default {
             course.enrolled_count = (course.enrolled_count || 0) + 1
           }
           
-          // 可以显示成功消息
           alert('报名成功！')
         } else {
-          alert('报名失败: ' + response.data.message)
+          const errorMsg = response.data.message || '报名失败，请稍后重试'
+          console.error('报名失败:', response.data)
+          alert('报名失败: ' + errorMsg)
         }
       } catch (error) {
         console.error('报名出错:', error)
-        alert('报名失败，请稍后重试')
+        
+        // 检查具体的错误类型
+        if (error.response) {
+          const status = error.response.status
+          const data = error.response.data
+          
+          if (status === 401) {
+            alert('登录已过期，请重新登录')
+            router.push('/login')
+          } else if (status === 404) {
+            alert('课程不存在')
+          } else if (status === 409) {
+            alert('您已经报名了该课程')
+            // 更新本地状态
+            const course = courses.value.find(c => c.id === courseId)
+            if (course) {
+              course.enrolled = true
+            }
+          } else {
+            const errorMsg = data?.detail || data?.message || '报名失败，请稍后重试'
+            alert('报名失败: ' + errorMsg)
+          }
+        } else {
+          alert('网络错误，请检查网络连接后重试')
+        }
       }
     }
 

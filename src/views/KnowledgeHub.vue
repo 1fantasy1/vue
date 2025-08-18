@@ -224,6 +224,23 @@
             </button>
           </div>
           
+          <!-- 上传文件预览区域 -->
+          <div v-if="uploadedFileName" class="uploaded-file-preview">
+            <div class="file-item">
+              <div class="file-info">
+                <svg class="file-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                </svg>
+                <span class="file-name">{{ uploadedFileName }}</span>
+              </div>
+              <button class="remove-file-btn" @click="clearUploadedFile" title="移除文件">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          
           <div class="input-area">
             <div class="input-wrapper">
               <input 
@@ -231,8 +248,7 @@
                 ref="fileUploadInput" 
                 style="display: none;" 
                 @change="handleFileUpload" 
-                multiple 
-                accept=".txt,.pdf,.doc,.docx,.jpg,.png,.gif"
+                accept=".txt,.md,.pdf,.docx,.jpg,.jpeg,.png,.gif,.webp"
               >
               <textarea 
                 v-model="currentMessage"
@@ -256,14 +272,8 @@
           </div>
           
           <div class="input-footer">
-            <div class="model-selector">
-              <label>模型：</label>
-              <select v-model="selectedModel" @change="switchModel" class="model-select">
-                <option value="gpt-4">GPT-4</option>
-                <option value="claude-3">Claude-3</option>
-                <option value="gemini-pro">Gemini Pro</option>
-                <option value="local">本地模型</option>
-              </select>
+            <div class="model-display">
+              <span>当前模型：{{ getCurrentModel }}</span>
             </div>
             <div class="usage-info">
               <span>今日已使用：<strong>{{ dailyUsage }}/100</strong> 次</span>
@@ -283,17 +293,21 @@ export default {
   name: 'KnowledgeHub',
   setup() {
     const sidebarCollapsed = ref(true) // 默认隐藏侧边栏
-    const selectedModel = ref('gpt-4')
+    const selectedModel = ref('默认模型') // 保留作为兼容，但不再用于选择
+    const userDefaultModel = ref('') // 用户的默认模型
     const currentMessage = ref('')
     const enabledTools = ref(['knowledge', 'web'])
     const isTyping = ref(false)
     const chatMessagesRef = ref(null)
     const chatInputRef = ref(null)
+    // 文件上传相关
     const fileUploadInput = ref(null)
-    const currentChatId = ref(1)
+    const uploadedFile = ref(null) // 当前上传的文件
+    const uploadedFileName = ref('') // 文件名用于显示
+    const currentChatId = ref(null) // 初始值为null，让后端创建新对话
     const dailyUsage = ref(12)
     const modelTemperature = ref(0.7)
-    const contextLength = ref(8000)
+    const contextLength = ref(35)
     const showSettingsPanel = ref(false)
 
     // 检查是否为移动设备
@@ -303,46 +317,110 @@ export default {
     const showMobileHint = ref(false)
     let mobileHintTimer = null
 
-    // 聊天历史列表
-    const chatHistoryList = ref([
-      {
-        id: 1,
-        title: '机器学习创新思维',
-        time: '2小时前'
-      },
-      {
-        id: 2,
-        title: '深度学习项目规划',
-        time: '昨天'
-      },
-      {
-        id: 3,
-        title: '数据分析方法论',
-        time: '3天前'
-      },
-      {
-        id: 4,
-        title: '创新项目管理',
-        time: '1周前'
-      }
-    ])
+    // 聊天历史列表 - 将从API加载
+    const chatHistoryList = ref([])
 
-    // 当前对话历史
-    const chatHistory = ref([
-      {
-        id: 1,
-        type: 'user',
-        content: '如何在机器学习项目中应用创新思维？',
-        timestamp: new Date(Date.now() - 10000)
-      },
-      {
-        id: 2,
-        type: 'ai',
-        content: '在机器学习项目中应用创新思维可以从以下几个维度考虑：<br><br><strong>🎯 问题重新定义</strong><br>• 不要局限于传统的解决方案<br>• 从多个角度审视问题本质<br>• 尝试将复杂问题分解为更简单的子问题<br><br><strong>📊 数据创新</strong><br>• 探索非传统数据源和特征工程<br>• 尝试数据增强和合成技术<br>• 考虑多模态数据融合<br><br><strong>🔬 模型融合</strong><br>• 尝试不同算法的创新组合<br>• 探索集成学习的新方法<br>• 引入领域知识指导模型设计<br><br><strong>🌐 跨领域应用</strong><br>• 将其他领域的方法引入机器学习<br>• 借鉴生物学、物理学等领域的原理<br>• 探索与其他技术的结合可能性',
-        timestamp: new Date(Date.now() - 5000),
-        model: 'gpt-4'
+    // 当前对话历史 - 将从API加载
+    const chatHistory = ref([])
+
+    // 加载对话列表
+    const loadConversations = async () => {
+      try {
+        const res = await ApiService.getAIConversations(20, 0) // 获取最近20个对话
+        const payload = res?.data
+        if (payload?.success && Array.isArray(payload.data)) {
+          chatHistoryList.value = payload.data.map(conv => ({
+            id: conv.id,
+            title: conv.title || '未命名对话',
+            time: formatRelativeTime(conv.last_updated || conv.created_at),
+            created_at: conv.created_at,
+            last_updated: conv.last_updated,
+            total_messages_count: conv.total_messages_count || 0
+          }))
+        }
+      } catch (error) {
+        console.error('加载对话列表失败:', error)
       }
-    ])
+    }
+
+    // 加载指定对话的消息历史
+    const loadConversationMessages = async (conversationId) => {
+      try {
+        const res = await ApiService.getAIConversationMessages(conversationId, 100, 0) // 获取最近100条消息
+        const payload = res?.data
+        if (payload?.success && Array.isArray(payload.data)) {
+          chatHistory.value = payload.data.map(msg => ({
+            id: msg.id,
+            type: msg.role === 'user' ? 'user' : 'ai',
+            content: msg.content,
+            timestamp: new Date(msg.sent_at),
+            model: msg.llm_model_used || 'unknown',
+            tool_calls: msg.tool_calls_json,
+            tool_output: msg.tool_output_json
+          }))
+          scrollToBottom()
+        }
+      } catch (error) {
+        console.error('加载对话消息失败:', error)
+        chatHistory.value = []
+      }
+    }
+
+    // 加载用户信息和默认模型
+    // 获取当前实际使用的模型名称
+    const getCurrentModel = computed(() => {
+      // 优先从聊天历史中获取最新的AI响应使用的模型
+      const lastAiMessage = chatHistory.value
+        .slice()
+        .reverse()
+        .find(msg => msg.type === 'ai' && msg.model && msg.model !== 'unknown')
+      
+      if (lastAiMessage && lastAiMessage.model) {
+        return lastAiMessage.model
+      }
+      
+      // 如果没有聊天记录，使用用户配置的默认模型
+      return userDefaultModel.value || '默认模型'
+    })
+
+    // 加载用户信息和默认模型
+    const loadUserInfo = async () => {
+      try {
+        const res = await ApiService.getMe()
+        console.log('用户信息API响应:', res) // 调试信息
+        const payload = res?.data
+        if (payload?.success && payload.data) {
+          const userData = payload.data
+          console.log('用户数据:', userData) // 调试信息
+          console.log('默认LLM模型:', userData.default_llm_model) // 调试信息
+          // 获取用户的默认LLM模型
+          if (userData.default_llm_model) {
+            userDefaultModel.value = userData.default_llm_model
+          } else {
+            userDefaultModel.value = '系统默认模型'
+          }
+        }
+      } catch (error) {
+        console.error('加载用户信息失败:', error)
+        userDefaultModel.value = '系统默认模型'
+      }
+    }
+
+    // 格式化相对时间
+    const formatRelativeTime = (dateString) => {
+      const date = new Date(dateString)
+      const now = new Date()
+      const diffMs = now - date
+      const diffMins = Math.floor(diffMs / (1000 * 60))
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+      if (diffMins < 1) return '刚刚'
+      if (diffMins < 60) return `${diffMins}分钟前`
+      if (diffHours < 24) return `${diffHours}小时前`
+      if (diffDays < 7) return `${diffDays}天前`
+      return date.toLocaleDateString('zh-CN')
+    }
 
     // 计算当前聊天标题
     const currentChatTitle = computed(() => {
@@ -414,22 +492,20 @@ export default {
     const startNewChat = () => {
       chatHistory.value = []
       currentMessage.value = ''
-      currentChatId.value = Date.now()
-      chatHistoryList.value.unshift({
-        id: currentChatId.value,
-        title: '新建对话',
-        time: '刚刚'
-      })
+      currentChatId.value = null // 新对话从null开始，让后端创建
       if (isMobile.value) {
         sidebarCollapsed.value = true
         showMobileHintWithTimer()
       }
+      // 加载用户信息和默认模型
+      loadUserInfo()
     }
 
     // 选择对话
-    const selectChat = (chat) => {
+    const selectChat = async (chat) => {
       currentChatId.value = chat.id
-      // 这里可以加载对应的聊天记录
+      // 加载对话的消息历史
+      await loadConversationMessages(chat.id)
       if (isMobile.value) {
         sidebarCollapsed.value = true
         showMobileHintWithTimer()
@@ -437,29 +513,50 @@ export default {
     }
 
     // 清空所有对话
-    const clearAllChats = () => {
+    const clearAllChats = async () => {
       if (confirm('确定要清空所有对话记录吗？')) {
-        chatHistoryList.value = []
-        chatHistory.value = []
+        try {
+          // 删除所有对话
+          const deletePromises = chatHistoryList.value.map(chat => 
+            ApiService.deleteAIConversation(chat.id)
+          )
+          await Promise.all(deletePromises)
+          
+          // 清空本地状态
+          chatHistoryList.value = []
+          chatHistory.value = []
+          currentChatId.value = null
+        } catch (error) {
+          console.error('删除对话失败:', error)
+          alert('删除对话失败，请重试')
+        }
       }
     }
 
     // 删除单个对话
-    const deleteIndividualChat = (chatId) => {
+    const deleteIndividualChat = async (chatId) => {
       if (confirm('确定要删除此对话吗？')) {
-        const index = chatHistoryList.value.findIndex(chat => chat.id === chatId)
-        if (index > -1) {
-          chatHistoryList.value.splice(index, 1)
-          // 如果删除的是当前对话，清空聊天记录
-          if (chatId === currentChatId.value) {
-            chatHistory.value = []
-            // 如果还有其他对话，切换到第一个
-            if (chatHistoryList.value.length > 0) {
-              currentChatId.value = chatHistoryList.value[0].id
-            } else {
-              currentChatId.value = Date.now()
+        try {
+          await ApiService.deleteAIConversation(chatId)
+          
+          const index = chatHistoryList.value.findIndex(chat => chat.id === chatId)
+          if (index > -1) {
+            chatHistoryList.value.splice(index, 1)
+            // 如果删除的是当前对话，清空聊天记录
+            if (chatId === currentChatId.value) {
+              chatHistory.value = []
+              // 如果还有其他对话，切换到第一个
+              if (chatHistoryList.value.length > 0) {
+                currentChatId.value = chatHistoryList.value[0].id
+                await loadConversationMessages(currentChatId.value)
+              } else {
+                currentChatId.value = null
+              }
             }
           }
+        } catch (error) {
+          console.error('删除对话失败:', error)
+          alert('删除对话失败，请重试')
         }
       }
     }
@@ -483,9 +580,47 @@ export default {
     const handleFileUpload = (event) => {
       const files = event.target.files
       if (files && files.length > 0) {
-        // 处理文件上传逻辑
-        console.log('上传文件:', files)
+        const file = files[0]
+        
+        // 检查文件大小（限制为10MB）
+        const maxSize = 10 * 1024 * 1024 // 10MB
+        if (file.size > maxSize) {
+          alert('文件大小不能超过10MB')
+          return
+        }
+        
+        // 检查文件类型
+        const allowedTypes = [
+          'text/plain', 'text/markdown', 'text/x-markdown',
+          'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'
+        ]
+        
+        if (!allowedTypes.includes(file.type)) {
+          alert('不支持的文件类型。支持的格式：TXT, MD, PDF, DOCX, JPG, PNG, GIF, WEBP')
+          return
+        }
+        
+        // 保存文件
+        uploadedFile.value = file
+        uploadedFileName.value = file.name
+        
+        // 清空input，允许重复选择同一文件
+        event.target.value = ''
+        
+        // 计算文件大小显示
+        const sizeKB = (file.size / 1024).toFixed(1)
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1)
+        const sizeDisplay = file.size > 1024 * 1024 ? `${sizeMB}MB` : `${sizeKB}KB`
+        
+        console.log('文件已选择:', file.name, '大小:', sizeDisplay, '类型:', file.type)
       }
+    }
+
+    // 清除上传的文件
+    const clearUploadedFile = () => {
+      uploadedFile.value = null
+      uploadedFileName.value = ''
     }
 
     // 发送建议问题
@@ -529,19 +664,23 @@ export default {
       if (enabledTools.value.includes('web')) preferredTools.push('web_search')
       if (enabledTools.value.includes('mcp')) preferredTools.push('mcp_tool')
 
-      // use_tools 主要控制 web_search/mcp 等外部工具
-      const useTools = enabledTools.value.includes('web') || enabledTools.value.includes('mcp')
+      // use_tools 主要控制 web_search/mcp 等外部工具，当有文件上传时也需要启用
+      const useTools = enabledTools.value.includes('web') || 
+                      enabledTools.value.includes('mcp') || 
+                      uploadedFile.value !== null // 有文件上传时自动启用工具
 
       // 若后端未要求强制指定模型，这里传 null 使用用户默认；保留 UI 下拉但不强绑 ID
       const llmModelId = null
 
       try {
         const res = await ApiService.aiQA(userMessage, {
+          conversationId: currentChatId.value || null, // 传递对话ID用于上下文
           kbIds: null, // 可后续在界面添加选择后传入数组
           noteIds: null,
           useTools,
           preferredTools: preferredTools.length ? preferredTools : null,
-          llmModelId
+          llmModelId,
+          uploadedFile: uploadedFile.value // 传递上传的文件
         })
 
         const payload = res?.data
@@ -555,10 +694,18 @@ export default {
             model: selectedModel.value
           })
         } else {
+          // 根据API文档，直接从响应中获取数据
           const ai = payload.data || {}
           const answer = ai.answer || '（无内容）'
           const usedModel = ai.llm_model_used || selectedModel.value
           const mode = ai.answer_mode
+          
+          // 更新当前对话ID
+          if (ai.conversation_id && ai.conversation_id !== currentChatId.value) {
+            currentChatId.value = ai.conversation_id
+            // 刷新对话列表以获取最新的对话信息
+            await loadConversations()
+          }
 
           // 附带少量元信息（模式/来源/搜索）
           const sources = Array.isArray(ai.source_articles) ? ai.source_articles : []
@@ -590,6 +737,7 @@ export default {
         })
       } finally {
         isTyping.value = false
+        clearUploadedFile() // 清除上传的文件
         scrollToBottom()
       }
     }
@@ -638,7 +786,7 @@ export default {
     }
 
     // 监听窗口大小变化
-    onMounted(() => {
+    onMounted(async () => {
       const handleResize = () => {
         const wasMobile = isMobile.value
         isMobile.value = window.innerWidth <= 768
@@ -662,6 +810,18 @@ export default {
         showMobileHintWithTimer()
       }
 
+      // 加载对话列表
+      await loadConversations()
+      
+      // 加载用户信息和默认模型
+      await loadUserInfo()
+      
+      // 如果有对话，默认选择第一个
+      if (chatHistoryList.value.length > 0) {
+        currentChatId.value = chatHistoryList.value[0].id
+        await loadConversationMessages(currentChatId.value)
+      }
+
       return () => {
         window.removeEventListener('resize', handleResize)
         clearMobileHintTimer()
@@ -671,6 +831,8 @@ export default {
     return {
       sidebarCollapsed,
       selectedModel,
+      userDefaultModel,
+      getCurrentModel,
       currentMessage,
       enabledTools,
       isTyping,
@@ -687,6 +849,8 @@ export default {
       chatMessagesRef,
       chatInputRef,
       fileUploadInput,
+      uploadedFile,
+      uploadedFileName,
       toggleSidebar,
       closeSidebar,
       startNewChat,
@@ -696,6 +860,7 @@ export default {
       toggleTool,
       triggerFileUpload,
       handleFileUpload,
+      clearUploadedFile,
       sendSuggestion,
       formatMessage,
       formatTime,
@@ -707,7 +872,11 @@ export default {
       toggleSettings,
       goHome,
       goBack,
-      shareChat
+      shareChat,
+      loadConversations,
+      loadConversationMessages,
+      loadUserInfo,
+      formatRelativeTime
     }
   }
 }
@@ -1442,6 +1611,62 @@ export default {
   font-weight: 500;
 }
 
+/* 上传文件预览区域 */
+.uploaded-file-preview {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border: 1px solid #e5e6ea;
+  border-radius: 8px;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.file-icon {
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.file-name {
+  font-size: 13px;
+  color: #374151;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.remove-file-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.remove-file-btn:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
 /* 输入区域 */
 .input-area {
   margin-bottom: 12px;
@@ -1511,18 +1736,33 @@ export default {
   color: #6b7280;
 }
 
-.model-selector {
+.model-display {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
-.model-select {
-  border: none;
-  background: none;
+.model-display label {
   font-size: 12px;
   color: #6b7280;
-  cursor: pointer;
+  margin: 0;
+}
+
+.current-model {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  background: #f3f4f6;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.model-note {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 2px;
 }
 
 .usage-info {
