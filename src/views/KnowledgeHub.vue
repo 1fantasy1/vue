@@ -163,7 +163,10 @@
               </div>
               <div class="message-content">
                 <div v-if="message.type === 'ai'" class="model-name">{{ message.model ? message.model.toUpperCase() : selectedModel.toUpperCase() }}</div>
-                <div class="message-bubble" :class="{ 'short': isShortMessage(message.content) }" v-html="formatMessage(message.content)"></div>
+                <div v-if="isEmbeddableHtml(message.content)" class="message-bubble">
+                  <HtmlPreview :html="extractHtml(message.content)" :min-height="420" />
+                </div>
+                <div v-else class="message-bubble" :class="{ 'short': isShortMessage(message.content) }" v-html="formatMessage(message.content)"></div>
                 <div class="message-time">{{ formatTime(message.timestamp) }}</div>
               </div>
             </div>
@@ -301,9 +304,11 @@
 <script>
 import { ref, computed, nextTick, onMounted } from 'vue'
 import { ApiService } from '@/services/api.js'
+import HtmlPreview from '@/components/HtmlPreview.vue'
 
 export default {
   name: 'KnowledgeHub',
+  components: { HtmlPreview },
   setup() {
     const sidebarCollapsed = ref(true) // 默认隐藏侧边栏
     const selectedModel = ref('默认模型') // 保留作为兼容，但不再用于选择
@@ -468,6 +473,26 @@ export default {
     // 格式化消息内容
     const formatMessage = (content) => {
       return content.replace(/\n/g, '<br>')
+    }
+
+    // 判断是否为可内嵌渲染的图表/可视化 HTML（Chart.js/ECharts/Mermaid 等）
+    const isEmbeddableHtml = (content) => {
+      if (!content) return false
+      const lower = String(content).toLowerCase()
+      // 关键特征：
+      const hasCanvas = lower.includes('<canvas')
+      const hasChartJs = lower.includes('chart.js') || lower.includes('cdn.jsdelivr.net/npm/chart') || lower.includes('new chart(')
+      const hasEcharts = lower.includes('echarts') || lower.includes('cdn.jsdelivr.net/npm/echarts') || lower.includes('echarts.init(')
+      const hasMermaid = lower.includes('mermaid') || lower.includes('<div class="mermaid"') || lower.includes('mermaid.min.js')
+      return (hasCanvas && hasChartJs) || hasEcharts || hasMermaid
+    }
+
+    // 尝试从 Markdown 代码围栏中提取 HTML
+    const extractHtml = (content) => {
+      if (!content) return ''
+      const fence = content.match(/```html[\r\n]+([\s\S]*?)```/i)
+      if (fence) return fence[1]
+      return content
     }
 
     // 格式化时间
@@ -901,6 +926,8 @@ export default {
       clearUploadedFile,
       sendSuggestion,
       formatMessage,
+  isEmbeddableHtml,
+  extractHtml,
       formatTime,
       isShortMessage,
       sendMessage,
