@@ -191,17 +191,20 @@
                   <span class="message-sender">{{ message.sender }}</span>
                   <span class="message-time">{{ message.time }}</span>
                 </div>
-                <div class="message-bubble">
+                <div class="message-bubble" :class="{ media: !!message.media_url }">
                   <template v-if="message.media_url && message.message_type === 'image'">
                     <img :src="message.media_url" alt="图片" class="msg-image" @load="scrollToBottom" />
                   </template>
                   <template v-else-if="message.media_url && message.message_type === 'video'">
                     <video :src="message.media_url" class="msg-video" controls @loadeddata="scrollToBottom"></video>
                   </template>
+                  <template v-else-if="message.media_url && message.isAudio">
+                    <audio :src="message.media_url" class="msg-audio" controls @loadeddata="scrollToBottom"></audio>
+                  </template>
                   <template v-else-if="message.media_url && message.message_type === 'file'">
                     <a :href="message.media_url" target="_blank" rel="noopener" class="msg-file-link">{{ fileNameFromUrl(message.media_url) }}</a>
                   </template>
-                  <div v-if="message.content" class="msg-text">{{ message.content }}</div>
+                  <div v-if="message.hasCaption" class="msg-text">{{ message.content }}</div>
                   <div class="message-actions">
                     <CollectButton
                       content-type="chat_message"
@@ -224,7 +227,7 @@
             <el-button class="attach-btn" circle @click="() => fileInput?.click()">
               <el-icon><Paperclip /></el-icon>
             </el-button>
-            <input ref="fileInput" type="file" @change="onFileChange" accept="image/*,video/*,*/*" style="display:none" />
+            <input ref="fileInput" type="file" @change="onFileChange" accept="image/*,video/*,audio/*,*/*" style="display:none" />
             <el-input
               v-model="newMessage"
               placeholder="输入消息..."
@@ -786,14 +789,34 @@ export default {
       }
     }
 
-  const mapMessageToView = (m) => {
+    const mapMessageToView = (m) => {
       const senderName = m.sender_name || `用户${m.sender_id}`
+      const rawContent = m.content_text || ''
+      const mediaUrl = m.media_url || null
+      // 某些后端会在纯媒体消息生成占位文本，如 “文件: xxx” 或“图片: xxx”
+      const looksLikeAutoLabel = () => {
+        if (!rawContent) return false
+        const c = rawContent.trim()
+        // 前缀匹配：文件:/图片:/视频:
+        const prefixes = ['文件:', '图片:', '视频:', 'file:', 'image:', 'video:']
+        if (prefixes.some(p => c.toLowerCase().startsWith(p.toLowerCase()))) return true
+        // 仅为文件名（与 media_url 文件名一致）也视为占位
+        if (mediaUrl) {
+          try {
+            const nameFromUrl = decodeURIComponent(mediaUrl.split('?')[0].split('#')[0].split('/').pop() || '')
+            if (nameFromUrl && (c === nameFromUrl || c === `文件: ${nameFromUrl}`)) return true
+          } catch {}
+        }
+        return false
+      }
       return {
         id: m.id,
         sender: senderName,
-    content: m.content_text || '',
+        content: rawContent,
     message_type: m.message_type || (m.media_url ? 'file' : 'text'),
-    media_url: m.media_url || null,
+        media_url: mediaUrl,
+  isAudio: m.media_url ? isAudioUrl(m.media_url) : false,
+        hasCaption: rawContent ? !looksLikeAutoLabel() : false,
         time: formatTime(m.sent_at),
         isOwn: currentUserId.value ? m.sender_id === currentUserId.value : false
       }
@@ -1013,6 +1036,14 @@ export default {
     const fileNameFromUrl = (url) => {
       try { return decodeURIComponent(url.split('?')[0].split('#')[0].split('/').pop() || '文件') } catch { return '文件' }
     }
+    const isAudioUrl = (url) => {
+      if (!url) return false
+      try {
+        const u = url.split('?')[0].split('#')[0]
+        const ext = (u.split('.').pop() || '').toLowerCase()
+        return ['mp3','wav','ogg','m4a','aac','flac','oga','weba'].includes(ext)
+      } catch { return false }
+    }
     const inferMessageType = (file) => {
       if (!file) return 'file'
       const mime = file.type || ''
@@ -1085,6 +1116,7 @@ export default {
   clearSelectedFile,
   formatFileSize,
   fileNameFromUrl,
+  isAudioUrl,
       // 权限相关
   currentUserRole,
   roleLoading,
@@ -1541,9 +1573,28 @@ export default {
   position: relative;
 }
 
+.message-bubble.media {
+  padding: 8px; /* 媒体控件占主视觉，缩小内边距 */
+  background: transparent; /* 去掉气泡底色 */
+}
+.message-bubble.media .msg-image,
+.message-bubble.media .msg-video,
+.message-bubble.media .msg-audio {
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.message.own .message-bubble.media .msg-image,
+.message.own .message-bubble.media .msg-video,
+.message.own .message-bubble.media .msg-audio {
+  border-color: rgba(0,0,0,0.06);
+}
+
 .msg-text { white-space: pre-wrap; }
 .msg-image { max-width: 320px; max-height: 360px; display: block; border-radius: 8px; }
 .msg-video { max-width: 360px; display: block; border-radius: 8px; }
+.msg-audio { width: 320px; display: block; }
 .msg-file-link { color: #2563eb; text-decoration: none; word-break: break-all; }
 .msg-file-link:hover { text-decoration: underline; }
 
@@ -1562,6 +1613,10 @@ export default {
 .message.own .message-bubble {
   background: #95ec69; /* 微信风格：我方消息浅绿 */
   color: #111;
+}
+
+.message.own .message-bubble.media {
+  background: transparent; /* 媒体消息不使用绿色背景 */
 }
 
 .chat-input {
