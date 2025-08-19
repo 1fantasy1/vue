@@ -191,7 +191,7 @@
                   <span class="message-sender">{{ message.sender }}</span>
                   <span class="message-time">{{ message.time }}</span>
                 </div>
-                <div class="message-bubble" :style="message.isOwn ? { background: currentColor, color: '#fff' } : {}">
+                <div class="message-bubble">
                   {{ message.content }}
                   <div class="message-actions">
                     <CollectButton
@@ -1465,7 +1465,7 @@ export default {
 }
 
 .message-bubble {
-  background: #f8f9fa;
+  background: #f5f5f5; /* 微信风格：他人消息浅灰 */
   padding: 12px 16px;
   border-radius: 12px;
   font-size: 14px;
@@ -1486,8 +1486,8 @@ export default {
 }
 
 .message.own .message-bubble {
-  background: #4facfe;
-  color: white;
+  background: #95ec69; /* 微信风格：我方消息浅绿 */
+  color: #111;
 }
 
 .chat-input {
