@@ -157,18 +157,61 @@
               class="chat-message" 
               :class="message.type"
             >
-              <div class="message-avatar">
-                <span v-if="message.type === 'user'">👤</span>
-                <span v-else>🧠</span>
-              </div>
-              <div class="message-content">
-                <div v-if="message.type === 'ai'" class="model-name">{{ message.model ? message.model.toUpperCase() : selectedModel.toUpperCase() }}</div>
-                <div v-if="isEmbeddableHtml(message.content)" class="message-bubble">
-                  <HtmlPreview :html="extractHtml(message.content)" :min-height="420" />
+              <!-- 用户/AI 普通消息 -->
+              <template v-if="message.displayType !== 'tool-step'">
+                <div class="message-avatar">
+                  <span v-if="message.type === 'user'">👤</span>
+                  <span v-else>🧠</span>
                 </div>
-                <div v-else class="message-bubble" :class="{ 'short': isShortMessage(message.content) }" v-html="formatMessage(message.content)"></div>
-                <div class="message-time">{{ formatTime(message.timestamp) }}</div>
-              </div>
+                <div class="message-content">
+                  <div v-if="message.type === 'ai'" class="model-name">{{ message.model ? message.model.toUpperCase() : selectedModel.toUpperCase() }}</div>
+                  <div v-if="isEmbeddableHtml(message.content)" class="message-bubble">
+                    <HtmlPreview :html="extractHtml(message.content)" :min-height="420" />
+                  </div>
+                  <div v-else class="message-bubble" :class="{ 'short': isShortMessage(message.content) }" v-html="formatMessage(message.content)"></div>
+                  <div class="message-time">{{ formatTime(message.timestamp) }}</div>
+                </div>
+              </template>
+
+              <!-- 工具调用分组消息 -->
+              <template v-else>
+                <div class="message-avatar">🛠️</div>
+                <div class="message-content">
+                  <div class="tool-step-card">
+                    <div class="tool-step-header" @click="toggleToolStepExpanded(message)">
+                      <div class="tool-step-title">
+                        <span class="tool-badge">工具</span>
+                        <strong>{{ message.toolName || '工具调用' }}</strong>
+                        <span class="tool-step-status" :class="message.status">
+                          <span v-if="message.status === 'running'">⏳ 进行中</span>
+                          <span v-else>✅ 完成</span>
+                        </span>
+                      </div>
+                      <div class="tool-step-actions">
+                        <span class="toggle-text">{{ message.expanded ? '收起详情' : '展开详情' }}</span>
+                        <span class="toggle-arrow" :class="{ expanded: message.expanded }">▶</span>
+                      </div>
+                    </div>
+                    <div class="tool-step-summary">
+                      {{ getToolStepSummary(message) }}
+                    </div>
+                    <div class="tool-step-details" v-show="message.expanded">
+                      <div class="tool-detail-block">
+                        <div class="detail-title">调用参数</div>
+                        <pre class="json-view" v-html="formatJson(message.call?.calls || message.call)"></pre>
+                      </div>
+                      <div class="tool-detail-block">
+                        <div class="detail-title">返回结果</div>
+                        <div v-if="message.output">
+                          <pre class="json-view" v-html="formatJson(message.output?.output || message.output)"></pre>
+                        </div>
+                        <div v-else class="no-output">暂无结果，工具仍在执行或日志未返回。</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="message-time">{{ formatTime(message.timestamp) }}</div>
+                </div>
+              </template>
             </div>
 
             <div v-if="isTyping" class="chat-message ai">
@@ -419,21 +462,81 @@ export default {
       }
     }
 
+    // 安全解析 JSON（可能为对象或字符串），失败返回原值或 null
+    const safeParseJson = (maybeJson) => {
+      if (maybeJson == null) return null
+      if (typeof maybeJson === 'object') return maybeJson
+      if (typeof maybeJson === 'string') {
+        try { return JSON.parse(maybeJson) } catch { return maybeJson }
+      }
+      return maybeJson
+    }
+
+    // 构建用于展示的消息列表：将 tool_call 和紧随其后的 tool_output 分组
+    const buildDisplayMessages = (rawList) => {
+      const result = []
+      for (let i = 0; i < rawList.length; i++) {
+        const m = rawList[i]
+        const role = m.role
+        // 分组工具步骤
+        if (role === 'tool_call') {
+          const callParsed = safeParseJson(m.tool_calls_json)
+          const firstCall = Array.isArray(callParsed) ? callParsed[0] : null
+          let outputMsg = null
+          if (i + 1 < rawList.length && rawList[i + 1].role === 'tool_output') {
+            outputMsg = rawList[i + 1]
+            i++ // 跳过已配对的输出
+          }
+          const step = {
+            id: m.id,
+            displayType: 'tool-step',
+            type: 'ai', // 外观靠左展示
+            timestamp: new Date(m.sent_at || Date.now()),
+            toolName: firstCall?.function?.name || '工具',
+            call: { raw: m, calls: callParsed },
+            output: outputMsg ? { raw: outputMsg, output: safeParseJson(outputMsg.tool_output_json) } : null,
+            status: outputMsg ? 'done' : 'running',
+            expanded: false
+          }
+          result.push(step)
+          continue
+        }
+        if (role === 'tool_output') {
+          // 孤立的输出（未配对上一条调用），也以步骤卡片显示
+          const outputParsed = safeParseJson(m.tool_output_json)
+          result.push({
+            id: m.id,
+            displayType: 'tool-step',
+            type: 'ai',
+            timestamp: new Date(m.sent_at || Date.now()),
+            toolName: '工具',
+            call: null,
+            output: { raw: m, output: outputParsed },
+            status: 'done',
+            expanded: false
+          })
+          continue
+        }
+
+        // 普通消息
+        result.push({
+          id: m.id,
+          type: role === 'user' ? 'user' : 'ai',
+          content: m.content,
+          timestamp: new Date(m.sent_at),
+          model: m.llm_model_used || 'unknown'
+        })
+      }
+      return result
+    }
+
     // 加载指定对话的消息历史
     const loadConversationMessages = async (conversationId) => {
       try {
         const res = await ApiService.getAIConversationMessages(conversationId, 100, 0) // 获取最近100条消息
         const payload = res?.data
         if (payload?.success && Array.isArray(payload.data)) {
-          chatHistory.value = payload.data.map(msg => ({
-            id: msg.id,
-            type: msg.role === 'user' ? 'user' : 'ai',
-            content: msg.content,
-            timestamp: new Date(msg.sent_at),
-            model: msg.llm_model_used || 'unknown',
-            tool_calls: msg.tool_calls_json,
-            tool_output: msg.tool_output_json
-          }))
+          chatHistory.value = buildDisplayMessages(payload.data)
           scrollToBottom()
         }
       } catch (error) {
@@ -861,6 +964,11 @@ export default {
             timestamp: new Date(),
             model: usedModel
           })
+
+          // 若后端已将工具调用/输出作为独立消息存档，则刷新消息以展示分组的工具步骤
+          if (currentChatId.value) {
+            try { await loadConversationMessages(currentChatId.value) } catch {}
+          }
         }
       } catch (err) {
         chatHistory.value.push({
@@ -1016,6 +1124,39 @@ export default {
       formatTime,
       isShortMessage,
       sendMessage,
+      // 工具步骤交互
+      toggleToolStepExpanded: (msg) => { msg.expanded = !msg.expanded },
+      getToolStepSummary: (msg) => {
+        const tool = msg?.toolName || '工具'
+        if (!msg.output) {
+          // 构造简要提示（例如：正在搜索天气...）
+          const first = Array.isArray(msg.call?.calls) ? msg.call.calls[0] : null
+          const argStr = first?.function?.arguments || ''
+          let hint = ''
+          if (typeof argStr === 'string') {
+            hint = (() => { try { const j = JSON.parse(argStr); return j.query || '' } catch { return '' } })()
+          } else if (argStr && typeof argStr === 'object') {
+            hint = argStr.query || ''
+          }
+          return `正在调用 ${tool}${hint ? `：${hint}` : ''}...`
+        }
+        // 已完成，给出简短总结
+        return `调用 ${tool} 已完成`
+      },
+      formatJson: (obj) => {
+        try {
+          const str = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2)
+          // 简单转义并换行转 <br>，保留缩进
+          return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\n/g, '<br>')
+            .replace(/\s{2}/g, '&nbsp;&nbsp;')
+        } catch {
+          return String(obj)
+        }
+      },
       handleInputKeydown,
       adjustTextareaHeight,
       switchModel,
@@ -1763,6 +1904,105 @@ export default {
   border-top: 1px solid #e5e6ea;
   background: white;
   padding: 16px 24px;
+}
+
+/* 工具步骤卡片样式 */
+.tool-step-card {
+  background: #f8fafc;
+  border: 1px solid #e5e6ea;
+  border-left: 4px solid #8b5cf6; /* 紫色强调 */
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-right: 10%;
+}
+
+.tool-step-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.tool-step-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #111827;
+}
+
+.tool-badge {
+  background: #ede9fe;
+  color: #6d28d9;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.tool-step-status {
+  margin-left: 6px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.tool-step-status.running { color: #d97706; }
+.tool-step-status.done { color: #059669; }
+
+.tool-step-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.toggle-arrow {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+.toggle-arrow.expanded {
+  transform: rotate(90deg);
+}
+
+.tool-step-summary {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.tool-step-details {
+  margin-top: 10px;
+  background: white;
+  border: 1px solid #e5e6ea;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.tool-detail-block {
+  margin-bottom: 10px;
+}
+.tool-detail-block:last-child { margin-bottom: 0; }
+
+.detail-title {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+.json-view {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  background: #f8fafc;
+  border: 1px solid #e5e6ea;
+  border-radius: 6px;
+  padding: 8px;
+  overflow-x: auto;
+}
+
+.no-output {
+  font-size: 12px;
+  color: #9ca3af;
 }
 
 /* 输入工具栏 */
