@@ -166,12 +166,30 @@ export class ProjectsAPI extends BaseAPI {
 
   // 3.4.1 创建新项目
   async createProject(projectData) {
-    return await this.request('POST', '/', projectData)
+    // 后端要求在 body 中提供 `project_data_json` 字段
+    // 使用 multipart/form-data 以最大兼容性
+    const formData = new FormData()
+    // 确保传入字符串，避免 422: Field required
+    formData.append('project_data_json', JSON.stringify(projectData || {}))
+    try {
+      const response = await httpClient.post(`/projects/`, formData)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
   }
 
   // 3.4.4 更新指定项目
   async updateProject(projectId, projectData) {
-    return await this.request('PUT', `/${projectId}`, projectData)
+    // 后端校验报错提示缺少 `project_data_json`，改为表单提交该字段
+    const formData = new FormData()
+    formData.append('project_data_json', JSON.stringify(projectData || {}))
+    try {
+      const response = await httpClient.put(`/projects/${projectId}`, formData)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
   }
 
   // 3.4.5 删除指定项目
