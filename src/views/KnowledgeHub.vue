@@ -374,6 +374,8 @@
 import { ref, computed, nextTick, onMounted, watch } from 'vue'
 import { ApiService } from '@/services/api.js'
 import HtmlPreview from '@/components/HtmlPreview.vue'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 
 export default {
   name: 'KnowledgeHub',
@@ -656,9 +658,23 @@ export default {
       return textContent.length <= 50
     }
 
-    // 格式化消息内容
+    // 将 Markdown 转为安全的 HTML
+    // 支持标题、列表、代码块、表格、行内代码、粗体/斜体、链接/图片等
     const formatMessage = (content) => {
-      return content.replace(/\n/g, '<br>')
+      if (!content) return ''
+      try {
+        const html = marked.parse(String(content), {
+          gfm: true,
+          breaks: true
+        })
+        // 统一在此净化，避免 XSS
+        return DOMPurify.sanitize(html, {
+          USE_PROFILES: { html: true }
+        })
+      } catch (e) {
+        // 回退：纯文本换行
+        return String(content).replace(/\n/g, '<br>')
+      }
     }
 
     // 判断是否为可内嵌渲染的图表/可视化 HTML（Chart.js/ECharts/Mermaid 等）
