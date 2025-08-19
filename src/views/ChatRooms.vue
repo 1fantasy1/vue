@@ -57,11 +57,12 @@
               v-for="room in filteredRooms"
               :key="room.id"
               :class="{ active: selectedRoom?.id === room.id }"
+              :style="selectedRoom?.id === room.id ? { borderLeft: `4px solid ${room.color || '#4facfe'}` } : {}"
               @click="selectRoom(room)"
             >
               <div class="room-avatar">
                 <el-badge :value="room.unread_messages_count" :hidden="!(room.unread_messages_count > 0)">
-                  <div class="avatar-icon" :style="{ background: room.color || '#8aa1ff' }">
+                  <div class="avatar-icon" :style="{ background: room.color || '#4facfe' }">
                     {{ (room.name || '?').charAt(0) }}
                   </div>
                 </el-badge>
@@ -97,7 +98,7 @@
                 <path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z" />
               </svg>
             </button>
-            <div class="chat-avatar" :style="{ background: selectedRoom.color || '#8aa1ff' }">
+            <div class="chat-avatar" :style="{ background: currentColor }">
               {{ (selectedRoom.name || '?').charAt(0) }}
             </div>
             <div>
@@ -190,7 +191,7 @@
                   <span class="message-sender">{{ message.sender }}</span>
                   <span class="message-time">{{ message.time }}</span>
                 </div>
-                <div class="message-bubble">
+                <div class="message-bubble" :style="message.isOwn ? { background: currentColor, color: '#fff' } : {}">
                   {{ message.content }}
                   <div class="message-actions">
                     <CollectButton
@@ -281,7 +282,15 @@
           </el-form-item>
         </div>
         <el-form-item label="颜色">
-          <el-input v-model="createForm.color" placeholder="#4facfe" />
+          <div style="display:flex;align-items:center;gap:12px;">
+            <el-color-picker
+              v-model="createForm.color"
+              :predefine="predefinedColors"
+              :show-alpha="false"
+            />
+            <el-button size="small" @click="createForm.color = '#4facfe'">重置默认色</el-button>
+            <span style="font-size:12px;color:#6c757d;">用于头像、我方气泡等主题色</span>
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -463,7 +472,16 @@ export default {
   const applyByIdRoomId = ref(null)
   const applyByIdReason = ref('')
 
-    const filteredRooms = computed(() => {
+    // 预设颜色（与常见 IM/品牌色系接近）
+    const predefinedColors = [
+      '#4facfe', '#3a9afd', '#2f80ed', '#8aa1ff',
+      '#34d399', '#10b981', '#22c55e',
+      '#f59e0b', '#f97316', '#ef4444',
+      '#a855f7', '#ec4899', '#06b6d4',
+      '#64748b', '#0ea5e9'
+    ]
+
+  const filteredRooms = computed(() => {
       let filtered = rooms.value || []
       if (activeTab.value !== 'all') {
         filtered = filtered.filter(room => room.type === activeTab.value)
@@ -473,6 +491,9 @@ export default {
       }
       return filtered
     })
+
+  // 当前房间主题色（带回退）
+  const currentColor = computed(() => selectedRoom.value?.color || '#4facfe')
 
     // 权限计算
     const isRoomCreator = computed(() => {
@@ -832,7 +853,8 @@ export default {
       }
       creating.value = true
       try {
-        const payload = { ...createForm.value }
+  const payload = { ...createForm.value }
+  if (!payload.color) payload.color = '#4facfe'
         if (!payload.project_id) delete payload.project_id
         if (!payload.course_id) delete payload.course_id
         if (editMode.value && selectedRoom.value) {
@@ -994,6 +1016,7 @@ export default {
       getStatusTagType,
       copyRoomId,
       formatTime,
+  currentColor,
       // 权限相关
   currentUserRole,
   roleLoading,
@@ -1022,6 +1045,7 @@ export default {
       changeTab,
   openUpdateRoomModal,
   deleteRoom,
+  predefinedColors,
   // 权限
   noAccess,
   // apply join
