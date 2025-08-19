@@ -1347,6 +1347,8 @@ export default {
 .chat-messages-container {
   flex: 1;
   overflow-y: auto;
+  /* 防止超长内容将容器横向撑破 */
+  overflow-x: hidden;
   background: #f7f8fa;
   position: relative;
 }
@@ -1476,9 +1478,48 @@ export default {
   border-radius: 16px;
   line-height: 1.5;
   font-size: 14px;
-  word-wrap: break-word;
+  /* 强化长文本断行策略，处理超长URL/连续字符 */
+  word-wrap: break-word;          /* 兼容旧规范 */
+  overflow-wrap: anywhere;        /* 优先使用 */
+  word-break: break-word;         /* 多数浏览器生效 */
   max-width: 100%;
   display: inline-block;
+}
+
+/* 限制富文本内容不溢出，图片/表格自适应（v-html 需使用 :deep） */
+.message-bubble :deep(*) {
+  max-width: 100%;
+}
+
+.message-bubble :deep(img) {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.message-bubble :deep(table) {
+  width: 100%;
+  table-layout: fixed;
+  word-break: break-word;
+}
+
+/* 代码块和链接的溢出处理 */
+.message-bubble :deep(pre),
+.message-bubble :deep(code) {
+  white-space: pre-wrap;      /* 保留换行并可换行 */
+  word-break: break-word;
+}
+
+.message-bubble :deep(pre) {
+  overflow: auto;
+  background: #f8fafc;
+  border: 1px solid #e5e6ea;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.message-bubble :deep(a) {
+  word-break: break-all;      /* 超长URL可任意断开 */
 }
 
 .message-bubble.short {

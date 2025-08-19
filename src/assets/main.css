@@ -34,6 +34,23 @@ body {
   -ms-text-size-adjust: 100%;
 }
 
+/* 全局长文本与富内容的安全断行策略（防止页面被撑坏） */
+.break-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+img,
+table {
+  max-width: 100%;
+}
+
+pre,
+code {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 #app {
   margin: 0;
   padding: 0;
