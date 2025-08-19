@@ -142,6 +142,22 @@
                 </div>
               </div>
               <div class="material-actions">
+                <template v-if="isAdmin">
+                  <button 
+                    @click="startEditMaterial(material)" 
+                    class="material-btn secondary"
+                    title="编辑材料"
+                  >
+                    编辑
+                  </button>
+                  <button 
+                    @click="confirmDeleteMaterial(material)" 
+                    class="material-btn danger"
+                    title="删除材料"
+                  >
+                    删除
+                  </button>
+                </template>
                 <button 
                   @click="openMaterial(material)" 
                   class="material-btn primary"
@@ -153,10 +169,6 @@
           </div>
         </div>
 
-        <!-- 管理课程材料（仅管理员可见） -->
-        <div v-if="activeTab === 'manage-materials' && isAdmin" class="materials-section">
-          <MaterialManager :courseId="courseId" />
-        </div>
 
         <!-- 推荐课程 -->
         <div v-if="activeTab === 'recommendations'" class="recommendations-section">
@@ -210,21 +222,82 @@
       :visible="showMaterialDetail"
       @close="closeMaterialDetail"
     />
+
+    <!-- 编辑材料模态框（仅管理员可见） -->
+    <div v-if="showEditModal && isAdmin" class="modal-overlay" @click="closeEditModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>编辑课程材料</h3>
+          <button @click="closeEditModal" class="modal-close">×</button>
+        </div>
+
+        <form @submit.prevent="submitEditMaterial" class="modal-body">
+          <div class="form-group">
+            <label>材料标题*</label>
+            <input v-model="materialForm.title" type="text" required placeholder="请输入材料标题" />
+          </div>
+
+          <div class="form-group">
+            <label>材料类型*</label>
+            <div class="type-selector">
+              <label class="type-option">
+                <input v-model="materialForm.type" type="radio" value="file" @change="clearTypeSpecificFields" />
+                <span>文件</span>
+              </label>
+              <label class="type-option">
+                <input v-model="materialForm.type" type="radio" value="link" @change="clearTypeSpecificFields" />
+                <span>链接</span>
+              </label>
+              <label class="type-option">
+                <input v-model="materialForm.type" type="radio" value="text" @change="clearTypeSpecificFields" />
+                <span>文档</span>
+              </label>
+            </div>
+          </div>
+
+          <div v-if="materialForm.type === 'file'" class="form-group">
+            <label>替换文件（可选）</label>
+            <input ref="fileInput" type="file" @change="handleFileChange" />
+          </div>
+
+          <div v-if="materialForm.type === 'link'" class="form-group">
+            <label>链接地址*</label>
+            <input v-model="materialForm.url" type="url" required placeholder="https://example.com" />
+          </div>
+
+          <div v-if="materialForm.type === 'text'" class="form-group">
+            <label>文档内容*</label>
+            <textarea v-model="materialForm.content" rows="8" required placeholder="请输入文档内容"></textarea>
+          </div>
+
+          <div v-if="materialForm.type !== 'text'" class="form-group">
+            <label>描述</label>
+            <textarea v-model="materialForm.content" rows="3" placeholder="可选的描述信息"></textarea>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" @click="closeEditModal" class="material-btn secondary">取消</button>
+            <button type="submit" class="material-btn primary" :disabled="submittingEdit">
+              {{ submittingEdit ? '提交中...' : '确定' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useGlobalStore } from '@/stores/global'
-import MaterialManager from '@/components/MaterialManager.vue'
 import MaterialDetailModal from '@/components/MaterialDetailModal.vue'
 import apiService from '@/services/api.js'
 import appConfig from '@/config/index.js'
 
 export default {
   name: 'CourseDetail',
-  components: { MaterialManager, MaterialDetailModal },
+  components: { MaterialDetailModal },
   setup() {
     const route = useRoute()
     const router = useRouter()
@@ -260,11 +333,11 @@ export default {
       return u.is_admin === true || flags.includes('admin')
     })
     const tabs = computed(() => {
-      const base = [
+      // 仅保留“课程材料/推荐课程”，不再显示“材料管理”
+      return [
         { key: 'materials', label: '课程材料' },
         { key: 'recommendations', label: '推荐课程' }
       ]
-      return isAdmin.value ? [...base, { key: 'manage-materials', label: '材料管理' }] : base
     })
 
     // 获取课程详情
@@ -393,6 +466,115 @@ export default {
   selectedMaterial.value = null
     }
 
+    // —— 内联编辑/删除（仅管理员可见） ——
+    const showEditModal = ref(false)
+    const submittingEdit = ref(false)
+    const editingMaterial = ref(null)
+    const selectedFile = ref(null)
+    const fileInput = ref(null)
+
+    const materialForm = reactive({
+      title: '',
+      type: 'file',
+      url: '',
+      content: ''
+    })
+
+    const startEditMaterial = (material) => {
+      editingMaterial.value = material
+      materialForm.title = material.title || ''
+      materialForm.type = material.type || 'file'
+      materialForm.url = material.url || ''
+      materialForm.content = material.content || ''
+      selectedFile.value = null
+      if (fileInput.value) fileInput.value.value = ''
+      showEditModal.value = true
+    }
+
+    const closeEditModal = () => {
+      showEditModal.value = false
+      editingMaterial.value = null
+      selectedFile.value = null
+      if (fileInput.value) fileInput.value.value = ''
+      materialForm.title = ''
+      materialForm.type = 'file'
+      materialForm.url = ''
+      materialForm.content = ''
+    }
+
+    const handleFileChange = (e) => {
+      const f = e.target.files?.[0]
+      selectedFile.value = f || null
+    }
+
+    const clearTypeSpecificFields = () => {
+      materialForm.url = ''
+      materialForm.content = ''
+      selectedFile.value = null
+      if (fileInput.value) fileInput.value.value = ''
+    }
+
+    const submitEditMaterial = async () => {
+      try {
+        if (!editingMaterial.value) return
+        submittingEdit.value = true
+
+        // 简单校验
+        if (materialForm.type === 'link' && !materialForm.url) {
+          alert('链接类型必须填写URL')
+          submittingEdit.value = false
+          return
+        }
+        if (materialForm.type === 'text' && !materialForm.content) {
+          alert('文档类型必须填写内容')
+          submittingEdit.value = false
+          return
+        }
+
+        const resp = await apiService.updateCourseMaterial(
+          courseId.value,
+          editingMaterial.value.id,
+          {
+            title: materialForm.title,
+            type: materialForm.type,
+            url: materialForm.url,
+            content: materialForm.content
+          },
+          selectedFile.value
+        )
+
+        if (resp.data?.success) {
+          alert('材料更新成功!')
+          closeEditModal()
+          await loadCourseMaterials(courseId.value)
+        } else {
+          alert(resp.data?.message || '更新失败')
+        }
+      } catch (err) {
+        console.error('更新材料失败:', err)
+        alert('更新失败，请稍后重试')
+      } finally {
+        submittingEdit.value = false
+      }
+    }
+
+    const confirmDeleteMaterial = async (material) => {
+      if (!isAdmin.value) return
+      if (!confirm(`确定要删除材料"${material.title}"吗？此操作不可撤销。`)) return
+      try {
+        const resp = await apiService.deleteCourseMaterial(courseId.value, material.id)
+        if (resp.data?.success) {
+          alert('删除成功!')
+          await loadCourseMaterials(courseId.value)
+        } else {
+          alert(resp.data?.message || '删除失败')
+        }
+      } catch (err) {
+        console.error('删除材料失败:', err)
+        alert('删除失败，请稍后重试')
+      }
+    }
+
     // 跳转到课程
     const goToCourse = (courseId) => {
       router.push(`/courses/${courseId}`)
@@ -464,12 +646,22 @@ export default {
   courseId,
       showMaterialDetail,
       selectedMaterialId,
+  showEditModal,
+  submittingEdit,
+  materialForm,
+  fileInput,
+  handleFileChange,
+  clearTypeSpecificFields,
+  submitEditMaterial,
+  startEditMaterial,
+  confirmDeleteMaterial,
       enrollCourse,
       continueLearning,
       toggleFavorite,
       openMaterial,
       closeMaterialDetail,
   selectedMaterial,
+  closeEditModal,
       goToCourse,
       goBack,
       getSkillLevelClass,
@@ -922,6 +1114,103 @@ export default {
 .material-btn.primary:hover {
   background: #5a67d8;
   transform: translateY(-1px);
+}
+
+.material-btn.secondary {
+  background: #e9ecef;
+  color: #495057;
+  margin-right: 8px;
+}
+
+.material-btn.secondary:hover {
+  background: #dee2e6;
+}
+
+.material-btn.danger {
+  background: #e55353;
+  color: #fff;
+  margin-right: 8px;
+}
+
+.material-btn.danger:hover {
+  background: #cc4949;
+}
+
+/* 简易模态框样式（与页面风格统一） */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: #fff;
+  width: 640px;
+  max-width: 92vw;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.modal-close {
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #495057;
+  font-weight: 500;
+}
+
+.form-group input[type="text"],
+.form-group input[type="url"],
+.form-group input[type="file"],
+.form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+}
+
+.type-selector {
+  display: flex;
+  gap: 16px;
+}
+
+.type-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 /* 推荐课程 */
