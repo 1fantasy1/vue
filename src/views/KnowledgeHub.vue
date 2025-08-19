@@ -1859,6 +1859,21 @@ export default {
   word-break: break-word;
 }
 
+/* Markdown 列表与序号与气泡左边距拉开 */
+.message-bubble :deep(ul),
+.message-bubble :deep(ol) {
+  padding-left: 1.25rem;   /* 增加整体左内边距 */
+  margin-left: 0;          /* 避免双重缩进 */
+  list-style-position: outside; /* 标记在外，避免与文本重叠 */
+  margin-top: 0.4em;
+  margin-bottom: 0.4em;
+}
+
+.message-bubble :deep(li) {
+  margin: 0.2em 0;         /* 行间距更舒适 */
+  padding-left: 0.1rem;    /* 文本与标记再留一点空间 */
+}
+
 /* 代码块和链接的溢出处理 */
 .message-bubble :deep(pre),
 .message-bubble :deep(code) {
