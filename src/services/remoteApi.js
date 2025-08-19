@@ -855,9 +855,8 @@ export class ForumAPI extends BaseAPI {
   }
 
   async createTopic(topicData) {
-  // 后端要求 content 位于查询参数
-  const q = {}
-  if (topicData?.content) q.content = topicData.content
+  // 后端要求 content 位于查询参数（必填）。即使只有图片/文件也要传空字符串，避免 422 缺少字段。
+  const q = { content: topicData?.content ?? '' }
   if (topicData?.tags) q.tags = topicData.tags
   if (topicData?.media_url) q.media_url = topicData.media_url
   if (topicData?.media_type) q.media_type = topicData.media_type
@@ -873,8 +872,8 @@ export class ForumAPI extends BaseAPI {
   }
 
   async updateTopic(topicId, topicData) {
-  const q = {}
-  if (topicData?.content) q.content = topicData.content
+  // 与创建保持一致：content 为查询参数且必填，未提供则用空字符串
+  const q = { content: topicData?.content ?? '' }
   if (topicData?.tags) q.tags = topicData.tags
   if (topicData?.media_url) q.media_url = topicData.media_url
   if (topicData?.media_type) q.media_type = topicData.media_type
