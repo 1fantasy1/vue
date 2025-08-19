@@ -487,6 +487,7 @@ export default {
             outputMsg = rawList[i + 1]
             i++ // 跳过已配对的输出
           }
+          // 使用 tool_call 的时间戳作为整个步骤的时间戳
           const step = {
             id: m.id,
             displayType: 'tool-step',
@@ -496,7 +497,9 @@ export default {
             call: { raw: m, calls: callParsed },
             output: outputMsg ? { raw: outputMsg, output: safeParseJson(outputMsg.tool_output_json) } : null,
             status: outputMsg ? 'done' : 'running',
-            expanded: false
+            expanded: false,
+            // 保存原始消息索引，用于调试
+            originalIndex: i
           }
           result.push(step)
           continue
@@ -513,7 +516,8 @@ export default {
             call: null,
             output: { raw: m, output: outputParsed },
             status: 'done',
-            expanded: false
+            expanded: false,
+            originalIndex: i
           })
           continue
         }
@@ -524,10 +528,21 @@ export default {
           type: role === 'user' ? 'user' : 'ai',
           content: m.content,
           timestamp: new Date(m.sent_at),
-          model: m.llm_model_used || 'unknown'
+          model: m.llm_model_used || 'unknown',
+          originalIndex: i
         })
       }
-      return result
+      
+      // 按时间戳排序，如果时间戳相同则按原始索引排序
+      return result.sort((a, b) => {
+        const timeA = a.timestamp.getTime()
+        const timeB = b.timestamp.getTime()
+        if (timeA === timeB) {
+          // 时间戳相同时，按原始索引排序
+          return (a.originalIndex || 0) - (b.originalIndex || 0)
+        }
+        return timeA - timeB
+      })
     }
 
     // 加载指定对话的消息历史
@@ -536,7 +551,33 @@ export default {
         const res = await ApiService.getAIConversationMessages(conversationId, 100, 0) // 获取最近100条消息
         const payload = res?.data
         if (payload?.success && Array.isArray(payload.data)) {
-          chatHistory.value = buildDisplayMessages(payload.data)
+          // 确保消息按时间排序（升序，旧消息在前）
+          const sortedMessages = payload.data.sort((a, b) => {
+            const timeA = new Date(a.sent_at || 0).getTime()
+            const timeB = new Date(b.sent_at || 0).getTime()
+            return timeA - timeB
+          })
+          
+          // 调试信息：打印原始消息顺序
+          console.log('原始消息顺序:', sortedMessages.map(m => ({
+            id: m.id,
+            role: m.role,
+            sent_at: m.sent_at,
+            content: m.content?.substring(0, 50) + '...'
+          })))
+          
+          const displayMessages = buildDisplayMessages(sortedMessages)
+          
+          // 调试信息：打印处理后的显示消息顺序
+          console.log('处理后消息顺序:', displayMessages.map(m => ({
+            id: m.id,
+            type: m.type,
+            displayType: m.displayType,
+            timestamp: m.timestamp.toISOString(),
+            content: m.content?.substring(0, 50) + '...' || m.toolName
+          })))
+          
+          chatHistory.value = displayMessages
           scrollToBottom()
         }
       } catch (error) {
@@ -950,6 +991,7 @@ export default {
           const searches = Array.isArray(ai.search_results) ? ai.search_results : []
           const tools = Array.isArray(ai.tool_calls) ? ai.tool_calls : []
 
+          // 先立即添加AI回复消息给用户即时反馈
           const metaParts = []
           if (mode) metaParts.push(`模式：${mode}`)
           if (sources.length) metaParts.push(`来源：${sources.length}`)
@@ -965,9 +1007,16 @@ export default {
             model: usedModel
           })
 
-          // 若后端已将工具调用/输出作为独立消息存档，则刷新消息以展示分组的工具步骤
-          if (currentChatId.value) {
-            try { await loadConversationMessages(currentChatId.value) } catch {}
+          // 如果有工具调用，可以在后台异步刷新消息历史以显示工具步骤（可选）
+          // 这样用户立即看到AI回复，工具步骤稍后加载
+          if (currentChatId.value && tools.length > 0) {
+            setTimeout(async () => {
+              try { 
+                await loadConversationMessages(currentChatId.value)
+              } catch (error) {
+                console.log('后台刷新消息历史失败:', error)
+              }
+            }, 1000) // 1秒后刷新，给后端时间保存工具调用记录
           }
         }
       } catch (err) {
