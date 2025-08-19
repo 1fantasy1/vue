@@ -281,6 +281,7 @@
                 <option value="">选择类型</option>
                 <option value="image">📸 图片</option>
                 <option value="video">🎬 视频</option>
+                <option value="audio">🎵 音频</option>
                 <option value="file">📄 文件</option>
               </select>
             </div>
@@ -503,6 +504,10 @@
           <video :src="post.videoUrl" controls preload="metadata"></video>
         </div>
         
+        <div class="post-audio" v-if="post.audioUrl">
+          <audio :src="post.audioUrl" controls preload="metadata"></audio>
+        </div>
+        
         <div class="post-actions">
           <button 
             class="action-btn like-btn" 
@@ -572,6 +577,22 @@
                     </button>
                   </div>
                 </div>
+                <!-- 评论媒体展示 -->
+                <div class="post-images" v-if="comment.images && comment.images.length">
+                  <img 
+                    v-for="(img, idx) in comment.images"
+                    :key="idx"
+                    :src="img"
+                    class="post-image"
+                    :alt="`评论图片${idx+1}`"
+                  />
+                </div>
+                <div class="post-video" v-if="comment.videoUrl">
+                  <video :src="comment.videoUrl" controls preload="metadata"></video>
+                </div>
+                <div class="post-audio" v-if="comment.audioUrl">
+                  <audio :src="comment.audioUrl" controls preload="metadata"></audio>
+                </div>
                 <div class="comment-footer">
                   <button class="comment-action-btn comment-like-btn" @click="toggleLikeComment(post, comment)" :class="{ liked: comment.isLiked }">
                     <span class="comment-action-icon">{{ comment.isLiked ? '❤️' : '🤍' }}</span>
@@ -599,10 +620,11 @@
                       <option value="">无</option>
                       <option value="image">图片</option>
                       <option value="video">视频</option>
+                      <option value="audio">音频</option>
                       <option value="file">文件</option>
                     </select>
                     <input class="media-url-input" v-model="comment.replyMediaUrl" placeholder="外部URL（可选）" />
-                    <input type="file" @change="(e)=>onReplyFileChange(comment,e)" />
+                    <input type="file" :accept="getFileAccept(comment.replyMediaType)" @change="(e)=>onReplyFileChange(comment,e)" />
                     <button class="reply-submit-btn" @click="submitReply(post, comment)" :disabled="!canSubmitReply(comment)">发送</button>
                   </div>
                 </div>
@@ -615,6 +637,16 @@
                         <span class="comment-time">{{ formatTime(rc.timestamp) }}</span>
                       </div>
                       <div class="comment-text">{{ rc.content }}</div>
+                      <!-- 回复媒体展示 -->
+                      <div class="post-images" v-if="rc.images && rc.images.length">
+                        <img v-for="(img, i2) in rc.images" :key="i2" :src="img" class="post-image" :alt="`回复图片${i2+1}`" />
+                      </div>
+                      <div class="post-video" v-if="rc.videoUrl">
+                        <video :src="rc.videoUrl" controls preload="metadata"></video>
+                      </div>
+                      <div class="post-audio" v-if="rc.audioUrl">
+                        <audio :src="rc.audioUrl" controls preload="metadata"></audio>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -756,8 +788,10 @@ export default {
       // 推断媒体类型（当后端未返回 media_type 时，基于 URL 简单判断）
       const isImg = mediaUrl && /(\.png|\.jpe?g|\.gif|\.webp|^data:image\/)/i.test(mediaUrl)
   const isVid = mediaUrl && /(\.mp4|\.webm|\.ogg|^data:video\/)/i.test(mediaUrl)
+      const isAud = mediaUrl && /(\.mp3|\.wav|\.m4a|\.aac|\.ogg|^data:audio\/)/i.test(mediaUrl)
       const images = (mediaUrl && (mediaType === 'image' || isImg)) ? [mediaUrl] : []
       const videoUrl = (mediaUrl && (mediaType === 'video' || isVid)) ? mediaUrl : null
+      const audioUrl = (mediaUrl && (mediaType === 'audio' || isAud)) ? mediaUrl : null
       return {
         id: t.id,
     ownerId: t.owner_id,
@@ -771,6 +805,7 @@ export default {
         isLiked: !!t.is_liked_by_current_user,
         images,
         videoUrl,
+        audioUrl,
         comments: [],
         commentsCount: t.comments_count ?? 0,
         isFollowed: !!followStateByUserId.value[t.owner_id],
@@ -799,6 +834,19 @@ export default {
   replyMediaType: '',
   replyMediaUrl: '',
   replyFile: null,
+  // 媒体解析（评论可能包含图片/视频/音频）
+  ...(() => {
+    const mediaType = c?.media_type || null
+    const mediaUrl = c?.media_url || null
+    const isImg = mediaUrl && /(\.png|\.jpe?g|\.gif|\.webp|^data:image\/)/i.test(mediaUrl)
+    const isVid = mediaUrl && /(\.mp4|\.webm|\.ogg|^data:video\/)/i.test(mediaUrl)
+    const isAud = mediaUrl && /(\.mp3|\.wav|\.m4a|\.aac|\.ogg|^data:audio\/)/i.test(mediaUrl)
+    return {
+      images: (mediaUrl && (mediaType === 'image' || isImg)) ? [mediaUrl] : [],
+      videoUrl: (mediaUrl && (mediaType === 'video' || isVid)) ? mediaUrl : null,
+      audioUrl: (mediaUrl && (mediaType === 'audio' || isAud)) ? mediaUrl : null,
+    }
+  })(),
   replies: []
     })
 
@@ -976,6 +1024,7 @@ export default {
       switch (mediaType) {
         case 'image': return 'image/*'
         case 'video': return 'video/*'
+  case 'audio': return 'audio/*'
         case 'file': return '*/*'
         default: return '*/*'
       }
@@ -985,6 +1034,7 @@ export default {
       switch (mediaType) {
         case 'image': return '图片文件'
         case 'video': return '视频文件'
+  case 'audio': return '音频文件'
         case 'file': return '任意文件'
         default: return '文件'
       }
@@ -994,6 +1044,7 @@ export default {
       const ext = fileName.split('.').pop()?.toLowerCase()
       if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return '🖼️'
       if (['mp4', 'avi', 'mov', 'wmv'].includes(ext)) return '🎬'
+  if (['mp3', 'wav', 'm4a', 'aac', 'ogg'].includes(ext)) return '🎵'
       if (['pdf'].includes(ext)) return '📄'
       if (['doc', 'docx'].includes(ext)) return '📝'
       if (['zip', 'rar', '7z'].includes(ext)) return '📦'
@@ -3187,6 +3238,11 @@ export default {
   max-height: 480px;
   border-radius: 10px;
   background: #000;
+}
+
+.post-audio audio {
+  width: 100%;
+  outline: none;
 }
 
 @keyframes rippleEffect {
