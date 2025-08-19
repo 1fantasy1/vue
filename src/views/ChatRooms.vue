@@ -1,25 +1,38 @@
 <template>
   <div class="page">
-    <div class="header">
-      <button class="back-btn" @click="goBack">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M20,11V13H8L13.5,18.5L12.08,19.92L4.16,12L12.08,4.08L13.5,5.5L8,11H20Z" />
-        </svg>
-        返回首页
-      </button>
-      <div class="header-actions">
-        <button class="btn join-btn" @click="openApplyByIdModal">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M13,7H11V11H7V13H11V17H13V13H17V11H13V7Z"/>
-          </svg>
-          加入聊天室
-        </button>
-        <button class="primary-btn" @click="openCreateRoomModal">新建聊天室</button>
-      </div>
-    </div>
-
     <div class="chat-layout">
-      <div class="sidebar">
+      <!-- 移动端遮罩层 -->
+      <div 
+        v-if="sidebarOpen" 
+        class="mobile-overlay"
+        @click="closeSidebar"
+      ></div>
+      
+      <div 
+        class="sidebar" 
+        :class="{ 'mobile-open': sidebarOpen }"
+        @touchstart="handleTouchStart"
+        @touchmove="handleTouchMove"
+      >
+        <!-- 移动端关闭按钮 -->
+        <button class="mobile-close-btn" @click="closeSidebar">×</button>
+        
+        <!-- 聊天室操作按钮 -->
+        <div class="sidebar-actions">
+          <button class="sidebar-btn join-btn" @click="openApplyByIdModal">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M13,7H11V11H7V13H11V17H13V13H17V11H13V7Z"/>
+            </svg>
+            加入聊天室
+          </button>
+          <button class="sidebar-btn primary-btn" @click="openCreateRoomModal">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" />
+            </svg>
+            新建聊天室
+          </button>
+        </div>
+        
         <div class="search-box">
           <el-input v-model="searchQuery" placeholder="搜索聊天室..." clearable>
             <template #prefix>
@@ -78,6 +91,12 @@
       <div class="chat-area">
         <div class="chat-header" v-if="selectedRoom">
           <div class="chat-info">
+            <!-- 移动端侧边栏切换按钮 -->
+            <button class="mobile-sidebar-toggle" @click="toggleSidebar" v-show="!sidebarOpen">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z" />
+              </svg>
+            </button>
             <div class="chat-avatar" :style="{ background: selectedRoom.color || '#8aa1ff' }">
               {{ (selectedRoom.name || '?').charAt(0) }}
             </div>
@@ -209,7 +228,15 @@
           <div class="error" v-if="errorMsg">{{ errorMsg }}</div>
         </div>
 
-        <div class="chat-input-disabled" v-else-if="selectedRoom && !currentUserRole">
+        <!-- 角色加载中：避免误判为非成员 -->
+        <div class="chat-input-disabled" v-else-if="selectedRoom && roleLoading">
+          <div class="join-prompt">
+            <p>正在确认你的成员身份...</p>
+          </div>
+        </div>
+
+        <!-- 确认非成员才提示无法发送 -->
+        <div class="chat-input-disabled" v-else-if="selectedRoom && currentUserRole === 'not-member'">
           <div class="join-prompt">
             <p>你还不是该聊天室成员，无法发送消息</p>
             <el-button type="primary" @click="openApplyModal">申请加入</el-button>
@@ -220,8 +247,13 @@
           <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor" opacity="0.3">
             <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4l4 4 4-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" />
           </svg>
-          <h3>选择一个聊天室开始对话</h3>
-          <p>点击左侧的聊天室开始与团队成员交流</p>
+          <h3>还没有可用的聊天室</h3>
+          <p>你可以创建一个聊天室，或让管理员邀请你加入</p>
+          <div class="empty-actions">
+            <el-button type="primary" @click="openCreateRoomModal">新建聊天室</el-button>
+            <el-button @click="openApplyByIdModal">按ID加入</el-button>
+            <el-button class="only-mobile" @click="toggleSidebar" v-show="!sidebarOpen">打开侧边栏</el-button>
+          </div>
         </div>
       </div>
     </div>
@@ -403,10 +435,14 @@ export default {
     const currentUser = ref(null)
     const currentUserId = ref(null)
     // 权限标记（若外层或模板存在引用，避免未定义告警）
-    const noAccess = ref(false)
-    // 当前用户在选中房间的角色信息
-    const currentUserRole = ref(null)
-    const userRoomRoles = ref({})
+  const noAccess = ref(false)
+  // 当前用户在选中房间的角色信息
+  const currentUserRole = ref(null)
+  const roleLoading = ref(false)
+  const userRoomRoles = ref({})
+
+    // 移动端侧边栏状态
+    const sidebarOpen = ref(false)
 
     // Modals state
   const showCreateModal = ref(false)
@@ -464,14 +500,44 @@ export default {
       return isRoomCreator.value || isRoomKing.value
     })
 
-    const goBack = () => {
-      router.push('/')
+    // 移动端侧边栏控制
+    const toggleSidebar = () => {
+      sidebarOpen.value = !sidebarOpen.value
+    }
+
+    const closeSidebar = () => {
+      sidebarOpen.value = false
+    }
+
+    // 触摸滑动控制
+    let touchStartX = 0
+    let touchStartY = 0
+
+    const handleTouchStart = (e) => {
+      touchStartX = e.touches[0].clientX
+      touchStartY = e.touches[0].clientY
+    }
+
+    const handleTouchMove = (e) => {
+      if (!sidebarOpen.value) return
+      
+      const currentX = e.touches[0].clientX
+      const currentY = e.touches[0].clientY
+      const diffX = currentX - touchStartX
+      const diffY = Math.abs(currentY - touchStartY)
+      
+      // 如果水平滑动距离大于垂直滑动距离，且向左滑动超过100px，关闭侧边栏
+      if (Math.abs(diffX) > diffY && diffX < -100) {
+        closeSidebar()
+      }
     }
 
     const selectRoom = async (room) => {
       selectedRoom.value = room
       errorMsg.value = ''
       messages.value = []
+      // 移动端选择房间后自动关闭侧边栏
+      sidebarOpen.value = false
       // 更新当前用户在该房间的角色
       await updateCurrentUserRole(room.id)
       await loadMessages(room.id)
@@ -479,12 +545,14 @@ export default {
 
     // 更新当前用户在房间的角色
     const updateCurrentUserRole = async (roomId) => {
+      roleLoading.value = true
       currentUserRole.value = null
-      if (!currentUserId.value) return
+      if (!currentUserId.value) { roleLoading.value = false; return }
       
       // 如果已缓存该房间的角色信息，直接使用
       if (userRoomRoles.value[roomId]) {
         currentUserRole.value = userRoomRoles.value[roomId]
+        roleLoading.value = false
         return
       }
 
@@ -495,9 +563,16 @@ export default {
         if (currentMember) {
           currentUserRole.value = currentMember.role
           userRoomRoles.value[roomId] = currentMember.role
+        } else {
+          // 明确标记为非成员，避免 UI 误判
+          currentUserRole.value = 'not-member'
         }
       } catch (e) {
         console.warn('获取用户角色失败:', e.message)
+        // 出错时也避免出现可发送的状态
+        currentUserRole.value = 'not-member'
+      } finally {
+        roleLoading.value = false
       }
     }
 
@@ -686,6 +761,26 @@ export default {
     const resp = await ApiService.getChatRooms(activeTab.value === 'all' ? null : activeTab.value)
         const data = resp?.data?.data || []
         rooms.value = data
+        
+        // 检查当前选中的房间是否还在新的房间列表中
+        const currentRoomStillExists = selectedRoom.value && 
+          data.some(room => room.id === selectedRoom.value.id)
+        
+        // 如果当前没有选择聊天室，或者当前选择的聊天室不在新列表中，自动选择第一个
+        if ((!selectedRoom.value || !currentRoomStillExists) && data.length > 0) {
+          selectedRoom.value = data[0]
+          // 加载第一个房间的消息
+          if (data[0].id) {
+            await updateCurrentUserRole(data[0].id)
+            await loadMessages(data[0].id)
+          }
+        } else if (data.length === 0) {
+          // 没有任何聊天室：清空选择与消息，进入空态
+          selectedRoom.value = null
+          messages.value = []
+          currentUserRole.value = null
+          roleLoading.value = false
+        }
       } catch (e) {
     console.error(e)
     roomsError.value = e.message || '拉取失败'
@@ -753,6 +848,15 @@ export default {
           const data = resp?.data?.data || resp?.data || resp
           rooms.value.unshift(data)
           showCreateModal.value = false
+
+          // 成功后自动进入新聊天室
+          if (data && data.id) {
+            await selectRoom(data)
+          } else {
+            // 若无 id，刷新列表后进入第一个
+            await loadRooms()
+            if (rooms.value.length > 0) await selectRoom(rooms.value[0])
+          }
         }
       } catch (e) {
         modalError.value = e.message || '创建失败'
@@ -872,7 +976,6 @@ export default {
       sending,
   roomsError,
       filteredRooms,
-      goBack,
       selectRoom,
       sendMessage,
       onMessageCollected,
@@ -892,7 +995,8 @@ export default {
       copyRoomId,
       formatTime,
       // 权限相关
-      currentUserRole,
+  currentUserRole,
+  roleLoading,
       isRoomCreator,
       isRoomAdmin,
       isRoomKing,
@@ -934,7 +1038,13 @@ export default {
   applyByIdRoomId,
   applyByIdReason,
   submitApplyById,
-  submitRoom
+  submitRoom,
+  // 移动端侧边栏
+  sidebarOpen,
+  toggleSidebar,
+  closeSidebar,
+  handleTouchStart,
+  handleTouchMove
     }
   }
 }
@@ -947,19 +1057,6 @@ export default {
   min-height: calc(100vh - 48px);
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.header-actions { 
-  margin-left: auto;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
 .primary-btn {
   background: #4facfe;
   color: #fff;
@@ -1005,24 +1102,6 @@ export default {
   cursor: pointer;
 }
 
-.back-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: white;
-  border: 2px solid #e9ecef;
-  border-radius: 8px;
-  padding: 8px 16px;
-  color: #6c757d;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.back-btn:hover {
-  border-color: #667eea;
-  color: #667eea;
-}
-
 .page-title {
   font-size: 2rem;
   font-weight: 700;
@@ -1034,7 +1113,7 @@ export default {
   display: grid;
   grid-template-columns: 300px 1fr;
   gap: 20px;
-  height: calc(100vh - 200px);
+  height: calc(100vh - 180px);
 }
 
 .sidebar {
@@ -1046,16 +1125,53 @@ export default {
   flex-direction: column;
 }
 
-.search-box {
-  position: relative;
+.sidebar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   margin-bottom: 16px;
 }
 
-.search-box svg {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
+.sidebar-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  justify-content: center;
+}
+
+.sidebar-btn.join-btn {
+  background: #f8f9fa;
+  color: #28a745;
+  border: 1px solid #28a745;
+}
+
+.sidebar-btn.join-btn:hover {
+  background: #28a745;
+  color: white;
+}
+
+.sidebar-btn.primary-btn {
+  background: #4facfe;
+  color: white;
+}
+
+.sidebar-btn.primary-btn:hover {
+  background: #3a9afd;
+}
+
+
+.search-box {
+  margin-bottom: 16px;
+}
+
+.search-box :deep(.el-input__prefix) {
   color: #6c757d;
 }
 
@@ -1440,6 +1556,12 @@ export default {
   font-size: 14px;
 }
 
+.empty-actions { margin-top: 8px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+@media (min-width: 769px) {
+  .only-mobile { display: none !important; }
+}
+
 .empty-messages {
   flex: 1;
   display: flex;
@@ -1500,27 +1622,246 @@ export default {
 
 @media (max-width: 768px) {
   .page {
-    padding: 16px;
-  }
-
-  .chat-layout {
-    grid-template-columns: 1fr;
-    height: calc(100vh - 160px);
-  }
-
-  .sidebar {
-    order: 2;
-    height: 200px;
-  }
-
-  .header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+    padding: 8px;
   }
 
   .page-title {
     font-size: 1.5rem;
+  }
+
+  .chat-layout {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 140px);
+    gap: 0;
+  }
+
+  .sidebar {
+    display: none; /* 默认隐藏侧边栏 */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 80%;
+    max-width: 320px;
+    bottom: 0;
+    background: white;
+    z-index: 1001;
+    padding: 20px;
+    overflow-y: auto;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+  }
+
+  .sidebar.mobile-open {
+    display: flex;
+    flex-direction: column;
+    transform: translateX(0);
+  }
+
+  .mobile-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+  }
+
+  .chat-area {
+    flex: 1;
+    border-radius: 12px;
+    margin: 0;
+  }
+
+  .chat-header {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .chat-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .chat-name {
+    font-size: 1rem;
+  }
+
+  .chat-members {
+    font-size: 11px;
+  }
+
+  .chat-id {
+    font-size: 10px;
+  }
+
+  .chat-actions {
+    flex-shrink: 0;
+    gap: 4px;
+  }
+
+  .action-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .messages-container {
+    padding: 12px 16px;
+  }
+
+  .message {
+    margin-bottom: 12px;
+  }
+
+  .message-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+
+  .message-content {
+    max-width: 85%;
+  }
+
+  .message-bubble {
+    padding: 10px 14px;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .message-header {
+    margin-bottom: 2px;
+  }
+
+  .message-sender {
+    font-size: 11px;
+  }
+
+  .message-time {
+    font-size: 10px;
+  }
+
+  .chat-input {
+    padding: 12px 16px;
+  }
+
+  .input-container {
+    gap: 6px;
+  }
+
+  .attach-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* Element Plus 组件移动端优化 */
+  .input-container :deep(.el-input__wrapper) {
+    padding: 8px 12px;
+  }
+
+  .input-container :deep(.el-button) {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  /* 移动端侧边栏顶部按钮 */
+  .sidebar .mobile-close-btn {
+    display: block;
+    align-self: flex-end;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 8px;
+    margin-bottom: 8px;
+    color: #6c757d;
+  }
+
+  /* 移动端侧边栏按钮优化 */
+  .sidebar-actions {
+    margin-bottom: 12px;
+  }
+
+  .sidebar-btn {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  /* 移动端显示侧边栏按钮 */
+  .mobile-sidebar-toggle {
+    display: block;
+    width: 32px;
+    height: 32px;
+    background: #4facfe;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-right: 8px;
+  }
+
+  /* 房间列表移动端优化 */
+  .room-item {
+    padding: 10px 8px;
+    margin-bottom: 6px;
+  }
+
+  .room-avatar .avatar-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 13px;
+  }
+
+  .room-name {
+    font-size: 13px;
+  }
+
+  .room-message {
+    font-size: 11px;
+  }
+
+  .room-time {
+    font-size: 10px;
+  }
+
+  /* 搜索框移动端优化：保留默认内边距，避免与prefix重叠 */
+  /* .search-box :deep(.el-input__wrapper) { padding: 6px 10px; } */
+
+  /* Tab 移动端优化 */
+  .elevated-tabs :deep(.el-tabs__nav-wrap) {
+    padding: 0 8px;
+  }
+
+  .elevated-tabs :deep(.el-tabs__item) {
+    font-size: 13px;
+    padding: 0 12px;
+  }
+
+  /* Modal 移动端优化 */
+  .modal {
+    width: calc(100vw - 32px);
+    max-width: none;
+    margin: 16px;
+  }
+
+  .form-two {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+/* 桌面端隐藏移动端专用元素 */
+@media (min-width: 769px) {
+  .mobile-close-btn,
+  .mobile-sidebar-toggle {
+    display: none !important;
   }
 }
 </style>
