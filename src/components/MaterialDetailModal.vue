@@ -7,12 +7,12 @@
           <button @click="closeModal" class="close-btn">×</button>
         </div>
 
-        <div v-if="loading" class="loading-container">
+  <div v-if="loading" class="loading-container">
           <div class="loading-spinner"></div>
           <p>加载材料详情中...</p>
         </div>
 
-        <div v-else-if="material" class="modal-body">
+  <div v-else-if="material" class="modal-body">
           <!-- 材料基本信息 -->
           <div class="material-info">
             <div class="material-header">
@@ -66,6 +66,12 @@
                   <div class="content-label">描述</div>
                   <div class="description-text">{{ material.content }}</div>
                 </div>
+                <div v-if="availableDownloadUrl" class="content-description">
+                  <div class="content-label">下载地址</div>
+                  <div class="description-text">
+                    <a :href="availableDownloadUrl" target="_blank" rel="noopener noreferrer">{{ availableDownloadUrl }}</a>
+                  </div>
+                </div>
                 <div class="file-actions">
                   <button @click="downloadFile" class="btn-primary">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -92,9 +98,14 @@
           </div>
         </div>
 
-        <div v-else class="error-state">
-          <p>加载材料详情失败</p>
+        <div v-else-if="tried && !material" class="error-state">
+          <p>{{ errorMsg || '加载材料详情失败' }}</p>
           <button @click="loadMaterialDetail" class="btn-secondary">重试</button>
+        </div>
+
+        <div v-else class="loading-container">
+          <div class="loading-spinner"></div>
+          <p>准备加载...</p>
         </div>
 
         <div class="modal-footer">
@@ -106,7 +117,7 @@
 </template>
 
 <script>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import apiService from '@/services/api.js'
 
 export default {
@@ -120,6 +131,11 @@ export default {
       type: [String, Number],
       required: true
     },
+    // 可选：用于在打开时立即展示已知信息，随后再从服务器补全
+    initialMaterial: {
+      type: Object,
+      default: null
+    },
     visible: {
       type: Boolean,
       default: false
@@ -127,34 +143,69 @@ export default {
   },
   emits: ['close'],
   setup(props, { emit }) {
-    const loading = ref(false)
-    const material = ref(null)
+  const loading = ref(false)
+  const material = ref(null)
+  const tried = ref(false)
+  const errorMsg = ref('')
 
     // 加载材料详情
     const loadMaterialDetail = async () => {
       if (!props.courseId || !props.materialId) return
 
+      tried.value = true
+      errorMsg.value = ''
       try {
         loading.value = true
         const response = await apiService.getCourseMaterial(props.courseId, props.materialId)
         if (response.data.success) {
           material.value = response.data.data
+        } else {
+          material.value = null
+          errorMsg.value = response.data.message || '加载材料详情失败'
         }
       } catch (error) {
         console.error('加载材料详情失败:', error)
         material.value = null
+        errorMsg.value = error.message || '加载材料详情失败'
       } finally {
         loading.value = false
       }
     }
 
-    // 下载文件
-    const downloadFile = () => {
-      if (material.value?.file_path) {
-        // 这里应该调用文件下载接口
-        alert('文件下载功能开发中...')
+      // 提取可用的下载链接
+      const extractUrlFromText = (text) => {
+        if (!text || typeof text !== 'string') return ''
+        const matches = text.match(/https?:\/\/[^\s'"\)\]]+/g)
+        return matches && matches.length ? matches[matches.length - 1] : ''
       }
-    }
+
+      const getDownloadUrl = (m) => {
+        if (!m) return ''
+        const candidates = [m.download_url, m.file_url, m.url, m.file_path]
+          .filter(Boolean)
+          .map(String)
+        for (const u of candidates) {
+          if (/^https?:\/\//i.test(u)) return u
+        }
+        // 从 combined_text 或 content 中回退提取
+        const fromCombined = extractUrlFromText(m.combined_text)
+        if (fromCombined) return fromCombined
+        const fromContent = extractUrlFromText(m.content)
+        if (fromContent) return fromContent
+        return ''
+      }
+
+      const availableDownloadUrl = computed(() => getDownloadUrl(material.value))
+
+      // 下载文件
+      const downloadFile = () => {
+        const url = availableDownloadUrl.value
+        if (!url) {
+          alert('未找到可用的下载链接')
+          return
+        }
+        window.open(url, '_blank')
+      }
 
     // 关闭模态框
     const closeModal = () => {
@@ -190,18 +241,41 @@ export default {
       })
     }
 
-    // 监听可见性变化
-    watch(() => props.visible, (visible) => {
-      if (visible) {
+    // 监听可见性与ID，确保在可见且ID就绪时再加载；避免初次ID未就绪导致误报错误
+    watch(
+      [() => props.visible, () => props.courseId, () => props.materialId],
+      ([visible, courseId, materialId]) => {
+        if (!visible) {
+          // 关闭时重置状态
+          loading.value = false
+          tried.value = false
+          errorMsg.value = ''
+          material.value = null
+          return
+        }
+
+        // 打开即显示加载态，先用初始材料（若有）占位
+        loading.value = true
+        tried.value = false
+        errorMsg.value = ''
+        material.value = props.initialMaterial || null
+
+        // ID 未就绪，等待下一次变更
+        if (!courseId || !materialId) {
+          return
+        }
+
+        // ID 就绪，发起加载
         loadMaterialDetail()
-      } else {
-        material.value = null
-      }
-    })
+      },
+      { immediate: true }
+    )
 
     return {
-      loading,
-      material,
+  loading,
+  material,
+  tried,
+  errorMsg,
       loadMaterialDetail,
       downloadFile,
       closeModal,

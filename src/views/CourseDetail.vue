@@ -146,7 +146,7 @@
                   @click="openMaterial(material)" 
                   class="material-btn primary"
                 >
-                  {{ material.type === 'link' ? '访问' : '查看' }}
+                  查看
                 </button>
               </div>
             </div>
@@ -206,6 +206,7 @@
       v-if="showMaterialDetail"
       :courseId="courseId"
       :materialId="selectedMaterialId"
+  :initialMaterial="selectedMaterial"
       :visible="showMaterialDetail"
       @close="closeMaterialDetail"
     />
@@ -244,7 +245,8 @@ export default {
     
     // 材料详情模态框
     const showMaterialDetail = ref(false)
-    const selectedMaterialId = ref(null)
+  const selectedMaterialId = ref(null)
+  const selectedMaterial = ref(null)
     
     // 活动选项卡
     const activeTab = ref('materials')
@@ -378,19 +380,17 @@ export default {
 
     // 打开材料
     const openMaterial = (material) => {
-      if (material.type === 'link' && material.url) {
-        window.open(material.url, '_blank')
-      } else {
-        // 打开材料详情模态框
-        selectedMaterialId.value = material.id
-        showMaterialDetail.value = true
-      }
+      // 始终打开材料详情弹窗，链接可在弹窗内点击访问
+      selectedMaterialId.value = material.id
+      selectedMaterial.value = material
+      showMaterialDetail.value = true
     }
 
     // 关闭材料详情模态框
     const closeMaterialDetail = () => {
       showMaterialDetail.value = false
       selectedMaterialId.value = null
+  selectedMaterial.value = null
     }
 
     // 跳转到课程
@@ -469,6 +469,7 @@ export default {
       toggleFavorite,
       openMaterial,
       closeMaterialDetail,
+  selectedMaterial,
       goToCourse,
       goBack,
       getSkillLevelClass,
