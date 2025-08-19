@@ -5,7 +5,9 @@ export const config = {
     // 除课程外，所有功能都使用远程API
     useLocalData: false,
     baseURL: '/api',
-    timeout: 30000
+    timeout: 60000, // 默认超时60秒
+    // AI相关请求的特殊超时配置
+    aiTimeout: 120000 // AI聊天超时120秒
   },
 
   // 数据库/缓存配置

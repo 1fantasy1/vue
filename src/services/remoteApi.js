@@ -1,5 +1,6 @@
 // 鸿庆书云创新协作平台API服务
 import httpClient from './httpClient.js'
+import { config } from '@/config/index.js'
 
 // 基础API类
 class BaseAPI {
@@ -531,13 +532,14 @@ export class AIAPI extends BaseAPI {
     }
     
     try {
-      const config = {
+      const requestConfig = {
         method: 'POST',
         url: `${this.endpoint}/qa`,
-        data: formData
+        data: formData,
+        timeout: config.api.aiTimeout || 120000 // 使用AI专用超时时间
       }
       
-      const response = await httpClient(config)
+      const response = await httpClient(requestConfig)
       return response.data
     } catch (error) {
       throw this.handleError(error)
@@ -545,11 +547,23 @@ export class AIAPI extends BaseAPI {
   }
 
   async webSearch(query, engineConfigId, limit = 5) {
-    return await this.request('POST', '/web-search', {
-      query,
-      engine_config_id: engineConfigId,
-      limit
-    })
+    try {
+      const requestConfig = {
+        method: 'POST',
+        url: `${this.endpoint}/web-search`,
+        data: {
+          query,
+          engine_config_id: engineConfigId,
+          limit
+        },
+        timeout: config.api.aiTimeout || 120000 // 使用AI专用超时时间
+      }
+      
+      const response = await httpClient(requestConfig)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
   }
 }
 
