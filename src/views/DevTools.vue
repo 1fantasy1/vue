@@ -301,13 +301,16 @@ export default {
 .page-title {
   font-size: 2.5rem;
   font-weight: 700;
-  color: #2c3e50;
+  color: #ffffff;
   margin-bottom: 12px;
 }
 
 .page-description {
-  color: #6c757d;
-  font-size: 1.1rem;
+  /* 改为白色以满足视觉需求 */
+  color: #ffffff;
+  font-size: 1.125rem; /* ~18px */
+  font-weight: 500;
+  line-height: 1.6;
   margin: 0;
 }
 
