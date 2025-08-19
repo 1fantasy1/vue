@@ -215,78 +215,80 @@ export default {
       courses.value = []
     }
 
-    // 从API加载课程数据
+    // 从API加载课程数据：必要信息来自 /dashboard/courses，详情来自 /courses/，按 id 合并
     const loadCourses = async () => {
       try {
         loading.value = true
-        // 读取“我的课程”（只包含用户报名/有关联的课程）
-        const response = await apiService.getMyCourses()
-        if (response.data.success) {
-          const list = Array.isArray(response.data.data) ? response.data.data : []
-          // 统一映射：兼容 DashboardCourseCard 与 UserCourseResponse
-          const statusMap = {
-            registered: 'learning',
-            not_started: 'learning',
-            in_progress: 'learning',
-            completed: 'completed',
-            dropped: 'learning'
-          }
 
-          const toPercent = (p) => {
-            if (p == null || isNaN(p)) return 0
-            return p <= 1 ? Math.round(p * 100) : Math.round(p)
-          }
+        // 并行获取工作台课程卡片与课程详情列表
+        const [dashResp, listResp] = await Promise.all([
+          apiService.getDashboardCourses(),
+          apiService.getCourses()
+        ])
 
-          courses.value = list.map(item => {
-            // 形态A：UserCourseResponse
-            if (item && (item.course || item.course_id)) {
-              const c = item.course || {}
-              return {
-                id: c.id ?? item.course_id,
-                title: c.title || '未命名课程',
-                instructor: c.instructor || '未知',
-                description: c.description || '',
-                category: c.category || '其他',
-                level: 'intermediate',
-                progress: toPercent(item.progress || 0),
-                duration: c.duration ? `${c.duration}小时` : '未知',
-                lessons: c.total_lessons || 0,
-                students: c.enrolled_count || 0,
-                status: statusMap[item.status] || 'learning',
-                lastUpdate: item.last_accessed ? new Date(item.last_accessed).toLocaleDateString() : (c.updated_at ? new Date(c.updated_at).toLocaleDateString() : '未知'),
-                completedDate: item.status === 'completed' ? (item.last_accessed ? new Date(item.last_accessed).toLocaleDateString() : '') : undefined,
-                coverImage: c.cover_image_url
-              }
-            }
-
-            // 形态B：DashboardCourseCard（直接平铺字段）
-            const c = item || {}
-            const status = c.status && statusMap[c.status] ? statusMap[c.status] : (['learning','completed'].includes(c.status) ? c.status : 'learning')
-            return {
-              id: c.id,
-              title: c.title || '未命名课程',
-              instructor: c.instructor || '未知',
-              description: c.description || '',
-              category: c.category || '其他',
-              level: 'intermediate',
-              progress: toPercent(c.progress || 0),
-              duration: c.duration ? `${c.duration}小时` : '未知',
-              lessons: c.total_lessons || c.lessons || 0,
-              students: c.enrolled_count || c.students || 0,
-              status,
-              lastUpdate: c.updated_at ? new Date(c.updated_at).toLocaleDateString() : '未知',
-              completedDate: status === 'completed' ? (c.updated_at ? new Date(c.updated_at).toLocaleDateString() : '') : undefined,
-              coverImage: c.cover_image_url || c.coverImage
-            }
-          })
-        } else {
-          // API失败则展示空状态
-          initializeDefaultCourses()
+        const statusMap = {
+          registered: 'learning',
+          not_started: 'learning',
+          in_progress: 'learning',
+          learning: 'learning',
+          completed: 'completed',
+          dropped: 'learning'
         }
+
+        const toPercent = (p) => {
+          if (p == null || isNaN(p)) return 0
+          return p <= 1 ? Math.round(p * 100) : Math.round(p)
+        }
+
+        // 解包响应（兼容 createResponse 的包装）
+        const dashData = dashResp?.data || {}
+        const listData = listResp?.data || {}
+        if (dashData?.success === false) {
+          throw new Error(dashData?.message || '获取工作台课程失败')
+        }
+        if (listData?.success === false) {
+          throw new Error(listData?.message || '获取课程列表失败')
+        }
+
+        const dashList = Array.isArray(dashData?.data) ? dashData.data : (Array.isArray(dashData) ? dashData : [])
+        const allCourses = Array.isArray(listData?.data) ? listData.data : (Array.isArray(listData) ? listData : [])
+
+        // 详情表按 id 建索引
+        const detailsMap = new Map()
+        for (const c of allCourses) {
+          if (c && (c.id !== undefined && c.id !== null)) {
+            detailsMap.set(c.id, c)
+          }
+        }
+
+        // 合并：以 dashboard 为主（只呈现“我的课程”），用 /courses/ 详情补齐字段
+        courses.value = (dashList || []).map(d => {
+          const detail = detailsMap.get(d.id) || {}
+          const statusKey = d.status || detail.status
+          const status = statusMap[statusKey] || (['learning', 'completed'].includes(statusKey) ? statusKey : 'learning')
+          const progressRaw = d.progress ?? detail.progress ?? 0
+          const updatedAt = d.updated_at || detail.updated_at
+          return {
+            id: d.id,
+            title: detail.title || d.title || '未命名课程',
+            instructor: detail.instructor || '未知',
+            description: detail.description || '',
+            category: detail.category || '其他',
+            level: 'intermediate',
+            progress: toPercent(progressRaw),
+            duration: detail?.duration ? `${detail.duration}小时` : '未知',
+            lessons: detail?.total_lessons || detail?.lessons || 0,
+            students: detail?.enrolled_count || detail?.students || 0,
+            status,
+            lastUpdate: updatedAt ? new Date(updatedAt).toLocaleDateString() : '未知',
+            completedDate: status === 'completed' ? (updatedAt ? new Date(updatedAt).toLocaleDateString() : '') : undefined,
+            coverImage: detail?.cover_image_url || detail?.coverImage
+          }
+        })
       } catch (error) {
-  console.error('加载课程失败:', error)
-  // API失败则展示空状态
-  initializeDefaultCourses()
+        console.error('加载课程失败:', error)
+        // API失败则展示空状态
+        initializeDefaultCourses()
       } finally {
         loading.value = false
       }
