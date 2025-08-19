@@ -536,7 +536,7 @@
             <button 
               class="comment-submit-btn" 
               @click="addComment(post)"
-              :disabled="!post.newComment?.trim()"
+              :disabled="!canSubmitTopComment(post)"
             >
               发送
             </button>
@@ -1001,7 +1001,6 @@ export default {
       if (!canPublishPost.value) return
       try {
         const payload = {
-          title: (newPost.value || '').slice(0, 40) || '新话题',
           content: newPost.value.trim() || undefined,
           tags: selectedPostTopic.value || undefined
         }
@@ -1115,6 +1114,16 @@ export default {
       if (!hasText && !hasMedia) return false
       if (hasMedia && !comment.replyMediaType) return false
       if (comment.replyFile && comment.replyMediaUrl?.trim()) return false
+      return true
+    }
+
+    // 顶层评论是否可发送：支持文本或仅媒体（需选择媒体类型，且 URL 与 文件二选一）
+    const canSubmitTopComment = (post) => {
+      const hasText = !!post.newComment?.trim()
+      const hasMedia = !!post.newCommentFile || !!post.newCommentMediaUrl?.trim()
+      if (!hasText && !hasMedia) return false
+      if (hasMedia && !post.newCommentMediaType) return false
+      if (post.newCommentFile && post.newCommentMediaUrl?.trim()) return false
       return true
     }
 
@@ -1412,6 +1421,7 @@ export default {
       toggleLike,
       toggleComments,
       addComment,
+  canSubmitTopComment,
   toggleReply,
   onReplyFileChange,
   canSubmitReply,

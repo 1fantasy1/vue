@@ -11,7 +11,6 @@ const httpClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: API_TIMEOUT,
   headers: {
-    'Content-Type': 'application/json',
     'Accept': 'application/json'
   },
   withCredentials: false // 跨域请求不发送cookies
@@ -26,9 +25,20 @@ httpClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
     
-    // 如果数据是FormData，删除默认的Content-Type让axios自动设置
+    // 如果数据是FormData，删除默认的Content-Type让axios自动设置（包含大小写与方法级别）
     if (config.data instanceof FormData) {
-      delete config.headers['Content-Type']
+      if (config.headers) {
+        delete config.headers['Content-Type']
+        delete config.headers['content-type']
+      }
+      // 兼容 axios 可能合并的方法级别头
+      if (config.headers && typeof config.headers === 'object') {
+        const method = (config.method || '').toLowerCase()
+        if (method && config.headers[method]) {
+          delete config.headers[method]['Content-Type']
+          delete config.headers[method]['content-type']
+        }
+      }
     }
     
     console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`)

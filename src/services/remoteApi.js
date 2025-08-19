@@ -831,13 +831,37 @@ export class ForumAPI extends BaseAPI {
   }
 
   async createTopic(topicData) {
-  const formData = this.buildFormData(topicData)
-  return await this.request('POST', '/topics/', formData)
+  // 后端要求 content 位于查询参数
+  const q = {}
+  if (topicData?.content) q.content = topicData.content
+  if (topicData?.tags) q.tags = topicData.tags
+  if (topicData?.media_url) q.media_url = topicData.media_url
+  if (topicData?.media_type) q.media_type = topicData.media_type
+
+  const formData = new FormData()
+  if (topicData?.file) {
+    formData.append('file', topicData.file)
+  } else {
+    // 保证 multipart 非空，避免 FastAPI 解析失败
+    formData.append('noop', '1')
+  }
+  return await this.request('POST', '/topics/', formData, q)
   }
 
   async updateTopic(topicId, topicData) {
-  const formData = this.buildFormData(topicData)
-  return await this.request('PUT', `/topics/${topicId}`, formData)
+  const q = {}
+  if (topicData?.content) q.content = topicData.content
+  if (topicData?.tags) q.tags = topicData.tags
+  if (topicData?.media_url) q.media_url = topicData.media_url
+  if (topicData?.media_type) q.media_type = topicData.media_type
+
+  const formData = new FormData()
+  if (topicData?.file) {
+    formData.append('file', topicData.file)
+  } else {
+    formData.append('noop', '1')
+  }
+  return await this.request('PUT', `/topics/${topicId}`, formData, q)
   }
 
   async deleteTopic(topicId) {
@@ -852,12 +876,27 @@ export class ForumAPI extends BaseAPI {
   }
 
   async addComment(topicId, commentData) {
-  const formData = this.buildFormData(commentData)
+  const formData = new FormData()
+  if (commentData?.file) {
+    formData.append('file', commentData.file)
+  }
+  if (commentData?.content) formData.append('content', String(commentData.content))
+  if (commentData?.parent_comment_id) formData.append('parent_comment_id', String(commentData.parent_comment_id))
+  if (commentData?.media_url) formData.append('media_url', String(commentData.media_url))
+  if (commentData?.media_type) formData.append('media_type', String(commentData.media_type))
+  if (![...formData.keys()].length) formData.append('noop', '1')
   return await this.request('POST', `/topics/${topicId}/comments/`, formData)
   }
 
   async updateComment(commentId, commentData) {
-  const formData = this.buildFormData(commentData)
+  const formData = new FormData()
+  if (commentData?.file) {
+    formData.append('file', commentData.file)
+  }
+  if (commentData?.content) formData.append('content', String(commentData.content))
+  if (commentData?.media_url) formData.append('media_url', String(commentData.media_url))
+  if (commentData?.media_type) formData.append('media_type', String(commentData.media_type))
+  if (![...formData.keys()].length) formData.append('noop', '1')
   return await this.request('PUT', `/comments/${commentId}`, formData)
   }
 
