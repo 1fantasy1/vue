@@ -784,6 +784,23 @@ export class ForumAPI extends BaseAPI {
     super('/forum')
   }
 
+  // 将普通对象转换为 FormData（仅附加非空字段）
+  buildFormData(data) {
+    if (data instanceof FormData) return data
+    const fd = new FormData()
+    if (!data) return fd
+    Object.entries(data).forEach(([key, value]) => {
+      if (value === undefined || value === null) return
+      // File/Blob 直接追加，其余转为字符串
+      if (value instanceof Blob) {
+        fd.append(key, value)
+      } else {
+        fd.append(key, String(value))
+      }
+    })
+    return fd
+  }
+
   async getTopics(options = {}) {
     const params = {}
     if (options.queryStr) params.query_str = options.queryStr
@@ -800,11 +817,13 @@ export class ForumAPI extends BaseAPI {
   }
 
   async createTopic(topicData) {
-    return await this.request('POST', '/topics/', topicData)
+  const formData = this.buildFormData(topicData)
+  return await this.request('POST', '/topics/', formData)
   }
 
   async updateTopic(topicId, topicData) {
-    return await this.request('PUT', `/topics/${topicId}`, topicData)
+  const formData = this.buildFormData(topicData)
+  return await this.request('PUT', `/topics/${topicId}`, formData)
   }
 
   async deleteTopic(topicId) {
@@ -819,11 +838,13 @@ export class ForumAPI extends BaseAPI {
   }
 
   async addComment(topicId, commentData) {
-    return await this.request('POST', `/topics/${topicId}/comments/`, commentData)
+  const formData = this.buildFormData(commentData)
+  return await this.request('POST', `/topics/${topicId}/comments/`, formData)
   }
 
   async updateComment(commentId, commentData) {
-    return await this.request('PUT', `/comments/${commentId}`, commentData)
+  const formData = this.buildFormData(commentData)
+  return await this.request('PUT', `/comments/${commentId}`, formData)
   }
 
   async deleteComment(commentId) {

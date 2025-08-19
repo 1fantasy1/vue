@@ -263,6 +263,86 @@
           maxlength="500"
           rows="3"
         ></textarea>
+        <div class="composer-media-row" v-if="showMediaInputs || newPostMediaType">
+          <div class="media-header">
+            <span class="media-title">📎 添加媒体内容</span>
+            <button class="media-toggle-btn" @click="toggleMediaInputs" v-if="!newPostMediaType">
+              ✕
+            </button>
+          </div>
+          
+          <div class="media-fields-grid">
+            <div class="media-field">
+              <label class="media-label">
+                <span class="label-icon">🎯</span>
+                媒体类型
+              </label>
+              <select v-model="newPostMediaType" class="media-type-select">
+                <option value="">选择类型</option>
+                <option value="image">📸 图片</option>
+                <option value="video">🎬 视频</option>
+                <option value="file">📄 文件</option>
+              </select>
+            </div>
+            
+            <div class="media-field" v-if="newPostMediaType">
+              <label class="media-label">
+                <span class="label-icon">🔗</span>
+                外部链接
+              </label>
+              <input 
+                class="media-url-input" 
+                v-model="newPostMediaUrl" 
+                placeholder="粘贴链接地址..."
+                :disabled="!!newPostFile"
+              />
+            </div>
+            
+            <div class="media-field" v-if="newPostMediaType">
+              <label class="media-label">
+                <span class="label-icon">📁</span>
+                本地文件
+              </label>
+              <div class="file-upload-area">
+                <input 
+                  type="file" 
+                  @change="onNewPostFileChange" 
+                  class="file-input"
+                  :disabled="!!newPostMediaUrl.trim()"
+                  :accept="getFileAccept(newPostMediaType)"
+                />
+                <div class="file-upload-hint" v-if="!newPostFile">
+                  <span class="upload-icon">⬆️</span>
+                  <span>点击选择{{getMediaTypeName(newPostMediaType)}}</span>
+                </div>
+                <div class="file-selected" v-if="newPostFile">
+                  <span class="file-icon">{{getFileIcon(newPostFile.name)}}</span>
+                  <span class="file-name">{{newPostFile.name}}</span>
+                  <button @click="clearSelectedFile" class="clear-file-btn">✕</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="media-status" v-if="newPostMediaType">
+            <div class="status-item" :class="{ active: newPostMediaUrl.trim() }">
+              <span class="status-icon">🔗</span>
+              <span>外部链接</span>
+            </div>
+            <div class="status-divider">或</div>
+            <div class="status-item" :class="{ active: newPostFile }">
+              <span class="status-icon">📁</span>
+              <span>本地上传</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="media-quick-actions" v-if="!showMediaInputs && !newPostMediaType">
+          <button class="quick-media-btn" @click="showMediaInputs = true">
+            <span class="btn-icon">📎</span>
+            <span>添加媒体</span>
+          </button>
+        </div>
         <div class="composer-footer">
           <div class="topic-selector">
             <select v-model="selectedPostTopic" class="topic-select">
@@ -274,7 +354,7 @@
           </div>
           <div class="composer-actions">
             <span class="char-count">{{ newPost.length }}/500</span>
-            <button class="publish-btn" @click="publishPost" :disabled="!newPost.trim()">
+            <button class="publish-btn" @click="publishPost" :disabled="!canPublishPost">
               发布
             </button>
           </div>
@@ -493,6 +573,10 @@
                     <span class="comment-action-icon">{{ comment.isLiked ? '❤️' : '🤍' }}</span>
                     <span class="comment-action-text">{{ comment.likesCount }}</span>
                   </button>
+                  <button class="comment-action-btn" @click="toggleReply(comment)">
+                    <span class="comment-action-icon">↩️</span>
+                    <span class="comment-action-text">回复</span>
+                  </button>
                   <template v-if="currentUser?.id === comment.ownerId">
                     <button class="comment-action-btn comment-edit-btn" @click="editComment(comment)">
                       <span class="comment-action-icon">✏️</span>
@@ -503,6 +587,32 @@
                       <span class="comment-action-text">删除</span>
                     </button>
                   </template>
+                </div>
+                <div v-if="comment.replying" class="reply-box">
+                  <input class="reply-input" v-model="comment.replyText" placeholder="回复内容..." @keyup.enter="submitReply(post, comment)" />
+                  <div class="reply-media-row">
+                    <select v-model="comment.replyMediaType" class="media-type-select">
+                      <option value="">无</option>
+                      <option value="image">图片</option>
+                      <option value="video">视频</option>
+                      <option value="file">文件</option>
+                    </select>
+                    <input class="media-url-input" v-model="comment.replyMediaUrl" placeholder="外部URL（可选）" />
+                    <input type="file" @change="(e)=>onReplyFileChange(comment,e)" />
+                    <button class="reply-submit-btn" @click="submitReply(post, comment)" :disabled="!canSubmitReply(comment)">发送</button>
+                  </div>
+                </div>
+                <div v-if="comment.replies && comment.replies.length" class="replies-list">
+                  <div class="reply-item" v-for="rc in comment.replies" :key="rc.id">
+                    <div class="comment-avatar">{{ rc.avatar }}</div>
+                    <div class="comment-content">
+                      <div class="comment-header">
+                        <span class="comment-username">{{ rc.username }}</span>
+                        <span class="comment-time">{{ formatTime(rc.timestamp) }}</span>
+                      </div>
+                      <div class="comment-text">{{ rc.content }}</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -600,6 +710,10 @@ export default {
     const selectedTopic = ref(null)
     const selectedPostTopic = ref('')
     const newPost = ref('')
+    const newPostFile = ref(null)
+    const newPostMediaUrl = ref('')
+    const newPostMediaType = ref('')
+    const showMediaInputs = ref(false)
     const hasMore = ref(true)
 
     const hotTopics = ref([
@@ -667,7 +781,13 @@ export default {
     likesCount: c.likes_count ?? 0,
     isLiked: !!c.is_liked_by_current_user,
     isEditing: false,
-    editContent: c.content || ''
+  editContent: c.content || '',
+  replying: false,
+  replyText: '',
+  replyMediaType: '',
+  replyMediaUrl: '',
+  replyFile: null,
+  replies: []
     })
 
     const pickData = (resp) => resp?.data?.data ?? resp?.data ?? []
@@ -821,13 +941,76 @@ export default {
       }
     }
 
+    const onNewPostFileChange = (e) => {
+      const f = e?.target?.files?.[0]
+      newPostFile.value = f || null
+    }
+
+    const toggleMediaInputs = () => {
+      showMediaInputs.value = !showMediaInputs.value
+      if (!showMediaInputs.value) {
+        // 清空媒体输入
+        newPostFile.value = null
+        newPostMediaUrl.value = ''
+        newPostMediaType.value = ''
+      }
+    }
+
+    const clearSelectedFile = () => {
+      newPostFile.value = null
+    }
+
+    const getFileAccept = (mediaType) => {
+      switch (mediaType) {
+        case 'image': return 'image/*'
+        case 'video': return 'video/*'
+        case 'file': return '*/*'
+        default: return '*/*'
+      }
+    }
+
+    const getMediaTypeName = (mediaType) => {
+      switch (mediaType) {
+        case 'image': return '图片文件'
+        case 'video': return '视频文件'
+        case 'file': return '任意文件'
+        default: return '文件'
+      }
+    }
+
+    const getFileIcon = (fileName) => {
+      const ext = fileName.split('.').pop()?.toLowerCase()
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return '🖼️'
+      if (['mp4', 'avi', 'mov', 'wmv'].includes(ext)) return '🎬'
+      if (['pdf'].includes(ext)) return '📄'
+      if (['doc', 'docx'].includes(ext)) return '📝'
+      if (['zip', 'rar', '7z'].includes(ext)) return '📦'
+      return '📄'
+    }
+
+    const canPublishPost = computed(() => {
+      const hasText = !!newPost.value.trim()
+      const hasMedia = !!newPostFile.value || !!newPostMediaUrl.value.trim()
+      if (!hasText && !hasMedia) return false
+      if (hasMedia && !newPostMediaType.value) return false
+      if (newPostFile.value && newPostMediaUrl.value.trim()) return false
+      return true
+    })
+
     const publishPost = async () => {
-      if (!newPost.value.trim()) return
+      if (!canPublishPost.value) return
       try {
         const payload = {
-          title: newPost.value.slice(0, 40),
-          content: newPost.value.trim(),
+          title: (newPost.value || '').slice(0, 40) || '新话题',
+          content: newPost.value.trim() || undefined,
           tags: selectedPostTopic.value || undefined
+        }
+        if (newPostMediaUrl.value.trim()) {
+          payload.media_url = newPostMediaUrl.value.trim()
+          payload.media_type = newPostMediaType.value
+        } else if (newPostFile.value) {
+          payload.file = newPostFile.value
+          payload.media_type = newPostMediaType.value
         }
         const resp = await ApiService.createForumTopic(payload)
         const data = pickData(resp)
@@ -835,6 +1018,10 @@ export default {
         posts.value.unshift(post)
         newPost.value = ''
         selectedPostTopic.value = ''
+        newPostFile.value = null
+        newPostMediaUrl.value = ''
+        newPostMediaType.value = ''
+        showMediaInputs.value = false
         ElMessage.success('动态发布成功！')
       } catch (e) {
         ElMessage.error(e.message || '发布失败')
@@ -873,16 +1060,87 @@ export default {
     }
 
     const addComment = async (post) => {
-      if (!post.newComment?.trim()) return
+      const hasText = !!post.newComment?.trim()
+      const hasMedia = !!post.newCommentFile || !!post.newCommentMediaUrl?.trim()
+      if (!hasText && !hasMedia) return
+      if (hasMedia && !post.newCommentMediaType) {
+        ElMessage.warning('请选择评论的媒体类型')
+        return
+      }
+      if (post.newCommentFile && post.newCommentMediaUrl?.trim()) {
+        ElMessage.warning('请二选一：外部URL 或 上传文件')
+        return
+      }
       try {
-        const resp = await ApiService.addForumComment(post.id, { content: post.newComment.trim() })
+        const payload = { content: post.newComment?.trim() || undefined }
+        if (post.newCommentMediaUrl?.trim()) {
+          payload.media_url = post.newCommentMediaUrl.trim()
+          payload.media_type = post.newCommentMediaType
+        } else if (post.newCommentFile) {
+          payload.file = post.newCommentFile
+          payload.media_type = post.newCommentMediaType
+        }
+        const resp = await ApiService.addForumComment(post.id, payload)
         const data = pickData(resp)
         post.comments.push(mapComment(data))
         post.commentsCount = (post.commentsCount || 0) + 1
         post.newComment = ''
+        post.newCommentFile = null
+        post.newCommentMediaUrl = ''
+        post.newCommentMediaType = ''
         ElMessage.success('评论发布成功！')
       } catch (e) {
         ElMessage.error(e.message || '评论失败')
+      }
+    }
+
+    const toggleReply = (comment) => {
+      comment.replying = !comment.replying
+      if (comment.replying) {
+        comment.replyText = ''
+        comment.replyMediaType = ''
+        comment.replyMediaUrl = ''
+        comment.replyFile = null
+      }
+    }
+
+    const onReplyFileChange = (comment, e) => {
+      const f = e?.target?.files?.[0]
+      comment.replyFile = f || null
+    }
+
+    const canSubmitReply = (comment) => {
+      const hasText = !!comment.replyText?.trim()
+      const hasMedia = !!comment.replyFile || !!comment.replyMediaUrl?.trim()
+      if (!hasText && !hasMedia) return false
+      if (hasMedia && !comment.replyMediaType) return false
+      if (comment.replyFile && comment.replyMediaUrl?.trim()) return false
+      return true
+    }
+
+    const submitReply = async (post, parentComment) => {
+      if (!canSubmitReply(parentComment)) return
+      try {
+        const payload = {
+          content: parentComment.replyText?.trim() || undefined,
+          parent_comment_id: parentComment.id
+        }
+        if (parentComment.replyMediaUrl?.trim()) {
+          payload.media_url = parentComment.replyMediaUrl.trim()
+          payload.media_type = parentComment.replyMediaType
+        } else if (parentComment.replyFile) {
+          payload.file = parentComment.replyFile
+          payload.media_type = parentComment.replyMediaType
+        }
+        const resp = await ApiService.addForumComment(post.id, payload)
+        const data = mapComment(pickData(resp))
+        parentComment.replies = parentComment.replies || []
+        parentComment.replies.push(data)
+        parentComment.replying = false
+        post.commentsCount = (post.commentsCount || 0) + 1
+        ElMessage.success('回复已发布！')
+      } catch (e) {
+        ElMessage.error(e.message || '回复失败')
       }
     }
 
@@ -1133,6 +1391,10 @@ export default {
       selectedTopic,
       selectedPostTopic,
       newPost,
+      newPostFile,
+      newPostMediaUrl,
+      newPostMediaType,
+      showMediaInputs,
       hasMore,
       isLoading,
       hotTopics,
@@ -1140,9 +1402,20 @@ export default {
       filteredPosts,
       selectTopic,
       publishPost,
+      onNewPostFileChange,
+      toggleMediaInputs,
+      clearSelectedFile,
+      getFileAccept,
+      getMediaTypeName,
+      getFileIcon,
+      canPublishPost,
       toggleLike,
       toggleComments,
       addComment,
+  toggleReply,
+  onReplyFileChange,
+  canSubmitReply,
+  submitReply,
       toggleLikeComment,
       editComment,
       cancelEditComment,
@@ -2019,6 +2292,281 @@ export default {
   resize: vertical;
   min-height: 60px;
   margin-bottom: 12px;
+}
+
+/* 媒体上传区域美化样式 */
+.composer-media-row {
+  margin: 16px 0;
+  background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
+  border: 2px dashed #e0e7ff;
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.3s ease;
+}
+
+.composer-media-row:hover {
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+}
+
+.media-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.media-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4f46e5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.media-toggle-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: #f3f4f6;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #6b7280;
+  transition: all 0.2s ease;
+}
+
+.media-toggle-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.media-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.media-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.media-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.label-icon {
+  font-size: 14px;
+}
+
+.media-type-select, .media-url-input {
+  height: 40px;
+  padding: 8px 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.media-type-select:focus, .media-url-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.media-url-input:disabled {
+  background: #f9fafb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.file-upload-area {
+  position: relative;
+  border: 2px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  background: white;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.file-upload-area:hover {
+  border-color: #667eea;
+  background: #fafaff;
+}
+
+.file-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.file-input:disabled {
+  cursor: not-allowed;
+}
+
+.file-upload-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.upload-icon {
+  font-size: 20px;
+  opacity: 0.7;
+}
+
+.file-selected {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #065f46;
+}
+
+.file-icon {
+  font-size: 16px;
+}
+
+.file-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clear-file-btn {
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: #fca5a5;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #7f1d1d;
+  transition: all 0.2s ease;
+}
+
+.clear-file-btn:hover {
+  background: #f87171;
+}
+
+.media-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  color: #6b7280;
+  background: #f9fafb;
+  transition: all 0.2s ease;
+}
+
+.status-item.active {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+
+.status-divider {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.media-quick-actions {
+  margin: 12px 0;
+  text-align: center;
+}
+
+.quick-media-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+}
+
+.quick-media-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+}
+
+.btn-icon {
+  font-size: 14px;
+}
+
+/* 移动端响应式 */
+@media (max-width: 768px) {
+  .composer-media-row {
+    margin: 12px 0;
+    padding: 16px;
+  }
+  
+  .media-fields-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .media-status {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .quick-media-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
 }
 
 .composer-footer {
