@@ -1,7 +1,7 @@
 <template>
   <button
     :class="['collect-btn', { 'collected': isCollected, 'loading': loading }]"
-    @click="handleCollect"
+  @click.stop="handleCollect"
     :disabled="loading"
     :title="buttonTitle"
   >
