@@ -758,7 +758,31 @@ export class ChatRoomsAPI extends BaseAPI {
   }
 
   async sendMessage(roomId, messageData) {
-    return await this.requestTo(this.baseRooms, 'POST', `/${roomId}/messages/`, messageData)
+    // 后端消息创建端点期望表单数据（兼容文本与文件消息），避免 JSON 导致 content_text 解析为 None
+    const formData = new FormData()
+    if (messageData && typeof messageData === 'object') {
+      if (messageData.file instanceof Blob) {
+        formData.append('file', messageData.file)
+      }
+      if (messageData.content_text) {
+        formData.append('content_text', String(messageData.content_text))
+      }
+      if (messageData.media_url) {
+        formData.append('media_url', String(messageData.media_url))
+      }
+      if (messageData.message_type) {
+        formData.append('message_type', String(messageData.message_type))
+      }
+    }
+    // 确保 multipart 不为空，防止某些服务器拒绝空表单
+    if (![...formData.keys()].length) formData.append('noop', '1')
+
+    try {
+      const resp = await httpClient.post(`${this.baseRooms}/${roomId}/messages/`, formData)
+      return resp.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
   }
 
   async getMembers(roomId) {
