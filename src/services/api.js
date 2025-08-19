@@ -1432,6 +1432,16 @@ export class ApiService {
       return createResponse(null, false, error.message)
     }
   }
+
+  // 快速收藏平台内部内容
+  static async addPlatformContentToCollection(collectionData) {
+    try {
+      const response = await remoteApiService.collections.addFromPlatform(collectionData)
+      return createResponse(response)
+    } catch (error) {
+      return createResponse(null, false, error.message)
+    }
+  }
 }
 
 // 在应用启动时初始化数据

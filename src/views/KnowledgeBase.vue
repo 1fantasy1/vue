@@ -145,6 +145,13 @@
             </div>
           </div>
           <div class="document-actions">
+            <CollectButton
+              content-type="knowledge_document"
+              :content-id="document.id"
+              :initial-collected="document.isInCollection"
+              @collected="onDocumentCollected"
+              @message="showMessage"
+            />
             <button class="action-btn" @click.stop="openCollectionModal(document)">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12,21.35L10.55,20.03C5.4,15.36 2,12.28 2,8.5 2,5.42 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.09C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.42 22,8.5C22,12.28 18.6,15.36 13.45,20.04L12,21.35Z"/>
@@ -341,11 +348,12 @@
 
 <script>
 import CollectionModal from '@/components/CollectionModal.vue'
+import CollectButton from '@/components/CollectButton.vue'
 import { ApiService } from '@/services/api.js'
 
 export default {
   name: 'KnowledgeBase',
-  components: { CollectionModal },
+  components: { CollectionModal, CollectButton },
   data() {
     return {
       searchQuery: '',
@@ -640,6 +648,24 @@ export default {
     },
     shareDocument(document) {
       alert(`分享文档: ${document.title}`)
+    },
+    onDocumentCollected(data) {
+      console.log('文档已收藏:', data)
+      // 可以在这里更新文档的收藏状态
+      const document = this.documents.find(d => d.id == data.contentId)
+      if (document) {
+        document.isInCollection = true
+      }
+    },
+    showMessage(messageData) {
+      // 这里可以使用全局的消息提示组件
+      console.log('消息:', messageData)
+      // 简单的提示实现
+      if (messageData.type === 'success') {
+        alert(messageData.text)
+      } else if (messageData.type === 'error') {
+        alert('错误: ' + messageData.text)
+      }
     },
     triggerUpload() {
       this.$refs.fileInput && this.$refs.fileInput.click()

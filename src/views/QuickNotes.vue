@@ -132,6 +132,13 @@
             <span class="note-time">{{ formatTime(note.created_at || note.time) }}</span>
           </div>
           <div class="note-actions">
+            <CollectButton
+              content-type="daily_record"
+              :content-id="note.id"
+              :initial-collected="note.isInCollection"
+              @collected="onNoteCollected"
+              @message="showMessage"
+            />
             <button class="action-btn" @click="editNote(note)" title="编辑" :disabled="loading">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.13,5.12L18.88,8.87M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25Z"/>
@@ -230,9 +237,11 @@
 import { useRouter } from 'vue-router'
 import { ref, computed, onMounted } from 'vue'
 import { ApiService } from '@/services/api.js'
+import CollectButton from '@/components/CollectButton.vue'
 
 export default {
   name: 'QuickNotes',
+  components: { CollectButton },
   setup() {
     const router = useRouter()
     const newNote = ref('')
@@ -481,6 +490,26 @@ export default {
       }
     }
 
+    const onNoteCollected = (data) => {
+      console.log('笔记已收藏:', data)
+      // 可以在这里更新笔记的收藏状态
+      const note = notes.value.find(n => n.id == data.contentId)
+      if (note) {
+        note.isInCollection = true
+      }
+    }
+
+    const showMessage = (messageData) => {
+      // 这里可以使用全局的消息提示组件
+      console.log('消息:', messageData)
+      // 简单的提示实现
+      if (messageData.type === 'success') {
+        alert(messageData.text)
+      } else if (messageData.type === 'error') {
+        alert('错误: ' + messageData.text)
+      }
+    }
+
     const viewNote = (note) => {
       // 在网格视图中可以展开查看完整内容
       console.log('查看记录:', note)
@@ -527,6 +556,8 @@ export default {
       closeEdit,
       saveEdit,
       deleteNote,
+      onNoteCollected,
+      showMessage,
       viewNote,
       loadNotes,
       onFilterChange,

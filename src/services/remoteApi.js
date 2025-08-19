@@ -685,6 +685,11 @@ export class CollectionsAPI extends BaseAPI {
   async deleteCollection(contentId) {
     return await this.request('DELETE', `/${contentId}`)
   }
+
+  // 快速收藏平台内部内容
+  async addFromPlatform(collectionData) {
+    return await this.request('POST', '/add-from-platform', collectionData)
+  }
 }
 
 // 聊天室API

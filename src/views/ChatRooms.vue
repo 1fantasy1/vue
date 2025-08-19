@@ -173,6 +173,16 @@
                 </div>
                 <div class="message-bubble">
                   {{ message.content }}
+                  <div class="message-actions">
+                    <CollectButton
+                      content-type="chat_message"
+                      :content-id="message.id"
+                      :initial-collected="message.isInCollection"
+                      @collected="onMessageCollected"
+                      @message="showMessage"
+                      :show-text="false"
+                    />
+                  </div>
                 </div>
                 <div class="message-time" v-if="message.isOwn">{{ message.time }}</div>
               </div>
@@ -370,10 +380,11 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { Search, Paperclip, Position, DocumentCopy } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { ApiService } from '@/services/api.js'
+import CollectButton from '@/components/CollectButton.vue'
 
 export default {
   name: 'ChatRooms',
-  components: { Search, Paperclip, Position, DocumentCopy },
+  components: { Search, Paperclip, Position, DocumentCopy, CollectButton },
   setup() {
     const router = useRouter()
     const activeTab = ref('all')
@@ -504,6 +515,24 @@ export default {
         errorMsg.value = e.message || '发送失败'
       } finally {
         sending.value = false
+      }
+    }
+
+    const onMessageCollected = (data) => {
+      console.log('聊天消息已收藏:', data)
+      // 可以在这里更新消息的收藏状态
+      const message = messages.value.find(m => m.id == data.contentId)
+      if (message) {
+        message.isInCollection = true
+      }
+    }
+
+    const showMessage = (messageData) => {
+      // 使用 Element Plus 的消息组件
+      if (messageData.type === 'success') {
+        ElMessage.success(messageData.text)
+      } else if (messageData.type === 'error') {
+        ElMessage.error(messageData.text)
       }
     }
 
@@ -846,6 +875,8 @@ export default {
       goBack,
       selectRoom,
       sendMessage,
+      onMessageCollected,
+      showMessage,
       viewMembers,
       openCreateRoomModal,
       closeCreateRoomModal,
@@ -1299,6 +1330,19 @@ export default {
   border-radius: 12px;
   font-size: 14px;
   line-height: 1.4;
+  position: relative;
+}
+
+.message-actions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.message-bubble:hover .message-actions {
+  opacity: 1;
 }
 
 .message.own .message-bubble {

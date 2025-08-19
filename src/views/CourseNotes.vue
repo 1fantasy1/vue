@@ -50,6 +50,13 @@
           <div class="note-header">
             <h3 class="note-title">{{ note.title }}</h3>
             <div class="note-actions" @click.stop>
+              <CollectButton
+                content-type="note"
+                :content-id="note.id"
+                :initial-collected="note.isInCollection"
+                @collected="onNoteCollected"
+                @message="showMessage"
+              />
               <button class="action-btn" @click="editNote(note.id)">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.13,5.12L18.88,8.87M3,17.25V21H6.75L17.81,9.94L14.06,6.19L3,17.25Z"/>
@@ -136,9 +143,11 @@
 <script>
 import { useRouter } from 'vue-router'
 import { ref, computed } from 'vue'
+import CollectButton from '@/components/CollectButton.vue'
 
 export default {
   name: 'CourseNotes',
+  components: { CollectButton },
   setup() {
     const router = useRouter()
     const searchQuery = ref('')
@@ -541,6 +550,26 @@ module.exports = router
       }
     }
 
+    const onNoteCollected = (data) => {
+      console.log('课程笔记已收藏:', data)
+      // 可以在这里更新笔记的收藏状态
+      const note = notes.value.find(n => n.id == data.contentId)
+      if (note) {
+        note.isInCollection = true
+      }
+    }
+
+    const showMessage = (messageData) => {
+      // 这里可以使用全局的消息提示组件
+      console.log('消息:', messageData)
+      // 简单的提示实现
+      if (messageData.type === 'success') {
+        alert(messageData.text)
+      } else if (messageData.type === 'error') {
+        alert('错误: ' + messageData.text)
+      }
+    }
+
     const shareNote = (noteId) => {
       alert(`分享笔记 ${noteId}`)
     }
@@ -558,6 +587,8 @@ module.exports = router
       closeNote,
       editNote,
       deleteNote,
+      onNoteCollected,
+      showMessage,
       shareNote
     }
   }

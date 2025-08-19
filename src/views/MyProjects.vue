@@ -149,6 +149,13 @@
                 </span>
               </div>
               <div class="project-actions">
+                <CollectButton
+                  content-type="project"
+                  :content-id="project.id"
+                  :initial-collected="project.isInCollection"
+                  @collected="onProjectCollected"
+                  @message="showMessage"
+                />
                 <button 
                   class="action-btn" 
                   @click.stop="toggleFavorite(project.id)"
@@ -312,10 +319,11 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiService } from '@/services/api.js'
 import ProjectForm from '@/components/ProjectForm.vue'
+import CollectButton from '@/components/CollectButton.vue'
 
 export default {
   name: 'MyProjects',
-  components: { ProjectForm },
+  components: { ProjectForm, CollectButton },
   setup() {
     const router = useRouter()
     
@@ -535,6 +543,26 @@ export default {
       }
     }
 
+    const onProjectCollected = (data) => {
+      console.log('项目已收藏:', data)
+      // 可以在这里更新项目的收藏状态
+      const project = projects.value.find(p => p.id == data.contentId)
+      if (project) {
+        project.isInCollection = true
+      }
+    }
+
+    const showMessage = (messageData) => {
+      // 这里可以使用全局的消息提示组件
+      console.log('消息:', messageData)
+      // 简单的提示实现
+      if (messageData.type === 'success') {
+        alert(messageData.text)
+      } else if (messageData.type === 'error') {
+        alert('错误: ' + messageData.text)
+      }
+    }
+
     const openProjectMenu = (projectId) => {
       openMenuId.value = openMenuId.value === projectId ? null : projectId
     }
@@ -697,6 +725,8 @@ export default {
       getEmptyStateTitle,
       getEmptyStateDescription,
       toggleFavorite,
+      onProjectCollected,
+      showMessage,
       openProjectMenu,
       viewProject,
       openChat,

@@ -172,6 +172,13 @@
               </td>
               <td class="actions-cell">
                 <div class="action-buttons">
+                  <CollectButton
+                    content-type="course"
+                    :content-id="course.id"
+                    :initial-collected="course.isInCollection"
+                    @collected="onCourseCollected"
+                    @message="showMessage"
+                  />
                   <button @click="viewCourse(course)" class="action-btn view" title="查看详情">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z"/>
@@ -358,9 +365,11 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import apiService from '@/services/api.js'
+import CollectButton from '@/components/CollectButton.vue'
 
 export default {
   name: 'CourseManagement',
+  components: { CollectButton },
   setup() {
     const router = useRouter()
     
@@ -498,6 +507,26 @@ export default {
       }
     }
 
+    const onCourseCollected = (data) => {
+      console.log('课程已收藏:', data)
+      // 可以在这里更新课程的收藏状态
+      const course = courses.value.find(c => c.id == data.contentId)
+      if (course) {
+        course.isInCollection = true
+      }
+    }
+
+    const showMessage = (messageData) => {
+      // 这里可以使用全局的消息提示组件
+      console.log('消息:', messageData)
+      // 简单的提示实现
+      if (messageData.type === 'success') {
+        alert(messageData.text)
+      } else if (messageData.type === 'error') {
+        alert('错误: ' + messageData.text)
+      }
+    }
+
     const submitCourse = async () => {
       try {
         submitting.value = true
@@ -627,6 +656,8 @@ export default {
       editCourse,
       manageMaterials,
       deleteCourse,
+      onCourseCollected,
+      showMessage,
       submitCourse,
       closeModal,
       handleOverlayMouseDown,
