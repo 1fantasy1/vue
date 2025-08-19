@@ -187,15 +187,71 @@
         <!-- 底部输入区域 -->
         <div class="chat-input-section">
           <div class="input-tools">
-            <button 
-              class="tool-btn"
-              :class="{ active: aiToolsEnabled }"
-              @click="toggleAiToolsEnabled"
-              title="启用/关闭 AI 智能工具（use_tools）"
-            >
-              <span class="tool-icon">🤖</span>
-              <span class="tool-text">AI工具</span>
-            </button>
+            <!-- AI工具下拉菜单 -->
+            <div class="tool-dropdown ai-tools-dropdown" :class="{ active: aiToolsEnabled }">
+              <button 
+                class="tool-btn dropdown-toggle"
+                :class="{ active: aiToolsEnabled }"
+                @click="toggleAiToolsDropdown"
+                title="AI 智能工具选择"
+              >
+                <span class="tool-icon">🤖</span>
+                <span class="tool-text">AI工具</span>
+                <span class="dropdown-arrow">▲</span>
+              </button>
+              
+              <div class="dropdown-menu" v-show="showAiToolsDropdown">
+                <div class="dropdown-header">
+                  <label class="dropdown-switch">
+                    <input 
+                      type="checkbox" 
+                      v-model="aiToolsEnabled"
+                      @change="toggleAiToolsEnabled"
+                    >
+                    <span class="switch-slider"></span>
+                    <span class="switch-label">启用 AI 工具</span>
+                  </label>
+                </div>
+                
+                <div class="dropdown-divider"></div>
+                
+                <div class="dropdown-options" :class="{ disabled: !aiToolsEnabled }">
+                  <label class="dropdown-option">
+                    <input 
+                      type="checkbox" 
+                      :checked="enabledTools.includes('knowledge')"
+                      :disabled="!aiToolsEnabled"
+                      @change="toggleTool('knowledge')"
+                    >
+                    <span class="option-icon">📚</span>
+                    <span class="option-text">知识库检索</span>
+                  </label>
+                  
+                  <label class="dropdown-option">
+                    <input 
+                      type="checkbox" 
+                      :checked="enabledTools.includes('web')"
+                      :disabled="!aiToolsEnabled"
+                      @change="toggleTool('web')"
+                    >
+                    <span class="option-icon">🌐</span>
+                    <span class="option-text">网络搜索</span>
+                  </label>
+                  
+                  <label class="dropdown-option">
+                    <input 
+                      type="checkbox" 
+                      :checked="enabledTools.includes('mcp')"
+                      :disabled="!aiToolsEnabled"
+                      @change="toggleTool('mcp')"
+                    >
+                    <span class="option-icon">🔌</span>
+                    <span class="option-text">MCP工具</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
             <button 
               class="tool-btn" 
               :class="{ active: enabledTools.includes('upload') }"
@@ -207,36 +263,7 @@
               </svg>
               <span class="tool-text">上传文件</span>
             </button>
-            <button 
-              class="tool-btn" 
-              :class="[{ active: enabledTools.includes('knowledge') }, { dimmed: !aiToolsEnabled }]"
-              :disabled="!aiToolsEnabled"
-              @click="toggleTool('knowledge')" 
-              title="知识库检索"
-            >
-              <span class="tool-icon">📚</span>
-              <span class="tool-text">知识库</span>
-            </button>
-            <button 
-              class="tool-btn" 
-              :class="[{ active: enabledTools.includes('web') }, { dimmed: !aiToolsEnabled }]"
-              :disabled="!aiToolsEnabled"
-              @click="toggleTool('web')" 
-              title="网络搜索"
-            >
-              <span class="tool-icon">🌐</span>
-              <span class="tool-text">网络搜索</span>
-            </button>
-            <button 
-              class="tool-btn" 
-              :class="[{ active: enabledTools.includes('mcp') }, { dimmed: !aiToolsEnabled }]"
-              :disabled="!aiToolsEnabled"
-              @click="toggleTool('mcp')" 
-              title="MCP工具"
-            >
-              <span class="tool-icon">🔌</span>
-              <span class="tool-text">MCP工具</span>
-            </button>
+            
             <span class="tools-hint">ℹ️ 上传文件会自动启用 AI 工具</span>
           </div>
           
@@ -313,11 +340,13 @@ export default {
     const sidebarCollapsed = ref(true) // 默认隐藏侧边栏
     const selectedModel = ref('默认模型') // 保留作为兼容，但不再用于选择
     const userDefaultModel = ref('') // 用户的默认模型
-  const currentMessage = ref('')
-  // 工具偏好（知识库/网络搜索/MCP），仅在 aiToolsEnabled 开启时生效
+    const currentMessage = ref('')
+    // 工具偏好（知识库/网络搜索/MCP），仅在 aiToolsEnabled 开启时生效
     const enabledTools = ref(['knowledge'])
     // AI 智能工具调用总开关（use_tools）
     const aiToolsEnabled = ref(false)
+    // 下拉菜单显示状态
+    const showAiToolsDropdown = ref(false)
 
     // 从本地存储恢复工具设置
     try {
@@ -628,6 +657,11 @@ export default {
       try { localStorage.setItem('ai_enabled_tools', JSON.stringify(enabledTools.value)) } catch {}
     }
 
+    // 切换下拉菜单显示状态
+    const toggleAiToolsDropdown = () => {
+      showAiToolsDropdown.value = !showAiToolsDropdown.value
+    }
+
     // 切换总开关并持久化
     const toggleAiToolsEnabled = () => {
       aiToolsEnabled.value = !aiToolsEnabled.value
@@ -863,7 +897,16 @@ export default {
         }
       }
       
+      // 点击外部关闭下拉菜单
+      const handleClickOutside = (event) => {
+        const dropdown = event.target.closest('.ai-tools-dropdown')
+        if (!dropdown && showAiToolsDropdown.value) {
+          showAiToolsDropdown.value = false
+        }
+      }
+      
       window.addEventListener('resize', handleResize)
+      document.addEventListener('click', handleClickOutside)
       scrollToBottom()
       
       // 初始化时如果是移动端则显示提示
@@ -885,6 +928,7 @@ export default {
 
       return () => {
         window.removeEventListener('resize', handleResize)
+        document.removeEventListener('click', handleClickOutside)
         clearMobileHintTimer()
       }
     })
@@ -920,7 +964,9 @@ export default {
       clearAllChats,
       deleteIndividualChat,
       toggleTool,
-  toggleAiToolsEnabled,
+      toggleAiToolsDropdown,
+      showAiToolsDropdown,
+      toggleAiToolsEnabled,
       triggerFileUpload,
       handleFileUpload,
       clearUploadedFile,
@@ -1970,6 +2016,180 @@ export default {
 .chat-history-section::-webkit-scrollbar-thumb {
   background: #d1d5db;
   border-radius: 2px;
+}
+
+/* AI工具下拉菜单样式 */
+.tool-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid #e5e6ea;
+  border-radius: 20px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.dropdown-toggle:hover,
+.dropdown-toggle.active,
+.tool-dropdown.active .dropdown-toggle {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #2563eb;
+}
+
+.dropdown-arrow {
+  font-size: 10px;
+  transition: transform 0.2s ease;
+}
+
+.tool-dropdown.active .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.dropdown-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 4px;
+  background: white;
+  border: 1px solid #e5e6ea;
+  border-radius: 12px;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  min-width: 200px;
+  overflow: hidden;
+}
+
+.dropdown-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.dropdown-switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.dropdown-switch input[type="checkbox"] {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  appearance: none;
+  background: #e5e6ea;
+  border-radius: 12px;
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+}
+
+.dropdown-switch input[type="checkbox"]:checked {
+  background: #3b82f6;
+}
+
+.dropdown-switch input[type="checkbox"]::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.dropdown-switch input[type="checkbox"]:checked::before {
+  transform: translateX(20px);
+}
+
+.switch-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: #f3f4f6;
+}
+
+.dropdown-options {
+  padding: 8px 0;
+}
+
+.dropdown-options.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.dropdown-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  user-select: none;
+}
+
+.dropdown-option:hover {
+  background: #f9fafb;
+}
+
+.dropdown-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 3px;
+  cursor: pointer;
+  position: relative;
+  appearance: none;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.dropdown-option input[type="checkbox"]:checked {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.dropdown-option input[type="checkbox"]:checked::before {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.dropdown-option input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.option-icon {
+  font-size: 14px;
+}
+
+.option-text {
+  font-size: 13px;
+  color: #374151;
+  font-weight: 500;
 }
 
 .chat-messages-container::-webkit-scrollbar-thumb:hover,
