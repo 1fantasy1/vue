@@ -499,6 +499,10 @@
           />
         </div>
         
+        <div class="post-video" v-if="post.videoUrl">
+          <video :src="post.videoUrl" controls preload="metadata"></video>
+        </div>
+        
         <div class="post-actions">
           <button 
             class="action-btn like-btn" 
@@ -747,6 +751,13 @@ export default {
 
   const mapTopicToPost = (t) => {
       const tagFirst = t?.tags ? String(t.tags).split(/[,#\s]+/).filter(Boolean)[0] : ''
+      const mediaType = t?.media_type || null
+      const mediaUrl = t?.media_url || null
+      // 推断媒体类型（当后端未返回 media_type 时，基于 URL 简单判断）
+      const isImg = mediaUrl && /(\.png|\.jpe?g|\.gif|\.webp|^data:image\/)/i.test(mediaUrl)
+  const isVid = mediaUrl && /(\.mp4|\.webm|\.ogg|^data:video\/)/i.test(mediaUrl)
+      const images = (mediaUrl && (mediaType === 'image' || isImg)) ? [mediaUrl] : []
+      const videoUrl = (mediaUrl && (mediaType === 'video' || isVid)) ? mediaUrl : null
       return {
         id: t.id,
     ownerId: t.owner_id,
@@ -758,7 +769,8 @@ export default {
         timestamp: t.created_at ? new Date(t.created_at) : new Date(),
         likes: t.likes_count ?? 0,
         isLiked: !!t.is_liked_by_current_user,
-        images: [],
+        images,
+        videoUrl,
         comments: [],
         commentsCount: t.comments_count ?? 0,
         isFollowed: !!followStateByUserId.value[t.owner_id],
@@ -3169,6 +3181,12 @@ export default {
   transform: translate(-50%, -50%);
   animation: rippleEffect 0.6s ease-out;
   pointer-events: none;
+}
+.post-video video {
+  width: 100%;
+  max-height: 480px;
+  border-radius: 10px;
+  background: #000;
 }
 
 @keyframes rippleEffect {

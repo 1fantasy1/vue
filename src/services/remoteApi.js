@@ -899,28 +899,30 @@ export class ForumAPI extends BaseAPI {
   }
 
   async addComment(topicId, commentData) {
+  // 后端要求 content 在查询参数中，必填；无文本时传空字符串
+  const q = { content: commentData?.content ?? '' }
   const formData = new FormData()
   if (commentData?.file) {
     formData.append('file', commentData.file)
   }
-  if (commentData?.content) formData.append('content', String(commentData.content))
   if (commentData?.parent_comment_id) formData.append('parent_comment_id', String(commentData.parent_comment_id))
   if (commentData?.media_url) formData.append('media_url', String(commentData.media_url))
   if (commentData?.media_type) formData.append('media_type', String(commentData.media_type))
   if (![...formData.keys()].length) formData.append('noop', '1')
-  return await this.request('POST', `/topics/${topicId}/comments/`, formData)
+  return await this.request('POST', `/topics/${topicId}/comments/`, formData, q)
   }
 
   async updateComment(commentId, commentData) {
+  // 与新增一致：content 走查询参数且必填
+  const q = { content: commentData?.content ?? '' }
   const formData = new FormData()
   if (commentData?.file) {
     formData.append('file', commentData.file)
   }
-  if (commentData?.content) formData.append('content', String(commentData.content))
   if (commentData?.media_url) formData.append('media_url', String(commentData.media_url))
   if (commentData?.media_type) formData.append('media_type', String(commentData.media_type))
   if (![...formData.keys()].length) formData.append('noop', '1')
-  return await this.request('PUT', `/comments/${commentId}`, formData)
+  return await this.request('PUT', `/comments/${commentId}`, formData, q)
   }
 
   async deleteComment(commentId) {
