@@ -185,6 +185,15 @@
         <div class="chat-input-section">
           <div class="input-tools">
             <button 
+              class="tool-btn"
+              :class="{ active: aiToolsEnabled }"
+              @click="toggleAiToolsEnabled"
+              title="启用/关闭 AI 智能工具（use_tools）"
+            >
+              <span class="tool-icon">🤖</span>
+              <span class="tool-text">AI工具</span>
+            </button>
+            <button 
               class="tool-btn" 
               :class="{ active: enabledTools.includes('upload') }"
               @click="triggerFileUpload" 
@@ -197,7 +206,8 @@
             </button>
             <button 
               class="tool-btn" 
-              :class="{ active: enabledTools.includes('knowledge') }"
+              :class="[{ active: enabledTools.includes('knowledge') }, { dimmed: !aiToolsEnabled }]"
+              :disabled="!aiToolsEnabled"
               @click="toggleTool('knowledge')" 
               title="知识库检索"
             >
@@ -206,7 +216,8 @@
             </button>
             <button 
               class="tool-btn" 
-              :class="{ active: enabledTools.includes('web') }"
+              :class="[{ active: enabledTools.includes('web') }, { dimmed: !aiToolsEnabled }]"
+              :disabled="!aiToolsEnabled"
               @click="toggleTool('web')" 
               title="网络搜索"
             >
@@ -215,13 +226,15 @@
             </button>
             <button 
               class="tool-btn" 
-              :class="{ active: enabledTools.includes('mcp') }"
+              :class="[{ active: enabledTools.includes('mcp') }, { dimmed: !aiToolsEnabled }]"
+              :disabled="!aiToolsEnabled"
               @click="toggleTool('mcp')" 
               title="MCP工具"
             >
               <span class="tool-icon">🔌</span>
               <span class="tool-text">MCP工具</span>
             </button>
+            <span class="tools-hint">ℹ️ 上传文件会自动启用 AI 工具</span>
           </div>
           
           <!-- 上传文件预览区域 -->
@@ -295,8 +308,24 @@ export default {
     const sidebarCollapsed = ref(true) // 默认隐藏侧边栏
     const selectedModel = ref('默认模型') // 保留作为兼容，但不再用于选择
     const userDefaultModel = ref('') // 用户的默认模型
-    const currentMessage = ref('')
-    const enabledTools = ref(['knowledge', 'web'])
+  const currentMessage = ref('')
+  // 工具偏好（知识库/网络搜索/MCP），仅在 aiToolsEnabled 开启时生效
+    const enabledTools = ref(['knowledge'])
+    // AI 智能工具调用总开关（use_tools）
+    const aiToolsEnabled = ref(false)
+
+    // 从本地存储恢复工具设置
+    try {
+      const savedEnabled = localStorage.getItem('ai_enabled_tools')
+      const savedSwitch = localStorage.getItem('ai_tools_enabled')
+      if (savedEnabled) {
+        const parsed = JSON.parse(savedEnabled)
+        if (Array.isArray(parsed)) enabledTools.value = parsed
+      }
+      if (savedSwitch === 'true' || savedSwitch === 'false') {
+        aiToolsEnabled.value = savedSwitch === 'true'
+      }
+    } catch {}
     const isTyping = ref(false)
     const chatMessagesRef = ref(null)
     const chatInputRef = ref(null)
@@ -563,12 +592,21 @@ export default {
 
     // 切换工具
     const toggleTool = (tool) => {
+      if (!aiToolsEnabled.value) return
       const index = enabledTools.value.indexOf(tool)
       if (index > -1) {
         enabledTools.value.splice(index, 1)
       } else {
         enabledTools.value.push(tool)
       }
+      // 持久化偏好
+      try { localStorage.setItem('ai_enabled_tools', JSON.stringify(enabledTools.value)) } catch {}
+    }
+
+    // 切换总开关并持久化
+    const toggleAiToolsEnabled = () => {
+      aiToolsEnabled.value = !aiToolsEnabled.value
+      try { localStorage.setItem('ai_tools_enabled', aiToolsEnabled.value ? 'true' : 'false') } catch {}
     }
 
     // 触发文件上传
@@ -658,16 +696,14 @@ export default {
       scrollToBottom()
       dailyUsage.value++
       
-      // 组装 AI 选项
-      const preferredTools = []
-      if (enabledTools.value.includes('knowledge')) preferredTools.push('rag')
-      if (enabledTools.value.includes('web')) preferredTools.push('web_search')
-      if (enabledTools.value.includes('mcp')) preferredTools.push('mcp_tool')
+  // 组装 AI 选项
+  const preferredTools = []
+  if (enabledTools.value.includes('knowledge')) preferredTools.push('rag')
+  if (enabledTools.value.includes('web')) preferredTools.push('web_search')
+  if (enabledTools.value.includes('mcp')) preferredTools.push('mcp_tool')
 
-      // use_tools 主要控制 web_search/mcp 等外部工具，当有文件上传时也需要启用
-      const useTools = enabledTools.value.includes('web') || 
-                      enabledTools.value.includes('mcp') || 
-                      uploadedFile.value !== null // 有文件上传时自动启用工具
+  // 后端开关：use_tools；当存在上传文件时也开启，避免工具链无法处理文件
+  const useTools = aiToolsEnabled.value || (uploadedFile.value !== null)
 
       // 若后端未要求强制指定模型，这里传 null 使用用户默认；保留 UI 下拉但不强绑 ID
       const llmModelId = null
@@ -678,7 +714,7 @@ export default {
           kbIds: null, // 可后续在界面添加选择后传入数组
           noteIds: null,
           useTools,
-          preferredTools: preferredTools.length ? preferredTools : null,
+          preferredTools: (aiToolsEnabled.value && preferredTools.length) ? preferredTools : null,
           llmModelId,
           uploadedFile: uploadedFile.value // 传递上传的文件
         })
@@ -834,7 +870,8 @@ export default {
       userDefaultModel,
       getCurrentModel,
       currentMessage,
-      enabledTools,
+  enabledTools,
+  aiToolsEnabled,
       isTyping,
       chatHistory,
       chatHistoryList,
@@ -858,6 +895,7 @@ export default {
       clearAllChats,
       deleteIndividualChat,
       toggleTool,
+  toggleAiToolsEnabled,
       triggerFileUpload,
       handleFileUpload,
       clearUploadedFile,
@@ -1650,6 +1688,30 @@ export default {
 
 .tool-text {
   font-weight: 500;
+}
+
+/* 总开关关闭时的视觉弱化 */
+.tool-btn.dimmed {
+  opacity: 0.5;
+  filter: grayscale(10%);
+}
+
+.tools-hint {
+  margin-left: 8px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.tool-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(10%);
+}
+
+.tool-btn:disabled:hover {
+  background: white;
+  border-color: #e5e6ea;
+  color: #6b7280;
 }
 
 /* 上传文件预览区域 */
