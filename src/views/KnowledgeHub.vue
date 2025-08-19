@@ -206,7 +206,6 @@
                     <input 
                       type="checkbox" 
                       v-model="aiToolsEnabled"
-                      @change="toggleAiToolsEnabled"
                     >
                     <span class="switch-slider"></span>
                     <span class="switch-label">启用 AI 工具</span>
@@ -264,7 +263,7 @@
               <span class="tool-text">上传文件</span>
             </button>
             
-            <span class="tools-hint">ℹ️ 上传文件会自动启用 AI 工具</span>
+            
           </div>
           
           <!-- 上传文件预览区域 -->
@@ -329,7 +328,7 @@
 </template>
 
 <script>
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted, watch } from 'vue'
 import { ApiService } from '@/services/api.js'
 import HtmlPreview from '@/components/HtmlPreview.vue'
 
@@ -360,6 +359,20 @@ export default {
         aiToolsEnabled.value = savedSwitch === 'true'
       }
     } catch {}
+
+    // 监听工具设置变化并自动保存到localStorage
+    watch(aiToolsEnabled, (newValue) => {
+      try {
+        localStorage.setItem('ai_tools_enabled', newValue ? 'true' : 'false')
+      } catch {}
+    })
+
+    watch(enabledTools, (newValue) => {
+      try {
+        localStorage.setItem('ai_enabled_tools', JSON.stringify(newValue))
+      } catch {}
+    }, { deep: true })
+
     const isTyping = ref(false)
     const chatMessagesRef = ref(null)
     const chatInputRef = ref(null)
@@ -653,19 +666,11 @@ export default {
       } else {
         enabledTools.value.push(tool)
       }
-      // 持久化偏好
-      try { localStorage.setItem('ai_enabled_tools', JSON.stringify(enabledTools.value)) } catch {}
     }
 
     // 切换下拉菜单显示状态
     const toggleAiToolsDropdown = () => {
       showAiToolsDropdown.value = !showAiToolsDropdown.value
-    }
-
-    // 切换总开关并持久化
-    const toggleAiToolsEnabled = () => {
-      aiToolsEnabled.value = !aiToolsEnabled.value
-      try { localStorage.setItem('ai_tools_enabled', aiToolsEnabled.value ? 'true' : 'false') } catch {}
     }
 
     // 触发文件上传
@@ -755,14 +760,49 @@ export default {
       scrollToBottom()
       dailyUsage.value++
       
-  // 组装 AI 选项
-  const preferredTools = []
-  if (enabledTools.value.includes('knowledge')) preferredTools.push('rag')
-  if (enabledTools.value.includes('web')) preferredTools.push('web_search')
-  if (enabledTools.value.includes('mcp')) preferredTools.push('mcp_tool')
+      // 组装 AI 选项
+      let preferredTools = null
+      
+      if (aiToolsEnabled.value) {
+        // 检查是否启用了所有工具（当所有三个工具都选中时发送 "all"）
+        const allToolsSelected = enabledTools.value.includes('knowledge') && 
+                                 enabledTools.value.includes('web') && 
+                                 enabledTools.value.includes('mcp')
+        
+        if (allToolsSelected) {
+          preferredTools = "all"
+        } else if (enabledTools.value.length > 0) {
+          // 构建工具数组
+          const toolsArray = []
+          if (enabledTools.value.includes('knowledge')) toolsArray.push('rag')
+          if (enabledTools.value.includes('web')) toolsArray.push('web_search')
+          if (enabledTools.value.includes('mcp')) toolsArray.push('mcp_tool')
+          
+          preferredTools = toolsArray.length > 0 ? toolsArray : null
+        }
+        // 如果 aiToolsEnabled 为 true 但没有选择工具，preferredTools 保持 null
+      }
 
-  // 后端开关：use_tools；当存在上传文件时也开启，避免工具链无法处理文件
-  const useTools = aiToolsEnabled.value || (uploadedFile.value !== null)
+      // 后端开关：use_tools；当存在上传文件时也开启，避免工具链无法处理文件
+      const useTools = aiToolsEnabled.value || (uploadedFile.value !== null)
+
+      // 调试信息 - 显示当前配置对应的测试用例
+      const getTestCase = () => {
+        if (!aiToolsEnabled.value) return '场景: 未启用 | use_tools: false | preferred_tools: null'
+        if (enabledTools.value.length === 0) return '场景: 无偏好 | use_tools: true | preferred_tools: null'
+        if (enabledTools.value.length === 3) return '场景: 所有工具 | use_tools: true | preferred_tools: "all"'
+        if (enabledTools.value.includes('knowledge') && enabledTools.value.includes('web')) return '场景: 多工具 | use_tools: true | preferred_tools: ["rag", "web_search"]'
+        if (enabledTools.value.includes('knowledge')) return '场景: 基础RAG | use_tools: true | preferred_tools: ["rag"]'
+        return '场景: 其他组合'
+      }
+      
+      console.log('工具调用参数:', {
+        aiToolsEnabled: aiToolsEnabled.value,
+        enabledTools: enabledTools.value,
+        useTools,
+        preferredTools,
+        测试用例: getTestCase()
+      })
 
       // 若后端未要求强制指定模型，这里传 null 使用用户默认；保留 UI 下拉但不强绑 ID
       const llmModelId = null
@@ -773,7 +813,7 @@ export default {
           kbIds: null, // 可后续在界面添加选择后传入数组
           noteIds: null,
           useTools,
-          preferredTools: (aiToolsEnabled.value && preferredTools.length) ? preferredTools : null,
+          preferredTools, // 直接传递 preferredTools（可能是 null、数组或 "all"）
           llmModelId,
           uploadedFile: uploadedFile.value // 传递上传的文件
         })
@@ -966,7 +1006,6 @@ export default {
       toggleTool,
       toggleAiToolsDropdown,
       showAiToolsDropdown,
-      toggleAiToolsEnabled,
       triggerFileUpload,
       handleFileUpload,
       clearUploadedFile,
@@ -1769,11 +1808,7 @@ export default {
   filter: grayscale(10%);
 }
 
-.tools-hint {
-  margin-left: 8px;
-  color: #6b7280;
-  font-size: 12px;
-}
+/* 已移除工具提示文案，无需样式 */
 
 .tool-btn:disabled {
   opacity: 0.5;

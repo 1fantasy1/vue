@@ -500,19 +500,26 @@ export class AIAPI extends BaseAPI {
     }
     
     if (options.kbIds && Array.isArray(options.kbIds) && options.kbIds.length > 0) {
-      formData.append('kb_ids', JSON.stringify(options.kbIds))
+      // 后端要求 *_json 字段名
+      formData.append('kb_ids_json', JSON.stringify(options.kbIds))
     }
     
     if (options.noteIds && Array.isArray(options.noteIds) && options.noteIds.length > 0) {
-      formData.append('note_ids', JSON.stringify(options.noteIds))
+      // 后端要求 *_json 字段名
+      formData.append('note_ids_json', JSON.stringify(options.noteIds))
     }
     
     if (typeof options.useTools === 'boolean') {
       formData.append('use_tools', options.useTools.toString())
     }
     
-    if (options.preferredTools && Array.isArray(options.preferredTools) && options.preferredTools.length > 0) {
-      formData.append('preferred_tools', JSON.stringify(options.preferredTools))
+    if (options.preferredTools !== null && options.preferredTools !== undefined) {
+      // 后端字段名为 preferred_tools_json；支持字符串 "all" 或 JSON 数组
+      if (typeof options.preferredTools === 'string') {
+        formData.append('preferred_tools_json', options.preferredTools)
+      } else if (Array.isArray(options.preferredTools) && options.preferredTools.length > 0) {
+        formData.append('preferred_tools_json', JSON.stringify(options.preferredTools))
+      }
     }
     
     if (options.llmModelId) {
