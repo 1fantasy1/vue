@@ -192,7 +192,16 @@
                   <span class="message-time">{{ message.time }}</span>
                 </div>
                 <div class="message-bubble">
-                  {{ message.content }}
+                  <template v-if="message.media_url && message.message_type === 'image'">
+                    <img :src="message.media_url" alt="图片" class="msg-image" @load="scrollToBottom" />
+                  </template>
+                  <template v-else-if="message.media_url && message.message_type === 'video'">
+                    <video :src="message.media_url" class="msg-video" controls @loadeddata="scrollToBottom"></video>
+                  </template>
+                  <template v-else-if="message.media_url && message.message_type === 'file'">
+                    <a :href="message.media_url" target="_blank" rel="noopener" class="msg-file-link">{{ fileNameFromUrl(message.media_url) }}</a>
+                  </template>
+                  <div v-if="message.content" class="msg-text">{{ message.content }}</div>
                   <div class="message-actions">
                     <CollectButton
                       content-type="chat_message"
@@ -212,19 +221,25 @@
 
         <div class="chat-input" v-if="selectedRoom && currentUserRole">
           <div class="input-container">
-            <el-button class="attach-btn" circle :disabled="true">
+            <el-button class="attach-btn" circle @click="() => fileInput?.click()">
               <el-icon><Paperclip /></el-icon>
             </el-button>
+            <input ref="fileInput" type="file" @change="onFileChange" accept="image/*,video/*,*/*" style="display:none" />
             <el-input
               v-model="newMessage"
               placeholder="输入消息..."
               @keyup.enter="sendMessage"
               clearable
             />
-            <el-button type="primary" :loading="sending" :disabled="!newMessage.trim()" @click="sendMessage">
+            <el-button type="primary" :loading="sending" :disabled="!newMessage.trim() && !selectedFile" @click="sendMessage">
               <el-icon><Position /></el-icon>
               发送
             </el-button>
+          </div>
+          <div v-if="selectedFile" class="attachment-preview">
+            <span class="file-name">{{ selectedFile.name }}</span>
+            <span class="file-size">{{ formatFileSize(selectedFile.size) }}</span>
+            <el-button text type="danger" size="small" @click="clearSelectedFile">移除</el-button>
           </div>
           <div class="error" v-if="errorMsg">{{ errorMsg }}</div>
         </div>
@@ -598,15 +613,22 @@ export default {
     }
 
     const sendMessage = async () => {
-      if (!newMessage.value.trim() || !selectedRoom.value) return
+      if ((!newMessage.value.trim() && !selectedFile.value) || !selectedRoom.value) return
       try {
         sending.value = true
-        const payload = { content_text: newMessage.value, message_type: 'text', media_url: null }
+        const payload = { content_text: newMessage.value || '', media_url: null }
+        if (selectedFile.value) {
+          payload.file = selectedFile.value
+          payload.message_type = inferMessageType(selectedFile.value)
+        } else {
+          payload.message_type = 'text'
+        }
         const resp = await ApiService.sendChatRoomMessage(selectedRoom.value.id, payload)
         const data = resp?.data?.data || resp?.data || resp
         // 追加本地展示
         messages.value.push(mapMessageToView(data))
         newMessage.value = ''
+        clearSelectedFile()
       } catch (e) {
         errorMsg.value = e.message || '发送失败'
       } finally {
@@ -764,12 +786,14 @@ export default {
       }
     }
 
-    const mapMessageToView = (m) => {
+  const mapMessageToView = (m) => {
       const senderName = m.sender_name || `用户${m.sender_id}`
       return {
         id: m.id,
         sender: senderName,
-        content: m.content_text || '',
+    content: m.content_text || '',
+    message_type: m.message_type || (m.media_url ? 'file' : 'text'),
+    media_url: m.media_url || null,
         time: formatTime(m.sent_at),
         isOwn: currentUserId.value ? m.sender_id === currentUserId.value : false
       }
@@ -967,6 +991,43 @@ export default {
 
     const closeMembersModal = () => { showMembersModal.value = false }
 
+    // 文件选择/预览
+    const selectedFile = ref(null)
+    const fileInput = ref(null)
+    const onFileChange = (e) => {
+      const file = e.target?.files?.[0]
+      if (!file) return
+      selectedFile.value = file
+      // 清理 input 以便选择同一个文件也能触发 change
+      e.target.value = ''
+    }
+    const clearSelectedFile = () => { selectedFile.value = null }
+    const formatFileSize = (bytes) => {
+      if (!bytes && bytes !== 0) return ''
+      const units = ['B','KB','MB','GB']
+      let size = bytes
+      let idx = 0
+      while (size >= 1024 && idx < units.length - 1) { size /= 1024; idx++ }
+      return `${size.toFixed(idx === 0 ? 0 : 1)}${units[idx]}`
+    }
+    const fileNameFromUrl = (url) => {
+      try { return decodeURIComponent(url.split('?')[0].split('#')[0].split('/').pop() || '文件') } catch { return '文件' }
+    }
+    const inferMessageType = (file) => {
+      if (!file) return 'file'
+      const mime = file.type || ''
+      if (mime.startsWith('image/')) return 'image'
+      if (mime.startsWith('video/')) return 'video'
+      // fallback by extension
+      const name = (file.name || '').toLowerCase()
+      const ext = name.split('.').pop()
+      const imageExts = ['png','jpg','jpeg','gif','webp','bmp','svg','tiff','avif']
+      const videoExts = ['mp4','webm','ogg','mov','m4v','avi','mkv']
+      if (imageExts.includes(ext)) return 'image'
+      if (videoExts.includes(ext)) return 'video'
+      return 'file'
+    }
+
   onMounted(async () => {
       try {
         // 当前用户用于标识自己消息
@@ -1017,6 +1078,13 @@ export default {
       copyRoomId,
       formatTime,
   currentColor,
+  // 文件上传
+  selectedFile,
+  fileInput,
+  onFileChange,
+  clearSelectedFile,
+  formatFileSize,
+  fileNameFromUrl,
       // 权限相关
   currentUserRole,
   roleLoading,
@@ -1473,6 +1541,12 @@ export default {
   position: relative;
 }
 
+.msg-text { white-space: pre-wrap; }
+.msg-image { max-width: 320px; max-height: 360px; display: block; border-radius: 8px; }
+.msg-video { max-width: 360px; display: block; border-radius: 8px; }
+.msg-file-link { color: #2563eb; text-decoration: none; word-break: break-all; }
+.msg-file-link:hover { text-decoration: underline; }
+
 .message-actions {
   position: absolute;
   top: 4px;
@@ -1502,6 +1576,17 @@ export default {
   gap: 8px;
   align-items: center;
 }
+
+.attachment-preview {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #6c757d;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.attachment-preview .file-name { font-weight: 500; color: #2c3e50; }
+.attachment-preview .file-size { opacity: .8; }
 
 .attach-btn {
   width: 40px;
