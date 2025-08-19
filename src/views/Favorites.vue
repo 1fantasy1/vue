@@ -161,7 +161,12 @@
         
         <div class="favorite-content">
           <h3 class="favorite-title">{{ item.title }}</h3>
-          <p class="favorite-description">{{ item.description }}</p>
+          <p
+            class="favorite-description"
+            v-if="item.description && item.description.trim() !== (item.title || '').trim()"
+          >
+            {{ item.description }}
+          </p>
           
           <div class="favorite-meta">
             <div class="meta-item">
@@ -189,11 +194,13 @@
           </div>
 
           <div class="favorite-footer">
-            <button class="view-btn" @click="viewItem(item)">
-              {{ getViewButtonText(item.type) }}
-            </button>
-            <button class="view-btn outline" @click="goDetail(item)">详情</button>
             <div class="favorite-source">来源：{{ item.source }}</div>
+            <div class="actions-right">
+              <button class="view-btn" @click="viewItem(item)">
+                {{ getViewButtonText(item.type) }}
+              </button>
+              <button class="view-btn outline" @click="goDetail(item)">详情</button>
+            </div>
           </div>
         </div>
       </div>
@@ -402,16 +409,25 @@ export default {
 
     const mapCollectionToView = (c) => {
       // 后端 schemas.CollectedContentResponse -> 视图字段映射
+      const t = c.type || 'knowledge_article'
+      const rawTitle = c.title || ''
+      const contentText = c.content || c.description || ''
+      // 对随手记录：若标题无意义（如 daily_record #3 / 随手记录 #3），则用内容充当标题
+      const meaninglessDailyTitle = t === 'daily_record' && (
+        !rawTitle || /^(daily[ _-]?record)(\b|\s|#)/i.test(rawTitle) || /^随手记录(\b|\s|#)/.test(rawTitle)
+      )
+      const effectiveTitle = meaninglessDailyTitle ? (contentText || rawTitle || '未命名') : (rawTitle || contentText || '未命名')
+
       return {
         id: c.id,
-        title: c.title,
-        description: c.content || c.description || '',
-  type: c.type || 'knowledge_article',
+        title: effectiveTitle,
+        description: contentText,
+        type: t,
         author: c.author || '未知',
         rating: c.rating,
         duration: c.duration,
         tags: Array.isArray(c.tags) ? c.tags : (typeof c.tags === 'string' ? c.tags.split(',').map(t => t.trim()).filter(Boolean) : []),
-  source: (() => { try { return c.source || (c.url ? new URL(c.url).hostname : '本地') } catch { return c.source || '本地' } })(),
+        source: (() => { try { return c.source || (c.url ? new URL(c.url).hostname : '本地') } catch { return c.source || '本地' } })(),
         url: c.url,
         addedDate: c.created_at ? formatRelativeTime(c.created_at) : ''
       }
@@ -1262,6 +1278,13 @@ export default {
   margin-top: auto;
 }
 
+/* 右下角按钮容器 */
+.actions-right {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+
 .view-btn {
   background: linear-gradient(135deg, #ff7b42 0%, #ff5722 100%);
   color: white;
@@ -1366,6 +1389,11 @@ export default {
     flex-direction: column;
     gap: 12px;
     align-items: flex-start;
+  }
+
+  /* 移动端仍保持按钮在右下角 */
+  .actions-right {
+    align-self: flex-end;
   }
 }
 
