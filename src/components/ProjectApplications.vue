@@ -38,8 +38,8 @@
       </div>
     </teleport>
 
-    <!-- 申请管理（项目创建者视角） -->
-    <div v-if="isProjectCreator" class="applications-management">
+  <!-- 申请管理（项目创建者或管理员视角） -->
+  <div v-if="canManage" class="applications-management">
       <div class="section-header">
         <h3>项目申请管理</h3>
         <div class="filter-tabs">
@@ -170,6 +170,11 @@ export default {
       type: Boolean,
       default: false
     },
+    // 允许系统管理员在非项目创建者身份下也能查看与处理申请
+    isAdmin: {
+      type: Boolean,
+      default: false
+    },
     canApply: {
       type: Boolean,
       default: true
@@ -187,6 +192,9 @@ export default {
     const applications = ref([])
     const members = ref([])
     const currentStatusFilter = ref(null)
+
+    // 管理权限：项目创建者或管理员
+    const canManage = computed(() => !!(props.isProjectCreator || props.isAdmin))
     
     const applicationData = ref({
       message: ''
@@ -200,8 +208,8 @@ export default {
     ]
 
     const filteredApplications = computed(() => {
-      if (!currentStatusFilter.value) return applications.value
-      return applications.value.filter(app => app.status === currentStatusFilter.value)
+      // 若后端已按状态过滤，则直接返回 applications
+      return applications.value
     })
 
     const getApplicationsCount = (status) => {
@@ -259,11 +267,11 @@ export default {
       }
     }
 
-    const loadApplications = async () => {
-      if (!props.isProjectCreator) return
+  const loadApplications = async (statusFilter = null) => {
+      if (!canManage.value) return
       
       try {
-        const response = await ApiService.getProjectApplications(props.projectId)
+    const response = await ApiService.getProjectApplications(props.projectId, statusFilter)
         if (response.data.success) {
           applications.value = response.data.data || []
         }
@@ -288,7 +296,15 @@ export default {
     const processApplication = async (applicationId, status) => {
       processing.value = true
       try {
-        const response = await ApiService.processProjectApplication(applicationId, { status })
+        // 可选：在处理时填写附言，拒绝时提示填写原因
+        let process_message
+        if (status === 'rejected') {
+          process_message = window.prompt('请输入拒绝原因（可选）：') || undefined
+        } else if (status === 'approved') {
+          // 可选：也允许填写通过附言
+          // process_message = window.prompt('通过申请，可填写附言（可选）：') || undefined
+        }
+        const response = await ApiService.processProjectApplication(applicationId, { status, process_message })
         if (response.data.success) {
           // 更新本地申请状态
           const app = applications.value.find(a => a.id === applicationId)
@@ -313,9 +329,14 @@ export default {
 
     // 监听项目ID变化，重新加载数据
     watch(() => props.projectId, () => {
-      loadApplications()
+      loadApplications(currentStatusFilter.value)
       loadMembers()
     }, { immediate: true })
+
+    // 切换状态标签时，使用后端过滤重新加载
+    watch(currentStatusFilter, (v) => {
+      loadApplications(v)
+    })
 
     onMounted(() => {
       loadApplications()
@@ -328,6 +349,7 @@ export default {
       processing,
       applications,
       members,
+  canManage,
       currentStatusFilter,
       applicationData,
       statusFilters,

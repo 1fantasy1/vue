@@ -114,6 +114,7 @@
     <ProjectApplications
       :project-id="projectId"
       :is-project-creator="isProjectCreator"
+  :is-admin="isAdmin"
       :can-apply="canApply"
       :show-members="true"
       @application-submitted="onApplicationSubmitted"
@@ -261,10 +262,13 @@ export default {
     const showRecommendSection = computed(() => isProjectCreator.value || isAdmin.value)
     const canApply = computed(() => {
       // 项目创建者不能申请自己的项目
-      // 项目状态为"招募中"才能申请
-      return !isProjectCreator.value && 
-             project.value && 
-             project.value.project_status === '招募中'
+      // 仅在项目开放招募时可以申请，兼容中英文状态
+      if (isProjectCreator.value || !project.value) return false
+      const s = (project.value.project_status || '').toString().toLowerCase()
+      // 认为以下状态可申请：招募中/计划中/进行中/active/planning
+      const open = ['招募中', '计划中', '进行中']
+      const openEn = ['planning', 'active']
+      return open.includes(project.value.project_status) || openEn.includes(s)
     })
 
     const fmtDate = (d) => {
