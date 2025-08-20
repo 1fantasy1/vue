@@ -381,22 +381,104 @@ export class NotesAPI extends BaseAPI {
     super('/notes')
   }
 
-  async getAllNotes(noteType = null) {
-    return await this.request('GET', '/', null,
-      noteType ? { note_type: noteType } : null
-    )
+  // 获取当前用户所有笔记 - 支持多种过滤参数
+  async getAllNotes(params = {}) {
+    const queryParams = {}
+    
+    // 支持的查询参数
+    if (params.note_type) queryParams.note_type = params.note_type
+    if (params.course_id) queryParams.course_id = params.course_id
+    if (params.chapter) queryParams.chapter = params.chapter
+    if (params.folder_id !== undefined) queryParams.folder_id = params.folder_id
+    if (params.tags) queryParams.tags = params.tags
+    if (params.limit) queryParams.limit = params.limit
+    if (params.offset) queryParams.offset = params.offset
+    
+    return await this.request('GET', '/', null, queryParams)
   }
 
   async getNoteById(noteId) {
     return await this.request('GET', `/${noteId}`)
   }
 
+  // 创建新笔记 - 支持文件上传
   async createNote(noteData) {
-    return await this.request('POST', '/', noteData)
+    // 如果包含文件，使用FormData
+    if (noteData.file || noteData instanceof FormData) {
+      let formData = noteData instanceof FormData ? noteData : new FormData()
+      
+      if (!(noteData instanceof FormData)) {
+        // 添加所有字段到FormData，但文件上传时排除 media_type
+        Object.keys(noteData).forEach(key => {
+          if (noteData[key] !== undefined && noteData[key] !== null) {
+            // 🚨 重要修正：文件上传时不设置 media_type，让后端自动确定
+            if (key === 'media_type' && noteData.file) {
+              return // 跳过 media_type 字段
+            }
+            formData.append(key, noteData[key])
+          }
+        })
+      }
+      
+      try {
+        const config = {
+          method: 'POST',
+          url: `${this.endpoint}/`,
+          data: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+        
+        const response = await httpClient(config)
+        return response.data
+      } catch (error) {
+        throw this.handleError(error)
+      }
+    } else {
+      // JSON请求（纯文本或外部媒体链接）
+      return await this.request('POST', '/', noteData)
+    }
   }
 
+  // 更新笔记 - 支持文件上传
   async updateNote(noteId, noteData) {
-    return await this.request('PUT', `/${noteId}`, noteData)
+    // 如果包含文件，使用FormData
+    if (noteData.file || noteData instanceof FormData) {
+      let formData = noteData instanceof FormData ? noteData : new FormData()
+      
+      if (!(noteData instanceof FormData)) {
+        // 添加所有字段到FormData，但文件上传时排除 media_type
+        Object.keys(noteData).forEach(key => {
+          if (noteData[key] !== undefined && noteData[key] !== null) {
+            // 🚨 重要修正：文件上传时不设置 media_type，让后端自动确定
+            if (key === 'media_type' && noteData.file) {
+              return // 跳过 media_type 字段
+            }
+            formData.append(key, noteData[key])
+          }
+        })
+      }
+      
+      try {
+        const config = {
+          method: 'PUT',
+          url: `${this.endpoint}/${noteId}`,
+          data: formData,
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+        
+        const response = await httpClient(config)
+        return response.data
+      } catch (error) {
+        throw this.handleError(error)
+      }
+    } else {
+      // JSON请求（纯文本或外部媒体链接）
+      return await this.request('PUT', `/${noteId}`, noteData)
+    }
   }
 
   async deleteNote(noteId) {

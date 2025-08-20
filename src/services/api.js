@@ -652,9 +652,9 @@ export class ApiService {
   }
 
   // ========== 笔记相关API ==========
-  static async getNotes(userId, noteType = null) {
+  static async getNotes(params = {}) {
     try {
-      const response = await remoteApiService.notes.getAllNotes(noteType)
+      const response = await remoteApiService.notes.getAllNotes(params)
       return createResponse(response)
     } catch (error) {
       return createResponse(null, false, error.message)
