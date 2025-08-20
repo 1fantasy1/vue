@@ -4,7 +4,11 @@ export const config = {
   api: {
     // 除课程外，所有功能都使用远程API
     useLocalData: false,
-    baseURL: '/api',
+    // 优先读取 Vite 环境变量（构建时注入）
+    // 开发环境可设为 '/api' 走 Vite 代理；生产环境设为完整线上地址
+    baseURL: (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL)
+      ? import.meta.env.VITE_API_BASE_URL
+      : '/api',
     timeout: 60000, // 默认超时60秒
     // AI相关请求的特殊超时配置
     aiTimeout: 120000 // AI聊天超时120秒

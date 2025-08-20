@@ -8,6 +8,8 @@ export default defineConfig({
   plugins: [
     vue(),
   ],
+  // 使用相对路径，确保 Electron 通过 file:// 加载时资源能正确解析
+  base: './',
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src')
@@ -18,7 +20,7 @@ export default defineConfig({
     open: true,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8001',
+        target: 'https://cosbrain.675222.xyz:8002',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/api/, '')

@@ -75,7 +75,7 @@
         @click="viewCourse(course.id)"
       >
         <div class="course-image">
-          <img :src="course.thumbnail || '/api/placeholder/300/200'" :alt="course.title">
+          <img :src="course.thumbnail || (apiBaseUrl + '/placeholder/300/200')" :alt="course.title">
           <div class="course-level">{{ getLevelText(course.level) }}</div>
         </div>
         
@@ -141,12 +141,13 @@ import apiService from '@/services/api.js'
 export default {
   name: 'CourseBrowser',
   setup() {
+  const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '')
     const router = useRouter()
     const loading = ref(true)
     const courses = ref([])
     const searchQuery = ref('')
     const selectedLevel = ref('')
-    const selectedCategory = ref('')
+  const selectedCategory = ref('')
 
     // 检查管理员权限（兼容 localStorage 与 store，并容忍多种字段）
     const isAdmin = computed(() => {
@@ -326,6 +327,7 @@ export default {
     })
 
     return {
+      apiBaseUrl,
       loading,
       courses,
       searchQuery,
