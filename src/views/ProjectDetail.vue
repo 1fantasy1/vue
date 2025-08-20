@@ -283,7 +283,35 @@ export default {
       } catch {}
       return false
     })
-    const showRecommendSection = computed(() => isProjectCreator.value || isAdmin.value)
+    // 项目级别的admin角色检查
+    const isProjectAdmin = ref(false)
+    
+    // 检查当前用户在项目中的角色
+    const checkProjectRole = async () => {
+      if (!project.value?.id || !currentUserId.value) return
+      try {
+        const res = await ApiService.getProjectMembers(project.value.id)
+        if (res?.data?.success) {
+          const members = res.data.data || []
+          const myId = currentUserId.value.toString()
+          const myEmail = currentUserEmail.value.toLowerCase()
+          
+          const me = members.find(m => {
+            const memberId = (m?.user_id ?? m?.student_id ?? m?.id ?? m?.member_id)?.toString()
+            const memberEmail = (m?.email ?? m?.user_email ?? m?.contact_email ?? '').toLowerCase()
+            return (memberId === myId) || (myEmail && memberEmail === myEmail)
+          })
+          
+          if (me && me.role === 'admin') {
+            isProjectAdmin.value = true
+          }
+        }
+      } catch (e) {
+        console.warn('检查项目角色失败:', e)
+      }
+    }
+    
+    const showRecommendSection = computed(() => isProjectCreator.value || isAdmin.value || isProjectAdmin.value)
     const canApply = computed(() => {
       // 项目创建者不能申请自己的项目
       // 仅在项目开放招募时可以申请，兼容中英文状态
@@ -356,6 +384,8 @@ export default {
         if (res?.data?.success && res.data.data) {
           project.value = res.data.data
           deriveFromProject(project.value)
+          // 检查项目角色
+          await checkProjectRole()
         } else {
           error.value = res?.data?.message || '加载失败'
         }
@@ -532,6 +562,7 @@ export default {
       projectId,
   isProjectCreator,
   isAdmin,
+  isProjectAdmin,
   currentUserId,
   currentUserEmail,
       canApply,
