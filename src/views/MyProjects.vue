@@ -199,7 +199,7 @@
                 <div class="detail-item">
                   <span class="detail-label">我的角色</span>
                   <span class="detail-value role-badge" :class="getRoleClass(project.role)">
-                    {{ project.role }}
+                    {{ getRoleLabel(project.role) }}
                   </span>
                 </div>
                 <div class="detail-item">
@@ -338,6 +338,9 @@ export default {
   const showForm = ref(false)
   const editingProject = ref(null)
   const openMenuId = ref(null)
+  // 当前用户标识（用于从成员接口中匹配“我的角色”）
+  const currentUserId = ref(null)
+  const currentUserEmail = ref(null)
 
   // 删除相关状态
   const showDeleteDialog = ref(false)
@@ -496,11 +499,23 @@ export default {
     }
 
     const getRoleClass = (role) => {
-      if (role.includes('经理') || role.includes('负责人')) return 'manager'
-      if (role.includes('开发')) return 'developer'
-      if (role.includes('设计')) return 'designer'
-      if (role.includes('分析')) return 'analyst'
+  const r = (role || '').toString().toLowerCase()
+  // 英文角色映射
+  if (r.includes('admin') || r.includes('owner') || r.includes('leader')) return 'manager'
+  // 中文角色映射
+  if ((role || '').includes('经理') || (role || '').includes('负责人')) return 'manager'
+  if ((role || '').includes('开发')) return 'developer'
+  if ((role || '').includes('设计')) return 'designer'
+  if ((role || '').includes('分析')) return 'analyst'
       return 'default'
+    }
+
+    // 角色显示文案映射
+    const getRoleLabel = (role) => {
+      const r = (role || '').toString().toLowerCase()
+      if (r === 'admin') return '创建者'
+      if (r === 'member') return '成员'
+      return '成员'
     }
 
     const getProgressClass = (progress) => {
@@ -590,18 +605,62 @@ export default {
 
   const openCreateForm = () => { showForm.value = true; editingProject.value = null }
     const closeForm = () => { showForm.value = false; editingProject.value = null }
+    // 将后端多种可能字段转换为页面所需字段
+    const normalizeStatus = (s) => {
+      const raw = (s ?? '').toString().trim()
+      const lower = raw.toLowerCase()
+      if ([ 'planning', 'active', 'paused', 'completed' ].includes(lower)) return lower
+      // 兼容中文状态
+      if (raw === '招募中' || raw === '计划中') return 'planning'
+      if (raw === '进行中') return 'active'
+      if (raw === '暂停' || raw === '已暂停') return 'paused'
+      if (raw === '已完成' || raw === '完成') return 'completed'
+      return lower || 'active'
+    }
+
+    const coerceProgress = (val) => {
+      let v = Number(val ?? 0)
+      if (!Number.isFinite(v)) v = 0
+      // 若是 0-1 则放大到百分比
+      if (v > 0 && v <= 1) v = v * 100
+      v = Math.max(0, Math.min(100, Math.round(v)))
+      return v
+    }
+
+    const coerceTeam = (p) => {
+      // 兼容多种字段：team / members / team_members
+      let arr = []
+      if (Array.isArray(p.team)) arr = p.team
+      else if (Array.isArray(p.members)) arr = p.members
+      else if (Array.isArray(p.team_members)) arr = p.team_members
+      // 若只有数量
+      const count = p.members_count ?? p.team_count ?? p.team_members_count
+      if ((!arr || arr.length === 0) && Number.isFinite(Number(count)) && Number(count) > 0) {
+        const n = Math.min(Number(count), 6)
+        arr = Array.from({ length: n }, (_, i) => ({ id: `m-${i}`, name: `成员${i + 1}` }))
+      }
+      // 统一成员结构，至少保证有 name 用于头像首字母
+      return (arr || []).map((m, i) => ({
+        id: m?.id ?? m?.user_id ?? `m-${i}`,
+        name: m?.name ?? m?.username ?? m?.display_name ?? '成员',
+        avatar: m?.avatar ?? m?.avatar_url ?? null
+      }))
+    }
+
     const mapProject = (p) => ({
-      id: p.id,
-      title: p.title,
-      description: p.description || '暂无描述', // DashboardProjectCard 没有 description，提供默认值
-      status: p.project_status || 'active',
-      progress: p.progress ?? 0, // DashboardProjectCard 有 progress 字段
-      role: p.my_role || '成员',
-      priority: p.priority || 'medium',
-      deadline: p.end_date || null,
-      lastUpdate: p.updated_at || new Date().toISOString(),
-      isFavorite: p.is_favorite || false,
-      team: p.team || []
+      id: p.id ?? p.project_id ?? String(Math.random()).slice(2),
+      title: p.title ?? p.project_title ?? '未命名项目',
+      description: p.description ?? p.desc ?? '暂无描述',
+      status: normalizeStatus(p.project_status ?? p.status ?? p.state),
+      progress: coerceProgress(p.progress ?? p.progress_percent ?? p.progress_percentage ?? p.completion),
+      role: p.my_role ?? p.role ?? p.user_role ?? '成员',
+      priority: p.priority ?? 'medium',
+      deadline: p.end_date ?? p.deadline ?? null,
+      lastUpdate: p.updated_at ?? p.last_update ?? p.last_activity_at ?? p.last_activity ?? p.created_at ?? new Date().toISOString(),
+      isFavorite: Boolean(p.is_favorite ?? p.starred ?? false),
+      team: coerceTeam(p),
+      // 收藏初始态（如果后端提供）
+      isInCollection: Boolean(p.is_in_collection ?? false)
     })
 
     const onFormSuccess = (createdOrUpdated) => {
@@ -615,21 +674,273 @@ export default {
       closeForm()
     }
 
+    const extractList = (obj) => {
+      if (Array.isArray(obj)) return obj
+      if (!obj || typeof obj !== 'object') return []
+      const candidates = [
+        obj.data, obj.results, obj.items, obj.projects, obj.project_list, obj.my_projects
+      ]
+      for (const c of candidates) if (Array.isArray(c)) return c
+      if (obj.data && typeof obj.data === 'object') return extractList(obj.data)
+      return []
+    }
+
+    const isFilled = (v) => v !== undefined && v !== null && v !== ''
+    const positive = (n) => Number.isFinite(Number(n)) && Number(n) > 0
+    // 用 /projects 的完整条目补全 /dashboard 条目缺失字段（不盲目覆盖有值字段）
+  const mergeForCompleteness = (dash, full) => {
+      if (!full || typeof full !== 'object') return { ...dash }
+      const result = { ...dash }
+
+      // 简单文本与元数据字段：仅在 dash 缺失时补全
+      const textKeys = [
+        'description','project_type','location','team_size_preference','estimated_weekly_hours',
+        'expected_deliverables','learning_outcomes','contact_person_info','keywords'
+      ]
+      for (const k of textKeys) {
+        if (!isFilled(result[k]) && isFilled(full[k])) result[k] = full[k]
+      }
+
+      // 时间类：updated_at 优先保留 dash，缺失用 full；开始/结束日期缺失时补全
+      if (!isFilled(result.updated_at) && isFilled(full.updated_at)) result.updated_at = full.updated_at
+      if (!isFilled(result.created_at) && isFilled(full.created_at)) result.created_at = full.created_at
+      if (!isFilled(result.start_date) && isFilled(full.start_date)) result.start_date = full.start_date
+      if (!isFilled(result.end_date) && isFilled(full.end_date)) result.end_date = full.end_date
+
+      // 统计类：如果 dash 缺失或为 0 而 full 有正值，则使用 full
+      const statKeys = ['views_count','applications_count','members_count']
+      for (const k of statKeys) {
+        const dv = Number(result[k] ?? 0)
+        const fv = Number(full[k] ?? 0)
+        if ((!Number.isFinite(dv) || dv <= 0) && positive(fv)) result[k] = fv
+      }
+
+      // 进度：dash 优先；若缺失则用 full 的 progress/percentage
+      if (!isFilled(result.progress)) {
+        const pv = full.progress ?? full.progress_percent ?? full.progress_percentage ?? full.completion
+        if (isFilled(pv)) result.progress = pv
+      }
+
+      // 团队/成员：空数组按“无成员信息”处理，可被 full 覆盖；members_count 若 full 有正值则补全
+      const dashTeamArr = Array.isArray(result.team) ? result.team : (Array.isArray(result.members) ? result.members : (Array.isArray(result.team_members) ? result.team_members : []))
+      const dashTeamLen = Array.isArray(dashTeamArr) ? dashTeamArr.length : 0
+      const fullMembersArr = Array.isArray(full.team) ? full.team : (Array.isArray(full.members) ? full.members : (Array.isArray(full.team_members) ? full.team_members : []))
+      const fullMembersCount = full.members_count ?? full.team_count ?? full.team_members_count
+      if (dashTeamLen === 0 && fullMembersArr.length > 0) {
+        result.team = fullMembersArr
+      }
+      // 总是用 full 的正 members_count 来补齐/提升
+      if ((!positive(result.members_count)) && positive(fullMembersCount)) {
+        result.members_count = Number(fullMembersCount)
+      }
+
+      return result
+    }
+
     const loadProjects = async () => {
       loading.value = true
       try {
         const res = await ApiService.getDashboardProjects()
+        let filled = false
         if (res?.data?.success) {
-          // 后端返回 schemas.DashboardProjectCard[]
-          projects.value = (res.data.data || []).map(mapProject)
+          // 兼容多种返回结构，提取项目数组
+          const rawList = extractList(res.data.data)
+          if (rawList.length > 0) {
+            // 追加：尝试获取全部项目以补全字段
+            try {
+              const allRes = await ApiService.getProjects()
+              if (allRes?.data?.success) {
+                const allList = extractList(allRes.data.data)
+                const fullMap = new Map(allList.map(item => [String(item.id), item]))
+                const merged = rawList.map(d => mergeForCompleteness(d, fullMap.get(String(d.id))))
+                projects.value = merged.map(mapProject)
+                filled = true
+              } else {
+                // 退化：仅用 dashboard 数据
+                projects.value = rawList.map(mapProject)
+                filled = true
+              }
+            } catch (e2) {
+              // 退化：仅用 dashboard 数据
+              console.warn('补全项目详情失败，使用工作台数据', e2)
+              projects.value = rawList.map(mapProject)
+              filled = true
+            }
+          }
         } else {
-          console.warn(res?.data?.message || '获取项目失败')
+          console.warn(res?.data?.message || '获取我的项目失败，将尝试使用全部项目作为兜底')
+        }
+
+        // 兜底：如果我的项目为空，则拉取全部项目
+        if (!filled || projects.value.length === 0) {
+          try {
+            const allRes = await ApiService.getProjects()
+            if (allRes?.data?.success) {
+              const list = extractList(allRes.data.data)
+              projects.value = list.map(mapProject)
+              console.info('[MyProjects] 使用全部项目数据作为兜底展示')
+            } else {
+              console.warn(allRes?.data?.message || '获取全部项目失败')
+            }
+          } catch (e2) {
+            console.error('兜底获取全部项目失败', e2)
+          }
+        }
+
+        // 基于申请记录补全团队：仅当列表非空时执行
+        if (projects.value.length > 0) {
+          await enrichProjectsWithApplications(projects.value)
+          // 通过成员接口补全“我的角色”，并用更权威的成员列表充实团队
+          await enrichProjectsWithMembersRole(projects.value)
         }
       } catch (e) {
-        console.error('获取项目失败', e)
+        console.error('获取我的项目失败', e)
+        // 发生异常也尝试兜底
+        try {
+          const allRes = await ApiService.getProjects()
+          if (allRes?.data?.success) {
+            const list = extractList(allRes.data.data)
+            projects.value = list.map(mapProject)
+            console.info('[MyProjects] 异常后使用全部项目数据作为兜底展示')
+          }
+        } catch (e2) {
+          console.error('兜底获取全部项目失败', e2)
+        }
       } finally {
         loading.value = false
       }
+    }
+
+    // 从申请列表派生团队信息（只取通过/approved）
+    const deriveTeamFromApplications = (appsRaw) => {
+      const arr = Array.isArray(appsRaw) ? appsRaw : extractList(appsRaw)
+      return (arr || [])
+        .filter(a => {
+          const s = (a?.status || '').toString().toLowerCase()
+          return s === 'approved' || s === 'accepted' || s === 'joined'
+        })
+        .map((a, i) => ({
+          id: a?.student_id ?? a?.applicant_id ?? a?.id ?? `app-${i}`,
+          name: a?.applicant_name ?? `成员${(a?.student_id ?? i)}`,
+          avatar: null
+        }))
+    }
+
+    // 限制并发拉取每个项目的申请，补全 team 与 members_count
+    // 简单内存缓存，避免重复打相同项目的申请/成员接口
+    const applicationsCache = new Map()
+    const membersCache = new Map()
+
+    const enrichProjectsWithApplications = async (list) => {
+      const concurrency = 3
+      const queue = [...list]
+      const workers = new Array(concurrency).fill(0).map(async () => {
+        while (queue.length) {
+          const proj = queue.shift()
+          if (!proj?.id) continue
+          try {
+            // 命中缓存直接复用
+            let res = applicationsCache.get(proj.id)
+            if (!res) {
+              res = await ApiService.getProjectApplications(proj.id, 'approved')
+              applicationsCache.set(proj.id, res)
+            }
+            if (res?.data?.success) {
+              const teamArr = deriveTeamFromApplications(res.data.data)
+              if (teamArr.length) {
+                const idx = projects.value.findIndex(p => p.id === proj.id)
+                if (idx !== -1) {
+                  const curLen = Array.isArray(projects.value[idx].team) ? projects.value[idx].team.length : 0
+                  if (teamArr.length >= curLen) {
+                    projects.value[idx].team = teamArr
+                  }
+                  projects.value[idx].members_count = Math.max(Number(projects.value[idx].members_count || 0), teamArr.length)
+                }
+              }
+            }
+          } catch (e) {
+            // 忽略单个项目失败
+          }
+        }
+      })
+      await Promise.all(workers)
+    }
+
+    // 从成员列表中提取“我的角色”，同时可用成员信息优化团队显示
+    const deriveTeamFromMembers = (membersRaw) => {
+      const arr = Array.isArray(membersRaw) ? membersRaw : extractList(membersRaw)
+      return (arr || []).map((m, i) => ({
+        id: m?.user_id ?? m?.student_id ?? m?.id ?? m?.member_id ?? `m-${i}`,
+        name: m?.name ?? m?.username ?? m?.display_name ?? m?.real_name ?? '成员',
+        avatar: m?.avatar ?? m?.avatar_url ?? null,
+        role: m?.role || (Array.isArray(m?.roles) ? m.roles[0] : undefined)
+      }))
+    }
+
+    const findMyRoleFromMembers = (membersArr, myId, myEmail) => {
+      if (!Array.isArray(membersArr) || (!myId && !myEmail)) return null
+      const myIdStr = myId ? String(myId) : null
+      const me = membersArr.find(m => {
+        const mid = m?.user_id ?? m?.student_id ?? m?.id ?? m?.member_id
+        if (myIdStr && mid != null && String(mid) === myIdStr) return true
+        if (myEmail) {
+          const emails = [m?.email, m?.user_email, m?.contact_email].filter(Boolean).map(e => String(e).toLowerCase())
+          if (emails.includes(String(myEmail).toLowerCase())) return true
+        }
+        return false
+      })
+      if (!me) return null
+      const r = me.role || (Array.isArray(me.roles) ? me.roles[0] : null)
+      return r || null
+    }
+
+    // 通过 /projects/{id}/members 获取成员，设置我的角色与团队
+    const enrichProjectsWithMembersRole = async (list) => {
+      // 初始化当前用户信息（本地缓存）
+      try {
+        const me = JSON.parse(localStorage.getItem('currentUser') || 'null')
+        currentUserId.value = me?.id || me?.user_id || me?.student_id || null
+        currentUserEmail.value = (me?.email || '').toLowerCase() || null
+      } catch {}
+
+      const concurrency = 3
+      const queue = [...list]
+      const workers = new Array(concurrency).fill(0).map(async () => {
+        while (queue.length) {
+          const proj = queue.shift()
+          if (!proj?.id) continue
+          try {
+            // 命中缓存直接复用
+            let res = membersCache.get(proj.id)
+            if (!res) {
+              res = await ApiService.getProjectMembers(proj.id)
+              membersCache.set(proj.id, res)
+            }
+            if (res?.data?.success) {
+              const membersRaw = res.data.data
+              const teamArr = deriveTeamFromMembers(membersRaw)
+              const myRole = findMyRoleFromMembers(teamArr, currentUserId.value, currentUserEmail.value)
+              const idx = projects.value.findIndex(p => p.id === proj.id)
+              if (idx !== -1) {
+                if (myRole) {
+                  projects.value[idx].role = myRole
+                }
+                if (Array.isArray(teamArr) && teamArr.length) {
+                  const curLen = Array.isArray(projects.value[idx].team) ? projects.value[idx].team.length : 0
+                  if (teamArr.length >= curLen) {
+                    // 映射成展示所需的精简结构
+                    projects.value[idx].team = teamArr.map(({ id, name, avatar }) => ({ id, name, avatar }))
+                  }
+                  projects.value[idx].members_count = Math.max(Number(projects.value[idx].members_count || 0), teamArr.length)
+                }
+              }
+            }
+          } catch (e) {
+            // 单个项目失败忽略
+          }
+        }
+      })
+      await Promise.all(workers)
     }
 
     onMounted(loadProjects)
@@ -721,6 +1032,7 @@ export default {
       getPriorityText,
       getRoleClass,
       getProgressClass,
+  getRoleLabel,
       formatDeadline,
       getEmptyStateTitle,
       getEmptyStateDescription,
