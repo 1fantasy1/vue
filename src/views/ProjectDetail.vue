@@ -120,8 +120,8 @@
       @application-processed="onApplicationProcessed"
     />
 
-    <!-- 学生匹配推荐 -->
-    <div class="card" v-if="isProjectCreator">
+  <!-- 学生匹配推荐 -->
+  <div class="card" v-if="showRecommendSection">
       <div class="match-header">
         <h3>为该项目推荐学生</h3>
         <div class="match-description">
@@ -161,6 +161,9 @@
             <div class="score"><label>相关性</label><span>{{ fmtScore(s.relevance_score) }}</span></div>
           </div>
           <div class="match-rationale" v-if="s.match_rationale">{{ s.match_rationale }}</div>
+          <div class="match-actions">
+            <button class="contact-btn" @click="contactStudent(s)">📨 联系TA</button>
+          </div>
         </li>
   </ul>
   <div v-else class="empty">点击上方“推荐学生”获取匹配结果</div>
@@ -201,6 +204,7 @@ import { ApiService } from '@/services/api.js'
 import CollectionModal from '@/components/CollectionModal.vue'
 import ProjectForm from '@/components/ProjectForm.vue'
 import ProjectApplications from '@/components/ProjectApplications.vue'
+import { useGlobalStore } from '@/stores/global.js'
 
 export default {
   name: 'ProjectDetail',
@@ -208,6 +212,8 @@ export default {
   setup() {
   const route = useRoute()
   const router = useRouter()
+  const globalStore = useGlobalStore()
+  try { globalStore.initAuth() } catch {}
     const loading = ref(true)
     const error = ref('')
     const project = ref(null)
@@ -218,14 +224,41 @@ export default {
     // 项目权限判断
     const projectId = computed(() => route.params.id)
     const currentUserId = computed(() => {
-      // 这里应该从认证状态获取当前用户ID，暂时使用模拟值
-      // 实际应该从store或者认证服务获取
-      return localStorage.getItem('userId') || '1'
+      // 优先从全局store获取，其次从登录缓存获取，最后退回旧localStorage
+      const sid = globalStore?.user?.id
+      if (sid) return String(sid)
+      try {
+        const me = JSON.parse(localStorage.getItem('currentUser') || 'null')
+        if (me?.id) return String(me.id)
+      } catch {}
+      return String(localStorage.getItem('userId') || '') || '1'
     })
     const isProjectCreator = computed(() => {
       return project.value && project.value.creator_id && 
              project.value.creator_id.toString() === currentUserId.value.toString()
     })
+    // 管理员识别（兼容多来源）
+    const isAdmin = computed(() => {
+      // 1) localStorage 显式标记
+      const lsRole = (localStorage.getItem('userRole') || '').toLowerCase()
+      if (lsRole === 'admin') return true
+      // 2) pinia store
+      const u = globalStore?.user || {}
+      const role = (u.role || '').toLowerCase()
+      if (role === 'admin') return true
+      if (Array.isArray(u.roles) && u.roles.map(r => String(r).toLowerCase()).includes('admin')) return true
+      // 3) 后端登录缓存 currentUser
+      try {
+        const me = JSON.parse(localStorage.getItem('currentUser') || 'null')
+        if (me) {
+          const mr = (me.role || '').toLowerCase()
+          if (mr === 'admin') return true
+          if (Array.isArray(me.roles) && me.roles.map(r => String(r).toLowerCase()).includes('admin')) return true
+        }
+      } catch {}
+      return false
+    })
+    const showRecommendSection = computed(() => isProjectCreator.value || isAdmin.value)
     const canApply = computed(() => {
       // 项目创建者不能申请自己的项目
       // 项目状态为"招募中"才能申请
@@ -469,8 +502,10 @@ export default {
       error,
       project,
       projectId,
-      isProjectCreator,
+  isProjectCreator,
+  isAdmin,
       canApply,
+  showRecommendSection,
       skills,
       roles,
       keywords,
