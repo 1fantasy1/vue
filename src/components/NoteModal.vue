@@ -201,7 +201,7 @@ export default {
       default: () => []
     }
   },
-  emits: ['close', 'success'],
+  emits: ['close', 'success', 'created', 'updated'],
   setup(props, { emit }) {
     const loading = ref(false)
     const selectedFile = ref(null)
@@ -225,7 +225,13 @@ export default {
 
     // 验证表单
     const isValid = computed(() => {
-      return formData.title.trim() || formData.content.trim() || selectedFile.value || formData.media_url
+      // 根据后端API文档：title、content、file 至少需要提供一个
+      // 且 content 不能为空白字符
+      const hasTitle = formData.title && formData.title.trim()
+      const hasContent = formData.content && formData.content.trim()
+      const hasFile = selectedFile.value
+      
+      return hasTitle || hasContent || hasFile
     })
 
     // 监听props.note变化，初始化表单
@@ -244,7 +250,7 @@ export default {
           if (key === 'note_type') {
             formData[key] = 'general'
           } else if (key === 'folder_id') {
-            formData[key] = ''
+            formData[key] = 0 // 默认为独立笔记
           } else {
             formData[key] = ''
           }
@@ -256,13 +262,13 @@ export default {
     // 监听course_id变化，清空folder_id
     watch(() => formData.course_id, (newVal) => {
       if (newVal) {
-        formData.folder_id = ''
+        formData.folder_id = 0 // 设置为0表示独立笔记
       }
     })
 
     // 监听folder_id变化，清空course相关
     watch(() => formData.folder_id, (newVal) => {
-      if (newVal) {
+      if (newVal && newVal !== 0) {
         formData.course_id = ''
         formData.chapter = ''
       }
@@ -329,9 +335,14 @@ export default {
           Object.keys(formData).forEach(key => {
             if (formData[key] !== '' && formData[key] !== null && 
                 key !== 'media_url' && key !== 'media_type') {
-              if (key === 'folder_id' && formData[key] === '') {
-                submitData.append(key, '0') // 空字符串转换为0
-              } else {
+              if (key === 'folder_id') {
+                // folder_id 的特殊处理：空字符串或null转换为0
+                const folderValue = formData[key] === '' || formData[key] === null ? 0 : formData[key]
+                submitData.append(key, folderValue.toString())
+              } else if (key === 'course_id' && formData[key]) {
+                // course_id 转换为字符串
+                submitData.append(key, formData[key].toString())
+              } else if (formData[key] !== '' && formData[key] !== null) {
                 submitData.append(key, formData[key])
               }
             }
@@ -342,17 +353,44 @@ export default {
           // 普通JSON数据（纯文本或外部媒体链接）
           submitData = { ...formData }
           
-          // 处理folder_id
-          if (submitData.folder_id === '') {
+          // 处理 folder_id：空字符串转换为0，表示独立笔记
+          if (submitData.folder_id === '' || submitData.folder_id === null) {
             submitData.folder_id = 0
           }
           
-          // 清理空字段
+          // 处理 course_id：确保是数字类型
+          if (submitData.course_id) {
+            submitData.course_id = parseInt(submitData.course_id)
+          }
+          
+          // 清理空字段，但保留 folder_id: 0
           Object.keys(submitData).forEach(key => {
-            if (submitData[key] === '' || submitData[key] === null) {
+            if (key === 'folder_id') {
+              // folder_id 保留0值
+              return
+            }
+            if (submitData[key] === '' || submitData[key] === null || submitData[key] === undefined) {
               delete submitData[key]
             }
           })
+          
+          // 验证互斥规则：course_id 和 folder_id 不能同时非空（除非 folder_id=0）
+          if (submitData.course_id && submitData.folder_id && submitData.folder_id !== 0) {
+            alert('不能同时选择课程和文件夹')
+            return
+          }
+          
+          // 验证章节依赖：使用 chapter 时必须提供 course_id
+          if (submitData.chapter && submitData.chapter.trim() && !submitData.course_id) {
+            alert('使用章节信息时必须选择课程')
+            return
+          }
+          
+          // 验证媒体一致性：提供 media_url 时必须指定 media_type
+          if (submitData.media_url && !submitData.media_type) {
+            alert('提供媒体URL时必须指定媒体类型')
+            return
+          }
         }
 
         let response
@@ -363,7 +401,13 @@ export default {
         }
 
         if (response.data.success) {
+          // 发送成功事件和具体操作事件
           emit('success', response.data.data)
+          if (editMode.value) {
+            emit('updated', response.data.data)
+          } else {
+            emit('created', response.data.data)
+          }
           handleCancel()
         } else {
           alert(response.data.message || '操作失败')
