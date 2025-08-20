@@ -474,9 +474,36 @@ export default {
       return maybeJson
     }
 
+    // 从 AI 文本中提取“我决定调用工具: ... 工具执行结果: ...”的日志，并返回清理后的正文与工具步骤
+    // 返回: { cleanedText: string, steps: Array<{ toolName, callText, outputText }> }
+    const parseToolLogsFromText = (text) => {
+      if (!text || typeof text !== 'string') return { cleanedText: text || '', steps: [] }
+      const steps = []
+      let cleaned = text
+      // 全局非贪婪匹配，捕获每个调用段
+      const pattern = /我决定调用工具\s*:\s*([\s\S]*?)工具执行结果\s*:\s*([\s\S]*?)(?=(?:\n{2,}|$|我决定调用工具\s*:))/g
+      let match
+      while ((match = pattern.exec(text)) !== null) {
+        const callText = (match[1] || '').trim()
+        const outputText = (match[2] || '').trim()
+        // 解析工具名（如果存在）
+        let toolName = '工具'
+        const nameMatch = callText.match(/"name"\s*:\s*"([^"]+)"/)
+        if (nameMatch && nameMatch[1]) toolName = nameMatch[1]
+        steps.push({ toolName, callText, outputText })
+      }
+      if (steps.length) {
+        // 移除已匹配的整段日志，保留正文
+        cleaned = cleaned.replace(pattern, '').replace(/\n{3,}/g, '\n\n').trim()
+      }
+      return { cleanedText: cleaned, steps }
+    }
+
     // 构建用于展示的消息列表：将 tool_call 和紧随其后的 tool_output 分组
     const buildDisplayMessages = (rawList) => {
       const result = []
+      // 若后端已返回 tool_call/tool_output 角色，则不再从 AI 文本里拆日志，避免重复
+      const hasToolRoles = Array.isArray(rawList) && rawList.some(m => m.role === 'tool_call' || m.role === 'tool_output')
       for (let i = 0; i < rawList.length; i++) {
         const m = rawList[i]
         const role = m.role
@@ -525,14 +552,43 @@ export default {
         }
 
         // 普通消息
-        result.push({
-          id: m.id,
-          type: role === 'user' ? 'user' : 'ai',
-          content: m.content,
-          timestamp: new Date(m.sent_at),
-          model: m.llm_model_used || 'unknown',
-          originalIndex: i
-        })
+        // 对 AI 文本尝试拆出工具日志（仅当后端未提供 tool_* 角色时）
+        if (role !== 'user' && !hasToolRoles && typeof m.content === 'string' && m.content.includes('我决定调用工具')) {
+          const { cleanedText, steps } = parseToolLogsFromText(m.content)
+          // 先插入解析出的工具步骤
+          steps.forEach((s, idx) => {
+            result.push({
+              id: `${m.id || 'ai'}-parsed-step-${idx}`,
+              displayType: 'tool-step',
+              type: 'ai',
+              timestamp: new Date(m.sent_at || Date.now()),
+              toolName: s.toolName,
+              call: s.callText, // 原样字符串，详情视图会格式化
+              output: s.outputText ? { output: s.outputText } : null,
+              status: 'done',
+              expanded: false,
+              originalIndex: i + idx * 0.001
+            })
+          })
+          // 再插入清理后的 AI 正文
+          result.push({
+            id: m.id,
+            type: 'ai',
+            content: cleanedText,
+            timestamp: new Date(m.sent_at),
+            model: m.llm_model_used || 'unknown',
+            originalIndex: i + 0.5
+          })
+        } else {
+          result.push({
+            id: m.id,
+            type: role === 'user' ? 'user' : 'ai',
+            content: m.content,
+            timestamp: new Date(m.sent_at),
+            model: m.llm_model_used || 'unknown',
+            originalIndex: i
+          })
+        }
       }
       
       // 按时间戳排序，如果时间戳相同则按原始索引排序
@@ -1015,10 +1071,28 @@ export default {
           if (tools.length) metaParts.push(`工具：${tools.length}`)
           const metaLine = metaParts.length ? `<br><div style="color:#6b7280;font-size:12px;">${metaParts.join(' ｜ ')}</div>` : ''
 
+          // 将 AI 文本中的“工具调用日志”剥离成独立展示
+          const { cleanedText, steps } = parseToolLogsFromText(answer)
+          // 先插入工具步骤（临时展示，稍后会用历史刷新替换为后端真实记录）
+          steps.forEach((s, idx) => {
+            chatHistory.value.push({
+              id: `temp-step-${Date.now()}-${idx}`,
+              displayType: 'tool-step',
+              type: 'ai',
+              timestamp: new Date(),
+              toolName: s.toolName,
+              call: s.callText,
+              output: s.outputText ? { output: s.outputText } : null,
+              status: 'done',
+              expanded: false
+            })
+          })
+
+          // 再插入清理后的 AI 正文
           chatHistory.value.push({
             id: Date.now(),
             type: 'ai',
-            content: `${answer}${metaLine}`,
+            content: `${cleanedText || ''}${metaLine}`.trim(),
             timestamp: new Date(),
             model: usedModel
           })
