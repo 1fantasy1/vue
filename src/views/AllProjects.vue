@@ -137,7 +137,7 @@
             <!-- 项目头部 -->
             <div class="project-header">
               <div class="project-meta">
-                <span class="project-status" :class="project.project_status">
+                <span class="project-status" :class="getStatusText(project.project_status)">
                   {{ getStatusText(project.project_status) }}
                 </span>
                 <span v-if="project.project_type" class="project-type">
@@ -158,8 +158,9 @@
                 <button 
                   v-if="canApplyToProject(project)"
                   class="action-btn apply" 
+                  :disabled="applyingIds.has(project.id)"
                   @click.stop="quickApply(project)"
-                  title="快速申请"
+                  :title="applyingIds.has(project.id) ? '申请中…' : '参与项目'"
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
@@ -248,7 +249,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ApiService } from '@/services/api.js'
 import ProjectForm from '@/components/ProjectForm.vue'
@@ -270,8 +271,10 @@ export default {
     const showForm = ref(false)
     const editingProject = ref(null)
 
-    // 当前用户ID（应该从认证状态获取）
-    const currentUserId = ref(localStorage.getItem('userId') || '1')
+  // 当前用户ID（应该从认证状态获取）
+  const currentUserId = ref(localStorage.getItem('userId') || '1')
+  // 正在申请的项目集合（用于禁用按钮、防重复）
+  const applyingIds = reactive(new Set())
 
     // 筛选配置
     const filters = ref([
@@ -297,7 +300,29 @@ export default {
       }
     ])
 
-    // 计算统计数据
+    // 统一状态值
+    const normalizeStatus = (status) => {
+      const raw = (status || '').toString().trim()
+      const s = raw.toLowerCase()
+      if (['planning', 'active', 'paused', 'completed'].includes(s)) return s
+      if (raw === '招募中') return 'planning'
+      if (raw === '进行中') return 'active'
+      if (raw === '暂停') return 'paused'
+      if (raw === '已完成') return 'completed'
+      return s
+    }
+
+    const normalizeFilterKey = (key) => {
+      switch (key) {
+        case '招募中': return 'planning'
+        case '进行中': return 'active'
+        case '暂停': return 'paused'
+        case '已完成': return 'completed'
+        default: return key
+      }
+    }
+
+    // 计算统计数据（兼容中英状态）
     const statsData = computed(() => [
       {
         type: 'total',
@@ -308,19 +333,19 @@ export default {
       {
         type: 'recruiting',
         icon: 'M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,17L7,12L10.5,8.5L12,10L17.5,4.5L21,8L12,17Z',
-        value: projects.value.filter(p => p.project_status === '招募中').length,
+        value: projects.value.filter(p => normalizeStatus(p.project_status) === 'planning').length,
         label: '招募中'
       },
       {
         type: 'active',
         icon: 'M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M10,17L5,12L6.41,10.59L10,14.17L17.59,6.58L19,8L10,17Z',
-        value: projects.value.filter(p => p.project_status === '进行中').length,
+        value: projects.value.filter(p => normalizeStatus(p.project_status) === 'active').length,
         label: '进行中'
       },
       {
         type: 'completed',
         icon: 'M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z',
-        value: projects.value.filter(p => p.project_status === '已完成').length,
+        value: projects.value.filter(p => normalizeStatus(p.project_status) === 'completed').length,
         label: '已完成'
       }
     ])
@@ -343,7 +368,8 @@ export default {
 
       // 状态筛选
       if (activeFilter.value !== 'all') {
-        filtered = filtered.filter(project => project.project_status === activeFilter.value)
+        const want = normalizeFilterKey(activeFilter.value)
+        filtered = filtered.filter(project => normalizeStatus(project.project_status) === want)
       }
 
       // 排序
@@ -392,15 +418,22 @@ export default {
     }
 
     const getStatusText = (status) => {
-      return status || '未知状态'
+      const s = normalizeStatus(status)
+      switch (s) {
+        case 'planning': return '招募中'
+        case 'active': return '进行中'
+        case 'paused': return '暂停'
+        case 'completed': return '已完成'
+        default: return status || '未知状态'
+      }
     }
 
     const getProjectStatusClass = (status) => {
-      switch (status) {
-        case '招募中': return 'status-recruiting'
-        case '进行中': return 'status-active'
-        case '已完成': return 'status-completed'
-        case '暂停': return 'status-paused'
+      switch (normalizeStatus(status)) {
+        case 'planning': return 'status-recruiting'
+        case 'active': return 'status-active'
+        case 'completed': return 'status-completed'
+        case 'paused': return 'status-paused'
         default: return ''
       }
     }
@@ -450,7 +483,10 @@ export default {
     }
 
     const canApplyToProject = (project) => {
-      return !isMyProject(project) && project.project_status === '招募中'
+      const s = normalizeStatus(project.project_status)
+      const closed = s === 'completed' || s === 'paused'
+      // 计划中/进行中都允许申请
+      return !isMyProject(project) && !closed && !project._applied_by_me
     }
 
     // 操作方法
@@ -482,9 +518,29 @@ export default {
       showForm.value = true
     }
 
-    const quickApply = (project) => {
-      // 快速申请，跳转到项目详情页
-      router.push(`/projects/${project.id}`)
+    const quickApply = async (project) => {
+  if (applyingIds.has(project.id)) return
+      // 可选：填写申请留言
+      let message = ''
+      try {
+        message = window.prompt('申请留言（可选）', '') || ''
+      } catch {}
+  applyingIds.add(project.id)
+      try {
+        const res = await ApiService.applyToProject(project.id, message ? { message } : {})
+        if (res?.data?.success) {
+          alert('申请已提交，等待处理。')
+          // 本地更新计数与状态，避免重复点击
+          project.applications_count = (project.applications_count || 0) + 1
+          project._applied_by_me = true
+        } else {
+          throw new Error(res?.data?.message || '申请失败')
+        }
+      } catch (e) {
+        alert(e.message || '申请失败')
+      } finally {
+        applyingIds.delete(project.id)
+      }
     }
 
     const onFormSuccess = (createdOrUpdated) => {
@@ -530,6 +586,7 @@ export default {
       showForm,
       editingProject,
       filters,
+  applyingIds,
       
       // 计算属性
       statsData,
