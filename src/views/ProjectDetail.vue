@@ -115,6 +115,9 @@
       :project-id="projectId"
       :is-project-creator="isProjectCreator"
   :is-admin="isAdmin"
+  :current-user-id="currentUserId"
+  :current-student-id="currentUserId"
+  :current-user-email="currentUserEmail"
       :can-apply="canApply"
       :show-members="true"
       @application-submitted="onApplicationSubmitted"
@@ -232,23 +235,44 @@ export default {
         const me = JSON.parse(localStorage.getItem('currentUser') || 'null')
         if (me?.id) return String(me.id)
       } catch {}
-      return String(localStorage.getItem('userId') || '') || '1'
+      // 不再使用 '1' 作为回退，避免误判为创建者
+      const legacy = localStorage.getItem('userId')
+      return legacy ? String(legacy) : ''
     })
-    const isProjectCreator = computed(() => {
-      return project.value && project.value.creator_id && 
-             project.value.creator_id.toString() === currentUserId.value.toString()
+  const isProjectCreator = computed(() => {
+      const p = project.value
+      if (!p) return false
+      const myId = currentUserId.value?.toString()
+      const candidates = []
+      // 常见后端字段兼容
+      if (p.creator_id != null) candidates.push(p.creator_id)
+      if (p.creator_user_id != null) candidates.push(p.creator_user_id)
+      if (p.created_by != null) candidates.push(p.created_by)
+      if (p.created_by_user_id != null) candidates.push(p.created_by_user_id)
+      if (p.owner_id != null) candidates.push(p.owner_id)
+      if (p.owner?.id != null) candidates.push(p.owner.id)
+      if (p.creator?.id != null) candidates.push(p.creator.id)
+      if (p.creator?.user_id != null) candidates.push(p.creator.user_id)
+      return candidates.some(id => id != null && id.toString() === myId)
     })
-    // 管理员识别（兼容多来源）
+    // 当前用户邮箱（用于与成员列表比对）
+    const currentUserEmail = computed(() => {
+      const u = globalStore?.user || {}
+      if (u.email) return String(u.email)
+      try {
+        const me = JSON.parse(localStorage.getItem('currentUser') || 'null')
+        if (me?.email) return String(me.email)
+      } catch {}
+      return ''
+    })
+    // 管理员识别（仅信任后端来源：store 或登录缓存 currentUser）
     const isAdmin = computed(() => {
-      // 1) localStorage 显式标记
-      const lsRole = (localStorage.getItem('userRole') || '').toLowerCase()
-      if (lsRole === 'admin') return true
-      // 2) pinia store
+      // pinia store
       const u = globalStore?.user || {}
       const role = (u.role || '').toLowerCase()
       if (role === 'admin') return true
       if (Array.isArray(u.roles) && u.roles.map(r => String(r).toLowerCase()).includes('admin')) return true
-      // 3) 后端登录缓存 currentUser
+      // 登录缓存 currentUser
       try {
         const me = JSON.parse(localStorage.getItem('currentUser') || 'null')
         if (me) {
@@ -508,6 +532,8 @@ export default {
       projectId,
   isProjectCreator,
   isAdmin,
+  currentUserId,
+  currentUserEmail,
       canApply,
   showRecommendSection,
       skills,

@@ -57,11 +57,13 @@
       </div>
 
       <div class="applications-list">
-        <div v-if="filteredApplications.length === 0" class="empty-state">
-          <p>{{ getEmptyMessage() }}</p>
-        </div>
-        
-        <div v-else class="application-cards">
+          <div v-if="!hasViewApplicationsPermission" class="empty-state">
+            <p>{{ noAccessMessage || '您无权查看该项目的申请，仅项目创建者或系统管理员可以查看。' }}</p>
+          </div>
+          <div v-else-if="filteredApplications.length === 0" class="empty-state">
+            <p>{{ getEmptyMessage() }}</p>
+          </div>
+          <div v-else class="application-cards">
           <div 
             v-for="application in filteredApplications" 
             :key="application.id"
@@ -175,6 +177,21 @@ export default {
       type: Boolean,
       default: false
     },
+    // 当前登录用户ID，用于根据成员列表识别项目管理员
+    currentUserId: {
+      type: [String, Number],
+      default: ''
+    },
+    // 当前登录用户在学生域的ID（若有），用于与 members.student_id 匹配
+    currentStudentId: {
+      type: [String, Number],
+      default: ''
+    },
+    // 当前登录用户的邮箱，用于与 members.member_email 匹配
+    currentUserEmail: {
+      type: String,
+      default: ''
+    },
     canApply: {
       type: Boolean,
       default: true
@@ -192,9 +209,36 @@ export default {
     const applications = ref([])
     const members = ref([])
     const currentStatusFilter = ref(null)
+  const hasViewApplicationsPermission = ref(true)
+  const noAccessMessage = ref('')
+  // 以服务端结果为准的访问判定（解决本地身份匹配不一致问题）
+  const serverAllowsApplications = ref(false)
+  const accessChecked = ref(false)
 
-    // 管理权限：项目创建者或管理员
-    const canManage = computed(() => !!(props.isProjectCreator || props.isAdmin))
+    // 管理权限：项目创建者或（成员列表中）管理员
+    const canManage = computed(() => {
+      if (props.isProjectCreator || props.isAdmin) return true
+      const myUserId = props.currentUserId ? String(props.currentUserId) : ''
+      const myStudentId = props.currentStudentId ? String(props.currentStudentId) : ''
+      const myEmail = (props.currentUserEmail || '').toLowerCase()
+      if (!members.value.length) return false
+      return members.value.some(m => {
+        const role = String(m.role || '').toLowerCase()
+        if (role !== 'admin') return false
+        const sid = m.student_id != null ? String(m.student_id) : ''
+        const uid = m.user_id != null ? String(m.user_id) : ''
+        const mid = m.id != null ? String(m.id) : ''
+        const memEmail = (m.member_email || '').toLowerCase()
+        return (
+          (sid && (sid === myStudentId || sid === myUserId)) ||
+          (uid && (uid === myUserId || uid === myStudentId)) ||
+          (mid && (mid === myUserId || mid === myStudentId)) ||
+          (myEmail && memEmail && myEmail === memEmail)
+        )
+      })
+    })
+  // 最终用于 UI 的管理权限：本地匹配或服务端允许其访问申请列表
+  const canManageUI = computed(() => canManage.value || serverAllowsApplications.value)
     
     const applicationData = ref({
       message: ''
@@ -267,29 +311,48 @@ export default {
       }
     }
 
-  const loadApplications = async (statusFilter = null) => {
-      if (!canManage.value) return
+    const loadApplications = async (statusFilter = null) => {
+    if (!(canManage.value || serverAllowsApplications.value)) return
+      if (!hasViewApplicationsPermission.value) return
       
       try {
     const response = await ApiService.getProjectApplications(props.projectId, statusFilter)
         if (response.data.success) {
           applications.value = response.data.data || []
+          hasViewApplicationsPermission.value = true
+          noAccessMessage.value = ''
+      serverAllowsApplications.value = true
+      accessChecked.value = true
         }
       } catch (error) {
+        // 更友好的错误处理
         console.error('加载申请列表失败:', error)
+        const msg = (error && error.message) || ''
+        if (msg.includes('403')) {
+          // 无权查看，停止后续重拉
+          applications.value = []
+          hasViewApplicationsPermission.value = false
+          noAccessMessage.value = '您无权查看该项目的申请。'
+      serverAllowsApplications.value = false
+      accessChecked.value = true
+        }
       }
     }
 
-    const loadMembers = async () => {
+  const loadMembers = async () => {
       if (!props.showMembers) return
       
       try {
         const response = await ApiService.getProjectMembers(props.projectId)
         if (response.data.success) {
           members.value = response.data.data || []
+          // 成员加载后，如具备管理员权限则尝试加载申请
+          if (canManage.value) {
+            await loadApplications(currentStatusFilter.value)
+          }
         }
       } catch (error) {
-        console.error('加载成员列表失败:', error)
+    console.error('加载成员列表失败:', error)
       }
     }
 
@@ -329,8 +392,31 @@ export default {
 
     // 监听项目ID变化，重新加载数据
     watch(() => props.projectId, () => {
-      loadApplications(currentStatusFilter.value)
-      loadMembers()
+      serverAllowsApplications.value = false
+      accessChecked.value = false
+      hasViewApplicationsPermission.value = true
+      noAccessMessage.value = ''
+      // 先拉成员（以便本地匹配），再进行一次服务端探测
+      loadMembers().then(async () => {
+        if (!accessChecked.value) {
+          try {
+            const resp = await ApiService.getProjectApplications(props.projectId, currentStatusFilter.value)
+            if (resp.data.success) {
+              applications.value = resp.data.data || []
+              serverAllowsApplications.value = true
+              accessChecked.value = true
+            }
+          } catch (e) {
+            const msg = (e && e.message) || ''
+            if (msg.includes('403')) {
+              hasViewApplicationsPermission.value = false
+              noAccessMessage.value = '您无权查看该项目的申请。'
+              serverAllowsApplications.value = false
+              accessChecked.value = true
+            }
+          }
+        }
+      })
     }, { immediate: true })
 
     // 切换状态标签时，使用后端过滤重新加载
@@ -338,9 +424,15 @@ export default {
       loadApplications(v)
     })
 
+    // 当管理权限从不可用变为可用（例如项目详情加载后识别为创建者/管理员），自动加载申请列表
+    watch(canManage, (v) => {
+      if (v) {
+        loadApplications(currentStatusFilter.value)
+      }
+    })
+
     onMounted(() => {
-      loadApplications()
-      loadMembers()
+  // 初始化由 watch(projectId) 执行
     })
 
     return {
@@ -349,7 +441,10 @@ export default {
       processing,
       applications,
       members,
-  canManage,
+    canManage,
+        canManageUI,
+  hasViewApplicationsPermission,
+  noAccessMessage,
       currentStatusFilter,
       applicationData,
       statusFilters,
