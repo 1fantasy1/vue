@@ -38,7 +38,7 @@
 <tr>
 <td width="50%">
 
-### � **智能项目管理**
+### 🎯 **智能项目管理**
 - 🤖 **AI智能匹配**：基于算法的项目-学生匹配推荐
 - 📊 **项目生命周期管理**：从创建到完成的全流程跟踪
 - 👥 **团队协作工具**：申请审批、成员管理、进度同步
@@ -48,7 +48,7 @@
 ### 📚 **在线学习系统**
 - 📖 **丰富课程资源**：多学科、多层次的在线课程
 - 📝 **智能笔记系统**：支持富文本、标记和分类的笔记管理
-- � **学习进度跟踪**：个性化的学习路径和进度监控
+- 📊 **学习进度跟踪**：个性化的学习路径和进度监控
 - 🎓 **完成度统计**：课程完成情况和学习成果展示
 - 🔖 **收藏与书签**：便捷的内容收藏和快速访问
 
@@ -63,11 +63,11 @@
 <td width="50%">
 
 ### 🧠 **知识管理中枢**
-- � **结构化知识库**：分层级的知识组织和管理
-- �️ **智能分类系统**：自动标签生成和内容分类
+- 📖 **结构化知识库**：分层级的知识组织和管理
+- 🏷️ **智能分类系统**：自动标签生成和内容分类
 - 🔍 **全文搜索引擎**：高效的内容检索和知识发现
 - 📎 **文档上传处理**：支持多格式文档的解析和存储
-- � **知识关联**：智能的知识点关联和推荐
+- 🔗 **知识关联**：智能的知识点关联和推荐
 
 ### 🛠️ **开发者工具**
 - 🧪 **API测试工具**：内置的接口调试和测试工具
@@ -87,7 +87,7 @@
 - 🧠 **多模型支持**：集成OpenAI、DeepSeek、智谱等多个AI模型
 - 💬 **智能对话**：基于大语言模型的智能问答系统
 - 🔍 **语义搜索**：AI驱动的内容理解和推荐
-- � **数据分析**：智能的用户行为分析和洞察
+- 📊 **数据分析**：智能的用户行为分析和洞察
 - 🎯 **个性化推荐**：基于用户画像的精准内容推荐
 
 </td>
@@ -239,7 +239,7 @@ npm run dev
 </td>
 <td width="50%">
 
-#### �️ **桌面应用开发**
+#### 🖥️ **桌面应用开发**
 ```bash
 # 启动Electron开发模式
 npm run electron:dev
@@ -298,7 +298,7 @@ docker run -p 8080:80 hongqing-shuyun
 ├── 📖 README.md                 # 项目文档
 ├── 🛠️ vite.config.js            # Vite构建配置
 ├── 🌍 .env                      # 环境变量配置
-├── �️ electron/                 # Electron桌面应用
+├── 🖥️ electron/                 # Electron桌面应用
 │   ├── ⚡ main.cjs              # 主进程文件
 │   └── 🔧 preload.cjs           # 预加载脚本
 ├── 🌍 public/                   # 公共静态资源
@@ -318,17 +318,17 @@ docker run -p 8080:80 hongqing-shuyun
     ├── 🧩 components/           # 通用组件库
     │   ├── 🔧 APITestTool.vue   # API测试工具组件
     │   ├── ⭐ CollectButton.vue  # 收藏按钮组件
-    │   ├── � CollectionModal.vue # 收藏弹窗组件
+    │   ├── 📝 CollectionModal.vue # 收藏弹窗组件
     │   ├── 📚 CourseRecommendations.vue # 课程推荐组件
-    │   ├── �👋 HelloWorld.vue    # 示例组件
+    │   ├── 🎉 HelloWorld.vue    # 示例组件
     │   ├── 🖼️ HtmlPreview.vue    # HTML预览组件
     │   ├── 🤖 LLMExampleComponent.vue # LLM示例组件
     │   ├── 📄 MaterialDetailModal.vue # 资料详情弹窗
     │   ├── 📚 MaterialManager.vue # 资料管理组件
-    │   ├── � NoteModal.vue     # 笔记弹窗组件
+    │   ├── 📝 NoteModal.vue     # 笔记弹窗组件
     │   ├── 🎯 ProjectApplications.vue # 项目申请组件
     │   ├── 📋 ProjectForm.vue   # 项目表单组件
-    │   ├── � TheWelcome.vue    # 欢迎组件
+    │   ├── 🎉 TheWelcome.vue    # 欢迎组件
     │   ├── 📋 WelcomeItem.vue   # 欢迎项组件
     │   ├── 🎭 icons/            # 图标组件集合
     │   └── ⚙️ settings/         # 设置相关组件
@@ -353,8 +353,8 @@ docker run -p 8080:80 hongqing-shuyun
     └── 📱 views/                # 页面视图组件
         ├── 🏠 Home.vue          # 首页
         ├── 🌟 Plaza.vue         # 广场页面
-        ├── � Profile.vue       # 个人中心
-        ├── � Login.vue         # 登录页面
+        ├── 👤 Profile.vue       # 个人中心
+        ├── 🔐 Login.vue         # 登录页面
         ├── 🎯 MyProjects.vue    # 我的项目
         ├── 📚 MyCourses.vue     # 我的课程
         ├── ⭐ Favorites.vue     # 收藏夹
@@ -365,11 +365,11 @@ docker run -p 8080:80 hongqing-shuyun
         ├── ⚡ QuickNotes.vue    # 快速笔记
         ├── 🛠️ DevTools.vue      # 开发工具
         ├── 🧪 APITest.vue       # API测试页面
-        ├── � ProjectDetail.vue # 项目详情
-        ├── �📚 CourseDetail.vue  # 课程详情
+        ├── 📊 ProjectDetail.vue # 项目详情
+        ├── 📚 CourseDetail.vue  # 课程详情
         ├── 📑 DocumentDetail.vue # 文档详情
-        ├── � AllProjects.vue   # 所有项目
-        ├── � CourseBrowser.vue # 课程浏览
+        ├── 🏢 AllProjects.vue   # 所有项目
+        ├── 🎓 CourseBrowser.vue # 课程浏览
         ├── 🎛️ CourseManagement.vue # 课程管理
         ├── ⭐ CollectionDetail.vue # 收藏详情
         ├── 🎯 ProjectRecommendations.vue # 项目推荐
@@ -519,7 +519,7 @@ VITE_DEBUG_MODE=true                      # 调试模式
 - 🛠️ **信息管理**：个人资料和技能标签
 - ⚙️ **系统设置**：个性化偏好和通知设置
 - 🤖 **AI配置**：LLM模型和MCP服务器管理
-- � **数据统计**：个人学习和项目数据分析
+- 📊 **数据统计**：个人学习和项目数据分析
 
 </td>
 <td width="33%">
@@ -540,8 +540,8 @@ VITE_DEBUG_MODE=true                      # 调试模式
 
 #### 💬 **沟通协作**
 - ⚡ **实时聊天**：团队和项目组的即时通讯
-- � **文件共享**：项目文档和资源的协作管理
-- � **消息通知**：重要事件的及时提醒
+- 📎 **文件共享**：项目文档和资源的协作管理
+- 🤔 **消息通知**：重要事件的及时提醒
 - 📧 **邮件集成**：与外部邮件系统的无缝对接
 
 </td>
@@ -563,9 +563,9 @@ VITE_DEBUG_MODE=true                      # 调试模式
 
 #### 🤖 **AI集成**
 - 🧠 **多模型支持**：OpenAI、DeepSeek、智谱等
-- � **智能对话**：基于大语言模型的问答
+- 💬 **智能对话**：基于大语言模型的问答
 - 🎯 **个性化推荐**：用户行为分析和内容推荐
-- � **语义搜索**：AI驱动的内容理解和匹配
+- 🔍 **语义搜索**：AI驱动的内容理解和匹配
 - 🛠️ **MCP集成**：Model Context Protocol服务器管理
 
 </td>
@@ -763,7 +763,7 @@ export class ApiService {
 <tr>
 <td width="50%">
 
-#### � **代码贡献流程**
+#### 📝 **代码贡献流程**
 
 1. **🍴 Fork项目仓库**
    ```bash
@@ -845,7 +845,7 @@ export class ApiService {
 - 📚 API文档完善
 - 🔧 安装指南更新
 - 🎓 教程和示例
-- � 多语言翻译
+- 🌍 多语言翻译
 - 📋 规范标准化
 
 </td>
@@ -930,15 +930,15 @@ npm run build
 - 🚀 完整的项目管理系统
 - 🤖 AI驱动的智能匹配算法
 - 📚 在线课程学习平台
-- � 实时聊天和协作功能
-- � 结构化知识库系统
+- 💬 实时聊天和协作功能
+- 📖 结构化知识库系统
 
 **🔧 技术成就**
 - 🏗️ 前后端分离架构
 - 📱 Electron桌面应用支持
 - 🎨 现代化UI/UX设计
 - ⚡ 高性能前端构建
-- �️ 完善的开发工具链
+- 🛠️ 完善的开发工具链
 
 **📊 数据指标**
 - 📁 50+ 文件代码库
@@ -961,11 +961,11 @@ npm run build
 - 🔧 开发环境配置
 
 **🎯 初始功能**
-- � 用户登录系统
+- 🔐 用户登录系统
 - 🏠 基础页面框架
 - 📝 项目结构设计
 - 🎨 UI组件开发
-- � 文档编写
+- 📖 文档编写
 
 **📈 技术债务**
 - 🚀 确定技术栈选型
@@ -979,7 +979,7 @@ npm run build
 
 <div align="center">
 
-### �️ 发展路线图
+### 📈 发展路线图
 
 </div>
 
@@ -1029,14 +1029,14 @@ npm run build
 **🌐 扩展功能**
 - 🗃️ 数据导入导出
 - 🔗 API开放平台
-- � 插件系统架构
+- 🏗️ 插件系统架构
 - 🌍 国际化多语言
 
 **🏢 企业级特性**
 - 👥 多租户支持
 - 🔒 高级权限管理
 - 📈 数据可视化大屏
-- �️ 安全审计日志
+- 🔐 安全审计日志
 
 </td>
 <td width="25%">
@@ -1052,8 +1052,8 @@ npm run build
 
 **🏗️ 架构升级**
 - ☁️ 云原生部署
-- � 微服务架构
-- �📊 大数据平台集成
+- 🔄 微服务架构
+- 📊 大数据平台集成
 - 🚀 边缘计算支持
 
 </td>
@@ -1071,7 +1071,7 @@ npm run build
 **前端技术**
 - 📦 Vue 3.5+ (Composition API深度应用)
 - ⚡ Vite 6.0 (构建性能优化)
-- � Tailwind CSS (原子化CSS)
+- 🎨 Tailwind CSS (原子化CSS)
 - 📱 Capacitor (移动端混合开发)
 
 **开发工具**
@@ -1162,9 +1162,9 @@ npm run build
 
 **贡献领域**
 - 🏗️ 系统架构设计
-- � 核心功能开发  
+- 💻 核心功能开发  
 - 🎨 UI/UX设计
-- �📖 技术文档编写
+- 📖 技术文档编写
 - 🔧 项目维护管理
 
 **技术专长**
