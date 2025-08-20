@@ -34,7 +34,7 @@
             @focus="onSearchFocus"
             @blur="onSearchBlur"
           />
-          <button class="search-action-btn" @click="performSearch" :disabled="!searchQuery.trim()">
+          <button class="search-action-btn" @click="performSearch" :disabled="!searchQuery.trim() || isSearching">
             搜索
           </button>
         </div>
@@ -55,7 +55,7 @@
         </div>
       </div>
 
-      <div class="smart-match-container">
+  <div class="smart-match-container" v-if="showSmartMatch">
         <div class="match-types-header">
           <span class="match-types-title">智能推荐类型</span>
           <span class="match-types-desc">选择推荐模式，获得个性化内容</span>
@@ -726,9 +726,11 @@ export default {
   setup() {
     const searchQuery = ref('')
     const showSmartMatch = ref(false)
-    const selectedType = ref('')
+  const selectedType = ref('')
     const showSuggestions = ref(false)
     const showRecommendationModal = ref(false)
+  const isSearching = ref(false)
+  let searchTimer = null
     
     // 智能搜索相关数据
     const totalMatches = ref(247)
@@ -1409,8 +1411,29 @@ export default {
         ElMessage.warning('请输入搜索内容')
         return
       }
+      // 防抖：如果正在搜索中，忽略重复点击
+      if (isSearching.value) return
+      isSearching.value = true
+      // 点击一次有效搜索即计数+1
+      try {
+        totalMatches.value = Number(totalMatches.value) + 1
+      } catch (_) {
+        // 容错：保证不致崩溃
+      }
+      // 清理旧定时器
+      if (searchTimer) {
+        clearTimeout(searchTimer)
+        searchTimer = null
+      }
       ElMessage.success('正在智能分析您的需求...')
-      // 这里可以添加实际的搜索逻辑
+      // 延迟6秒后展示推荐卡片
+      searchTimer = setTimeout(() => {
+        showSmartMatch.value = true
+        selectedType.value = ''
+        showRecommendationModal.value = false
+        isSearching.value = false
+      }, 5000)
+      // 这里可以添加实际的搜索逻辑（调用后端等）
     }
 
     const refreshRecommendations = () => {
@@ -1433,6 +1456,10 @@ export default {
 
     onUnmounted(() => {
       if (observer) observer.disconnect()
+      if (searchTimer) {
+        clearTimeout(searchTimer)
+        searchTimer = null
+      }
     })
 
     return {
@@ -1442,6 +1469,7 @@ export default {
       selectedType,
       showSuggestions,
       showRecommendationModal,
+  isSearching,
       totalMatches,
       successRate,
       searchSuggestions,
