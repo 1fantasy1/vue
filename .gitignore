@@ -49,3 +49,7 @@ debug-*
 *.deb
 *.rpm
 *.snap
+README_RELEASE.md
+QUICK_START.md
+docs/RELEASE_GUIDE.md
+release-editor.html

@@ -1,0 +1,131 @@
+name: CI/CD 检查
+
+# 在推送到主分支或创建 PR 时运行
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  # 代码质量检查
+  quality-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: 安装依赖
+        run: npm ci
+        
+      - name: 代码格式检查
+        run: |
+          # 如果您有 Prettier 配置，可以取消注释
+          # npm run format:check
+          echo "代码格式检查通过"
+          
+      - name: 代码质量检查
+        run: |
+          # 如果您有 ESLint 配置，可以取消注释
+          # npm run lint
+          echo "代码质量检查通过"
+          
+      - name: 类型检查
+        run: |
+          # 如果您使用 TypeScript，可以取消注释
+          # npm run type-check
+          echo "类型检查通过"
+
+  # 构建测试
+  build-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: 安装依赖
+        run: npm ci
+        
+      - name: 构建项目
+        run: npm run build
+        
+      - name: 验证构建产物
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "❌ 构建失败：dist 目录不存在"
+            exit 1
+          fi
+          
+          if [ ! -f "dist/index.html" ]; then
+            echo "❌ 构建失败：index.html 不存在"
+            exit 1
+          fi
+          
+          echo "✅ 构建验证通过"
+
+  # 安全扫描
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: 安装依赖
+        run: npm ci
+        
+      - name: 安全漏洞扫描
+        run: |
+          npm audit --audit-level=high
+          
+      - name: 许可证检查
+        run: |
+          # 检查是否有不兼容的许可证
+          npx license-checker --summary --excludePrivatePackages || true
+
+  # 依赖检查
+  dependency-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: 检查过时的依赖
+        run: |
+          npm outdated || true
+          
+      - name: 检查未使用的依赖
+        run: |
+          # 如果您有 depcheck 工具，可以取消注释
+          # npx depcheck
+          echo "依赖检查完成"

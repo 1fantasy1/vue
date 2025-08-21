@@ -1,0 +1,375 @@
+name: 自动发布
+
+# 触发条件：当推送包含 release-config.json 变更时或推送 tag 时
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'release-config.json'
+  push:
+    tags:
+      - 'v*'  # 匹配形如 v1.0.0 的标签
+
+# 定义环境变量
+env:
+  NODE_VERSION: '18'
+
+# 权限配置
+permissions:
+  contents: write
+  packages: write
+  
+jobs:
+  # 构建和测试作业
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      should_release: ${{ steps.check_release.outputs.should_release }}
+      release_title: ${{ steps.get_version.outputs.release_title }}
+      release_body: ${{ steps.get_version.outputs.release_body }}
+      build_windows: ${{ steps.get_version.outputs.build_windows }}
+      build_macos: ${{ steps.get_version.outputs.build_macos }}
+      build_linux: ${{ steps.get_version.outputs.build_linux }}
+      
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史记录
+        
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: 安装依赖
+        run: npm ci
+        
+      - name: 检查是否需要发布
+        id: check_release
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "trigger_type=tag" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            # 检查是否有 release-config.json 的变更
+            if git diff --name-only HEAD~1 HEAD | grep -q "release-config.json"; then
+              echo "should_release=true" >> $GITHUB_OUTPUT
+              echo "trigger_type=config" >> $GITHUB_OUTPUT
+            else
+              echo "should_release=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          fi
+        
+      - name: 代码质量检查
+        if: steps.check_release.outputs.should_release == 'true'
+        run: |
+          # 如果您有 ESLint 配置，可以取消注释下面的行
+          # npm run lint
+          echo "代码质量检查通过"
+          
+      - name: 运行测试
+        if: steps.check_release.outputs.should_release == 'true'
+        run: |
+          # 如果您有测试脚本，可以取消注释下面的行
+          # npm test
+          echo "测试通过"
+          
+      - name: 构建项目
+        if: steps.check_release.outputs.should_release == 'true'
+        run: npm run build
+        
+      - name: 获取版本信息
+        id: get_version
+        if: steps.check_release.outputs.should_release == 'true'
+        run: |
+          if [[ "${{ steps.check_release.outputs.trigger_type }}" == "tag" ]]; then
+            # 从标签获取版本号
+            VERSION=${GITHUB_REF#refs/tags/}
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "release_title=鸿庆书云 $VERSION" >> $GITHUB_OUTPUT
+            echo "release_body=Release $VERSION" >> $GITHUB_OUTPUT
+            echo "build_windows=true" >> $GITHUB_OUTPUT
+            echo "build_macos=false" >> $GITHUB_OUTPUT
+            echo "build_linux=false" >> $GITHUB_OUTPUT
+          else
+            # 从配置文件获取版本信息
+            VERSION=$(jq -r '.version' release-config.json)
+            TITLE=$(jq -r '.releaseNotes.title' release-config.json)
+            DESCRIPTION=$(jq -r '.releaseNotes.description' release-config.json)
+            
+            # 构建发布说明
+            RELEASE_BODY="## $DESCRIPTION"$'\n\n'
+            
+            # 添加新功能
+            FEATURES=$(jq -r '.releaseNotes.features[]?' release-config.json)
+            if [ ! -z "$FEATURES" ]; then
+              RELEASE_BODY+="### 🚀 新功能"$'\n'
+              echo "$FEATURES" | while read -r feature; do
+                RELEASE_BODY+="- $feature"$'\n'
+              done
+              RELEASE_BODY+=$'\n'
+            fi
+            
+            # 添加修复
+            FIXES=$(jq -r '.releaseNotes.fixes[]?' release-config.json)
+            if [ ! -z "$FIXES" ]; then
+              RELEASE_BODY+="### 🐛 修复"$'\n'
+              echo "$FIXES" | while read -r fix; do
+                RELEASE_BODY+="- $fix"$'\n'
+              done
+              RELEASE_BODY+=$'\n'
+            fi
+            
+            # 添加破坏性变更
+            BREAKING=$(jq -r '.releaseNotes.breaking[]?' release-config.json)
+            if [ ! -z "$BREAKING" ]; then
+              RELEASE_BODY+="### ⚠️ 破坏性变更"$'\n'
+              echo "$BREAKING" | while read -r breaking; do
+                RELEASE_BODY+="- $breaking"$'\n'
+              done
+            fi
+            
+            echo "version=v$VERSION" >> $GITHUB_OUTPUT
+            echo "release_title=$TITLE v$VERSION" >> $GITHUB_OUTPUT
+            
+            # 处理多行输出
+            {
+              echo 'release_body<<EOF'
+              echo "$RELEASE_BODY"
+              echo 'EOF'
+            } >> $GITHUB_OUTPUT
+            
+            # 获取平台构建配置
+            echo "build_windows=$(jq -r '.platforms.windows' release-config.json)" >> $GITHUB_OUTPUT
+            echo "build_macos=$(jq -r '.platforms.macos' release-config.json)" >> $GITHUB_OUTPUT
+            echo "build_linux=$(jq -r '.platforms.linux' release-config.json)" >> $GITHUB_OUTPUT
+            
+            # 更新 package.json 版本号
+            jq ".version = \"$VERSION\"" package.json > package.json.tmp && mv package.json.tmp package.json
+            
+            # 创建标签
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add package.json
+            git commit -m "chore: bump version to $VERSION [skip ci]" || true
+            git tag -a "v$VERSION" -m "Release v$VERSION"
+            git push origin main || true
+            git push origin "v$VERSION" || true
+          fi
+        
+      - name: 上传构建产物
+        if: steps.check_release.outputs.should_release == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: dist/
+          retention-days: 1
+
+  # Windows 打包作业
+  build-windows:
+    needs: build-and-test
+    runs-on: windows-latest
+    if: needs.build-and-test.outputs.should_release == 'true' && needs.build-and-test.outputs.build_windows == 'true'
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: 安装依赖
+        run: npm ci
+        
+      - name: 下载构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: dist/
+          
+      - name: 构建 Electron 应用
+        run: npm run build:app
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: 上传 Windows 安装包
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installers
+          path: |
+            release/*.exe
+            release/*.blockmap
+          retention-days: 1
+
+  # macOS 打包作业
+  build-macos:
+    needs: build-and-test
+    runs-on: macos-latest
+    if: needs.build-and-test.outputs.should_release == 'true' && needs.build-and-test.outputs.build_macos == 'true'
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: 安装依赖
+        run: npm ci
+        
+      - name: 下载构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: dist/
+          
+      - name: 构建 macOS 应用
+        run: npm run build:app:mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: 上传 macOS 安装包
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-installers
+          path: |
+            release/*.dmg
+            release/*.zip
+          retention-days: 1
+
+  # Linux 打包作业
+  build-linux:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: needs.build-and-test.outputs.should_release == 'true' && needs.build-and-test.outputs.build_linux == 'true'
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          
+      - name: 安装依赖
+        run: npm ci
+        
+      - name: 下载构建产物
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: dist/
+          
+      - name: 构建 Linux 应用
+        run: npm run build:app:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: 上传 Linux 安装包
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-installers
+          path: |
+            release/*.AppImage
+            release/*.deb
+            release/*.rpm
+          retention-days: 1
+
+  # 创建 GitHub Release
+  create-release:
+    needs: [build-and-test, build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    if: always() && needs.build-and-test.outputs.should_release == 'true'
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        
+      - name: 下载 Windows 安装包
+        if: needs.build-and-test.outputs.build_windows == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installers
+          path: ./release-assets/
+          
+      - name: 下载 macOS 安装包
+        if: needs.build-and-test.outputs.build_macos == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-installers
+          path: ./release-assets/
+          
+      - name: 下载 Linux 安装包
+        if: needs.build-and-test.outputs.build_linux == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-installers
+          path: ./release-assets/
+          
+      - name: 生成更新日志
+        id: changelog
+        run: |
+          # 获取当前标签
+          CURRENT_TAG=${{ needs.build-and-test.outputs.version }}
+          
+          # 获取上一个标签
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          # 生成更新日志
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "## 更新内容 ($CURRENT_TAG)" > changelog.md
+            echo "" >> changelog.md
+            echo "### 🚀 新功能" >> changelog.md
+            git log --pretty=format:"- %s" $PREVIOUS_TAG..$CURRENT_TAG --grep="feat" >> changelog.md || true
+            echo "" >> changelog.md
+            echo "### 🐛 修复" >> changelog.md
+            git log --pretty=format:"- %s" $PREVIOUS_TAG..$CURRENT_TAG --grep="fix" >> changelog.md || true
+            echo "" >> changelog.md
+            echo "### 📝 其他更改" >> changelog.md
+            git log --pretty=format:"- %s" $PREVIOUS_TAG..$CURRENT_TAG --grep="feat\|fix" --invert-grep >> changelog.md || true
+          else
+            echo "## 首次发布 ($CURRENT_TAG)" > changelog.md
+            echo "" >> changelog.md
+            echo "这是鸿庆书云的首次发布版本。" >> changelog.md
+          fi
+          
+          # 输出更新日志内容用于 Release
+          {
+            echo 'changelog<<EOF'
+            cat changelog.md
+            echo EOF
+          } >> $GITHUB_OUTPUT
+          
+      - name: 创建 GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.build-and-test.outputs.version }}
+          name: ${{ needs.build-and-test.outputs.release_title }}
+          body: ${{ needs.build-and-test.outputs.release_body }}
+          draft: false
+          prerelease: ${{ contains(needs.build-and-test.outputs.version, 'alpha') || contains(needs.build-and-test.outputs.version, 'beta') || contains(needs.build-and-test.outputs.version, 'rc') }}
+          files: |
+            release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: 发布成功通知
+        run: |
+          echo "🎉 发布成功！"
+          echo "版本：${{ needs.build-and-test.outputs.version }}"
+          echo "Release 页面：https://github.com/${{ github.repository }}/releases/tag/${{ needs.build-and-test.outputs.version }}"

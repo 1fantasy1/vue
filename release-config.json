@@ -1,0 +1,21 @@
+{
+  "version": "1.0.0",
+  "releaseNotes": {
+    "title": "发布测试",
+    "description": "第一个github构建测试",
+    "features": [
+      "无"
+    ],
+    "fixes": [
+      "无"
+    ],
+    "breaking": [
+      "无"
+    ]
+  },
+  "platforms": {
+    "windows": true,
+    "macos": true,
+    "linux": true
+  }
+}
