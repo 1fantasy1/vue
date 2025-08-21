@@ -372,15 +372,18 @@
 
 <script>
 import { ref, computed, nextTick, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ApiService } from '@/services/api.js'
 import HtmlPreview from '@/components/HtmlPreview.vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
+import ElectronDiagnostics from '@/utils/electronDiagnostics.js'
 
 export default {
   name: 'KnowledgeHub',
   components: { HtmlPreview },
   setup() {
+    const router = useRouter()
     const sidebarCollapsed = ref(true) // 默认隐藏侧边栏
     const selectedModel = ref('默认模型') // 保留作为兼容，但不再用于选择
     const userDefaultModel = ref('') // 用户的默认模型
@@ -1157,9 +1160,56 @@ export default {
       window.location.href = '/'
     }
 
-    const goBack = () => {
-      // 使用 Vue Router 返回首页
-      window.history.back() || (window.location.href = '/')
+    const goBack = async () => {
+      ElectronDiagnostics.debug('智库返回首页按钮被点击')
+      
+      // 添加更详细的环境检测
+      const isElectron = window.navigator.userAgent.indexOf('Electron') !== -1
+      const currentURL = window.location.href
+      const currentHash = window.location.hash
+      
+      console.log('导航环境信息:', {
+        isElectron,
+        currentURL,
+        currentHash,
+        routerPath: router.currentRoute.value.path
+      })
+      
+      try {
+        if (isElectron) {
+          console.log('Electron环境 - 尝试router.push')
+          await router.push('/')
+          console.log('router.push 成功')
+        } else {
+          console.log('浏览器环境 - 尝试router.push')
+          await router.push('/')
+          console.log('router.push 成功')
+        }
+      } catch (error) {
+        console.error('router.push 失败:', error)
+        
+        // 在Electron环境中的特殊处理
+        if (isElectron) {
+          try {
+            console.log('Electron - 尝试hash导航')
+            // 直接设置hash为根路径
+            window.location.hash = '#/'
+            console.log('hash导航完成')
+          } catch (hashError) {
+            console.error('hash导航失败:', hashError)
+            // 最后的备选方案：重新加载页面到根路径
+            const baseUrl = window.location.href.split('#')[0]
+            window.location.href = baseUrl + '#/'
+          }
+        } else {
+          // 浏览器环境的备选方案
+          if (window.history.length > 1) {
+            window.history.back()
+          } else {
+            window.location.href = '/'
+          }
+        }
+      }
     }
 
     // 聊天操作

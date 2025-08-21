@@ -30,6 +30,8 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    // Electron 环境优化
+    target: 'chrome89', // Electron 使用的 Chrome 版本
     rollupOptions: {
       output: {
         manualChunks: {
@@ -41,5 +43,9 @@ export default defineConfig({
   },
   define: {
     __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
+    // 添加环境变量，帮助应用检测 Electron 环境
+    __IS_ELECTRON__: JSON.stringify(process.env.npm_lifecycle_event === 'electron' || process.env.IS_ELECTRON === 'true'),
+    // 确保生产环境使用正确的API地址
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'https://cosbrain.675222.xyz/api')
   }
 })

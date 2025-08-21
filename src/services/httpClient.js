@@ -6,6 +6,14 @@ import { config } from '@/config/index.js'
 const API_BASE_URL = config.api.baseURL
 const API_TIMEOUT = config.api.timeout
 
+// 在生产环境中输出API配置信息
+console.log('API配置信息:', {
+  baseURL: API_BASE_URL,
+  timeout: API_TIMEOUT,
+  isDev: typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV,
+  envViteApiBaseUrl: typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL
+})
+
 // 创建axios实例
 const httpClient = axios.create({
   baseURL: API_BASE_URL,

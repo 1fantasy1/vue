@@ -157,23 +157,31 @@ const routes = [
 
 const router = createRouter({
   history: window.navigator.userAgent.indexOf('Electron') !== -1 
-    ? createWebHashHistory(import.meta.env.BASE_URL)
+    ? createWebHashHistory() // Electron环境中不使用baseURL
     : createWebHistory(import.meta.env.BASE_URL),
   routes
 })
 
 // 全局路由守卫
 router.beforeEach((to, from, next) => {
+  console.log('路由守卫:', {
+    to: to.path,
+    from: from.path,
+    isElectron: window.navigator.userAgent.indexOf('Electron') !== -1
+  })
+  
   const globalStore = useGlobalStore()
   
   // 初始化认证状态
   globalStore.initAuth()
   
   const isAuthenticated = globalStore.checkAuth()
+  console.log('认证状态:', isAuthenticated)
   
   // 如果需要认证但用户未登录
   if (to.matched.some(record => record.meta.requiresAuth)) {
     if (!isAuthenticated) {
+      console.log('需要认证但用户未登录，重定向到登录页')
       next('/login')
       return
     }
@@ -188,6 +196,7 @@ router.beforeEach((to, from, next) => {
     const isAdmin = lsRole === 'admin' || storeRole === 'admin'
 
     if (!isAdmin) {
+      console.log('无管理员权限，重定向到首页')
       // 无权限，跳回首页并带上提示参数
       next({ path: '/', query: { forbidden: 'admin' } })
       return
@@ -197,11 +206,13 @@ router.beforeEach((to, from, next) => {
   // 如果是登录页面但用户已登录
   if (to.matched.some(record => record.meta.requiresGuest)) {
     if (isAuthenticated) {
+      console.log('已登录用户访问登录页，重定向到首页')
       next('/')
       return
     }
   }
   
+  console.log('路由守卫通过，允许访问:', to.path)
   next()
 })
 
