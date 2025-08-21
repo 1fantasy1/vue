@@ -1,13 +1,10 @@
 name: 自动发布
 
-# 触发条件：当推送包含 release-config.json 变更时或推送 tag 时
+# 触发条件：当推送到主分支或推送 tag 时
 on:
   push:
     branches:
       - main
-    paths:
-      - 'release-config.json'
-  push:
     tags:
       - 'v*'  # 匹配形如 v1.0.0 的标签
 
