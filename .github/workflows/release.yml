@@ -151,14 +151,18 @@ jobs:
             # 更新 package.json 版本号
             jq ".version = \"$VERSION\"" package.json > package.json.tmp && mv package.json.tmp package.json
             
-            # 创建标签
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add package.json
-            git commit -m "chore: bump version to $VERSION [skip ci]" || true
-            git tag -a "v$VERSION" -m "Release v$VERSION"
-            git push origin main || true
-            git push origin "v$VERSION" || true
+            # 检查标签是否已存在，如果不存在则创建
+            if ! git tag -l | grep -q "^v$VERSION$"; then
+              git config user.name "github-actions[bot]"
+              git config user.email "github-actions[bot]@users.noreply.github.com"
+              git add package.json
+              git commit -m "chore: bump version to $VERSION [skip ci]" || true
+              git tag -a "v$VERSION" -m "Release v$VERSION"
+              git push origin main || true
+              git push origin "v$VERSION" || true
+            else
+              echo "Tag v$VERSION already exists, skipping tag creation"
+            fi
           fi
         
       - name: 上传构建产物

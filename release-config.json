@@ -1,16 +1,13 @@
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "releaseNotes": {
-    "title": "System Test Release",
-    "description": "Testing the automated release system",
-    "features": [
-      "Fixed workflow syntax errors",
-      "Added release system validation",
-      "Improved error handling"
-    ],
+    "title": "Bug Fix Release",
+    "description": "Fixed tag creation issues in automated release system",
+    "features": [],
     "fixes": [
-      "Fixed duplicate push definition in workflow",
-      "Resolved encoding issues in config files"
+      "Fixed duplicate tag creation error",
+      "Improved tag existence checking",
+      "Enhanced error handling in workflow"
     ],
     "breaking": []
   },
