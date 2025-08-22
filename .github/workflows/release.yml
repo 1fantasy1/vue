@@ -1,4 +1,4 @@
-name: 自动发布
+name: Release
 
 # 触发条件：当推送到主分支或推送 tag 时
 on:
