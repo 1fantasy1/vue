@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <div class="chat-layout">
+  <div :class="['chat-layout', { 'full-screen': isFullScreen }]">
       <!-- 移动端遮罩层 -->
       <div 
         v-if="sidebarOpen" 
@@ -98,9 +98,12 @@
                 <path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z" />
               </svg>
             </button>
-            <div class="chat-avatar" :style="{ background: currentColor }">
-              {{ (selectedRoom.name || '?').charAt(0) }}
-            </div>
+            <button class="back-home-btn" @click="goHome" title="返回首页">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z" />
+              </svg>
+              <span class="back-text">首页</span>
+            </button>
             <div>
               <h3 class="chat-name">{{ selectedRoom.name }}</h3>
               <p class="chat-members">
@@ -223,22 +226,71 @@
         </div>
 
         <div class="chat-input" v-if="selectedRoom && currentUserRole">
-          <div class="input-container">
-            <el-button class="attach-btn" circle @click="() => fileInput?.click()">
-              <el-icon><Paperclip /></el-icon>
-            </el-button>
-            <input ref="fileInput" type="file" @change="onFileChange" accept="image/*,video/*,audio/*,*/*" style="display:none" />
-            <el-input
-              v-model="newMessage"
-              placeholder="输入消息..."
-              @keyup.enter="sendMessage"
-              clearable
-            />
+          <!-- 微信风格工具栏 -->
+          <div class="toolbar">
+            <button class="tool-btn" title="表情（占位）">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm-3 7a1 1 0 110-2 1 1 0 010 2zm6 0a1 1 0 110-2 1 1 0 010 2zM7.34 14.94a5.98 5.98 0 009.32 0 .75.75 0 10-1.14-.96 4.48 4.48 0 01-7.04 0 .75.75 0 00-1.14.96z"/>
+              </svg>
+            </button>
+            <button class="tool-btn" @click="() => fileInput?.click()" title="发送文件">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M16.5 6.5l-9 9a2.121 2.121 0 103 3l7.5-7.5a4.243 4.243 0 10-6-6L5.5 11.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <button class="tool-btn" title="截图（占位）">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M7 4a3 3 0 00-3 3v1h2V7a1 1 0 011-1h1V4H7zm9 0h-1v2h1a1 1 0 011 1v1h2V7a3 3 0 00-3-3zM4 14v3a3 3 0 003 3h1v-2H7a1 1 0 01-1-1v-3H4zm16 0h-2v3a1 1 0 01-1 1h-1v2h1a3 3 0 003-3v-3z"/>
+              </svg>
+            </button>
+            <!-- 语音录制按钮 -->
+            <button class="tool-btn mic" :class="{ active: isRecording }" @click="toggleRecording" :title="isRecording ? '停止录音' : '语音消息'">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path v-if="!isRecording" d="M12 14a3 3 0 003-3V7a3 3 0 10-6 0v4a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-5 7a1 1 0 001-1v-1h-2v1a1 1 0 001 1z"/>
+                <path v-else d="M8 8h8v8H8z"/>
+              </svg>
+              <span v-if="isRecording" class="record-dot"></span>
+            </button>
+            <div class="toolbar-spacer"></div>
+          </div>
+
+          <input ref="fileInput" type="file" @change="onFileChange" accept="image/*,video/*,audio/*,*/*" style="display:none" />
+
+          <!-- 录音中/录音完成预览条 -->
+          <div v-if="isRecording || recordedBlob" class="recording-row">
+            <template v-if="isRecording">
+              <span class="rec-indicator"><span class="dot"></span> 正在录音… {{ formattedRecordTime }}</span>
+              <div class="rec-actions">
+                <el-button size="small" type="primary" @click="stopRecording">停止</el-button>
+                <el-button size="small" @click="cancelRecording">取消</el-button>
+              </div>
+            </template>
+            <template v-else>
+              <audio :src="recordedUrl" controls class="preview-audio"></audio>
+              <div class="rec-actions">
+                <el-button size="small" type="primary" @click="sendRecordedAudio" :loading="sending">发送语音</el-button>
+                <el-button size="small" @click="redoRecording">重录</el-button>
+                <el-button size="small" type="danger" @click="cancelRecording">删除</el-button>
+              </div>
+            </template>
+          </div>
+
+          <!-- 多行编辑器：Enter 发送，Shift+Enter 换行 -->
+          <textarea
+            v-model="newMessage"
+            class="wechat-editor"
+            placeholder="输入消息..."
+            @keydown="handleEditorKeydown"
+            rows="3"
+          ></textarea>
+
+          <div class="send-row">
+            <span class="send-hint">按 Enter 发送，Shift+Enter 换行</span>
             <el-button type="primary" :loading="sending" :disabled="!newMessage.trim() && !selectedFile" @click="sendMessage">
-              <el-icon><Position /></el-icon>
               发送
             </el-button>
           </div>
+
           <div v-if="selectedFile" class="attachment-preview">
             <span class="file-name">{{ selectedFile.name }}</span>
             <span class="file-size">{{ formatFileSize(selectedFile.size) }}</span>
@@ -434,7 +486,7 @@
 </template>
 
 <script>
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { Search, Paperclip, Position, DocumentCopy } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
@@ -445,7 +497,8 @@ export default {
   name: 'ChatRooms',
   components: { Search, Paperclip, Position, DocumentCopy, CollectButton },
   setup() {
-    const router = useRouter()
+  const router = useRouter()
+  const route = useRoute()
     const activeTab = ref('all')
     const searchQuery = ref('')
     const selectedRoom = ref(null)
@@ -468,7 +521,10 @@ export default {
   const roleLoading = ref(false)
   const userRoomRoles = ref({})
 
-    // 移动端侧边栏状态
+  // 是否全屏（由路由 meta 控制）
+  const isFullScreen = computed(() => route.matched.some(r => r.meta && r.meta.fullScreen))
+
+  // 移动端侧边栏状态
     const sidebarOpen = ref(false)
 
     // Modals state
@@ -489,6 +545,27 @@ export default {
   const showApplyByIdModal = ref(false)
   const applyByIdRoomId = ref(null)
   const applyByIdReason = ref('')
+
+    // 语音录制相关
+    const isRecording = ref(false)
+    const recordedBlob = ref(null)
+    const recordedUrl = ref('')
+    const recordMs = ref(0)
+    const formattedRecordTime = computed(() => {
+      const s = Math.floor(recordMs.value / 1000)
+      const mm = String(Math.floor(s / 60)).padStart(2, '0')
+      const ss = String(s % 60).padStart(2, '0')
+      return `${mm}:${ss}`
+    })
+    let mediaRecorder = null
+    let recordTimer = null
+    let recordChunks = []
+
+    // 跳转首页
+    const goHome = () => {
+      // 直接按路由名或路径均可
+      router.push({ name: 'Home' }).catch(() => {})
+    }
 
     // 预设颜色（与常见 IM/品牌色系接近）
     const predefinedColors = [
@@ -792,7 +869,7 @@ export default {
     }
 
     const mapMessageToView = (m) => {
-      const senderName = m.sender_name || `用户${m.sender_id}`
+  const senderName = m.sender_name || `用户${m.sender_id}`
       const rawContent = m.content_text || ''
       const mediaUrl = m.media_url || null
       // 某些后端会在纯媒体消息生成占位文本，如 “文件: xxx” 或“图片: xxx”
@@ -817,7 +894,7 @@ export default {
         content: rawContent,
     message_type: m.message_type || (m.media_url ? 'file' : 'text'),
         media_url: mediaUrl,
-  isAudio: m.media_url ? isAudioUrl(m.media_url) : false,
+  isAudio: m.message_type === 'audio' ? true : (m.media_url ? isAudioUrl(m.media_url) : false),
         hasCaption: rawContent ? !looksLikeAutoLabel() : false,
         time: formatTime(m.sent_at),
         isOwn: currentUserId.value ? m.sender_id === currentUserId.value : false
@@ -1051,16 +1128,91 @@ export default {
     const inferMessageType = (file) => {
       if (!file) return 'file'
       const mime = file.type || ''
+      if (mime.startsWith('audio/')) return 'audio'
       if (mime.startsWith('image/')) return 'image'
       if (mime.startsWith('video/')) return 'video'
       // fallback by extension
       const name = (file.name || '').toLowerCase()
       const ext = name.split('.').pop()
       const imageExts = ['png','jpg','jpeg','gif','webp','bmp','svg','tiff','avif']
-      const videoExts = ['mp4','webm','ogg','mov','m4v','avi','mkv']
+      const videoExts = ['mp4','mov','m4v','avi','mkv']
+      const audioExts = ['mp3','wav','ogg','m4a','aac','flac','oga','weba','opus','amr','webm']
       if (imageExts.includes(ext)) return 'image'
       if (videoExts.includes(ext)) return 'video'
+      if (audioExts.includes(ext)) return 'audio'
       return 'file'
+    }
+
+    const toggleRecording = async () => {
+      if (isRecording.value) { await stopRecording(); return }
+      await startRecording()
+    }
+
+    const startRecording = async () => {
+      try {
+        recordedBlob.value = null
+        recordedUrl.value = ''
+        recordMs.value = 0
+        recordChunks = []
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        mediaRecorder = new MediaRecorder(stream)
+        mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) recordChunks.push(e.data) }
+        mediaRecorder.onstop = () => {
+          try {
+            const blob = new Blob(recordChunks, { type: mediaRecorder?.mimeType || 'audio/webm' })
+            recordedBlob.value = blob
+            recordedUrl.value = URL.createObjectURL(blob)
+          } catch {}
+          // 停止所有轨道
+          stream.getTracks().forEach(t => t.stop())
+          isRecording.value = false
+          if (recordTimer) { clearInterval(recordTimer); recordTimer = null }
+        }
+        mediaRecorder.start()
+        isRecording.value = true
+        recordTimer = setInterval(() => { recordMs.value += 200 }, 200)
+      } catch (e) {
+        ElMessage.error('无法开始录音：' + (e.message || '请检查麦克风权限'))
+      }
+    }
+
+    const stopRecording = async () => {
+      try { if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop() } catch {}
+    }
+
+    const cancelRecording = () => {
+      try { if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop() } catch {}
+      if (recordedUrl.value) { URL.revokeObjectURL(recordedUrl.value) }
+      recordedBlob.value = null
+      recordedUrl.value = ''
+      recordMs.value = 0
+      isRecording.value = false
+      if (recordTimer) { clearInterval(recordTimer); recordTimer = null }
+    }
+
+    const redoRecording = async () => { cancelRecording(); await startRecording() }
+
+    const sendRecordedAudio = async () => {
+      if (!recordedBlob.value) return
+      try {
+        const mime = recordedBlob.value.type || 'audio/webm'
+        const file = new File([recordedBlob.value], `voice_${Date.now()}.webm`, { type: mime })
+        selectedFile.value = file
+        await sendMessage()
+        cancelRecording()
+      } catch (e) {
+        ElMessage.error('发送语音失败：' + (e.message || '未知错误'))
+      }
+    }
+
+    // 文本编辑器快捷键：Enter 发送，Shift+Enter 换行
+    const handleEditorKeydown = (e) => {
+      if (e.key === 'Enter') {
+        if (!e.shiftKey) {
+          e.preventDefault()
+          sendMessage()
+        }
+      }
     }
 
   onMounted(async () => {
@@ -1131,6 +1283,17 @@ export default {
       canManageMembers,
       canDeleteRoom,
       updateCurrentUserRole,
+  // voice recording
+  isRecording,
+  recordedBlob,
+  recordedUrl,
+  formattedRecordTime,
+  toggleRecording,
+  startRecording,
+  stopRecording,
+  cancelRecording,
+  redoRecording,
+  sendRecordedAudio,
       // members
       showMembersModal,
       members,
@@ -1172,7 +1335,9 @@ export default {
   toggleSidebar,
   closeSidebar,
   handleTouchStart,
-  handleTouchMove
+  handleTouchMove,
+  handleEditorKeydown,
+  goHome
     }
   }
 }
@@ -1183,6 +1348,12 @@ export default {
   padding: 24px;
   background: #f8f9fa;
   min-height: calc(100vh - 48px);
+}
+
+/* 全屏时（由 App.vue 加类控制容器），让聊天占满视口 */
+:global(body.full-screen-page) .container.full-screen-container .page {
+  padding: 0 !important;            /* 去掉外边距 */
+  min-height: 100vh !important;     /* 占满视口 */
 }
 
 .primary-btn {
@@ -1239,9 +1410,38 @@ export default {
 
 .chat-layout {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: 280px 1fr; /* 更接近微信左栏宽度 */
   gap: 20px;
   height: calc(100vh - 180px);
+}
+
+/* 路由声明全屏时，直接拉满视口 */
+.chat-layout.full-screen {
+  height: 100vh;
+  gap: 0;
+}
+
+:global(body.full-screen-page) .container.full-screen-container .chat-layout {
+  height: 100vh;         /* 真正全屏高度 */
+  gap: 0;                /* 去掉容器间隙 */
+  grid-template-columns: 280px 1fr;
+}
+
+/* 全屏时，取消外围卡片式边框与圆角，让内容贴边更像桌面 IM */
+:global(body.full-screen-page) .container.full-screen-container .sidebar,
+:global(body.full-screen-page) .container.full-screen-container .chat-area {
+  border-radius: 0;
+}
+
+:global(body.full-screen-page) .container.full-screen-container .sidebar { 
+  border: none; 
+  border-right: 1px solid #e9ecef; /* 细分割线，更像桌面 IM */
+}
+:global(body.full-screen-page) .container.full-screen-container .chat-area { border: none; }
+
+/* 让滚动区域绝对填满高度 */
+:global(body.full-screen-page) .container.full-screen-container .messages-container {
+  min-height: 0;
 }
 
 .sidebar {
@@ -1252,6 +1452,9 @@ export default {
   display: flex;
   flex-direction: column;
 }
+
+/* 让左右拼接更自然：默认情况下，靠内侧改为直角 */
+.sidebar { border-top-right-radius: 0; border-bottom-right-radius: 0; }
 
 .sidebar-actions {
   display: flex;
@@ -1418,6 +1621,9 @@ export default {
   overflow: hidden;
 }
 
+/* 让左右拼接更自然：默认情况下，靠内侧改为直角 */
+.chat-area { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+
 .chat-header {
   padding: 20px;
   border-bottom: 2px solid #e9ecef;
@@ -1432,16 +1638,29 @@ export default {
   gap: 12px;
 }
 
-.chat-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
+/* 返回首页按钮（替代 chat-avatar） */
+.back-home-btn {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: 600;
-  font-size: 14px;
+  gap: 6px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  background: #fff;
+  color: #2c3e50;
+  cursor: pointer;
+  transition: all .15s ease;
+  /* 防止按钮被压缩过小导致文字换行变成竖排 */
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+.back-home-btn:hover { background: #f8f9fa; }
+.back-home-btn:active { transform: translateY(1px); }
+.back-home-btn .back-text { 
+  font-size: 13px; 
+  display: inline-block; 
+  white-space: nowrap; 
 }
 
 .chat-name {
@@ -1449,6 +1668,10 @@ export default {
   font-weight: 600;
   color: #2c3e50;
   margin: 0;
+  /* 避免标题过长把左侧按钮挤压变窄，从而导致“首页”换行 */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .chat-members {
@@ -1627,6 +1850,62 @@ export default {
   padding: 20px;
   border-top: 2px solid #e9ecef;
 }
+
+/* 工具栏（微信风格） */
+.toolbar {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.tool-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.tool-btn:hover { background: #f2f3f5; color: #111827; }
+.toolbar-spacer { flex: 1; }
+.tool-btn.mic.active { color: #ef4444; }
+.record-dot { width: 6px; height: 6px; background: #ef4444; border-radius: 50%; margin-left: 6px; box-shadow: 0 0 0 2px rgba(239,68,68,.2); }
+
+.recording-row { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
+.rec-indicator { color: #ef4444; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+.rec-indicator .dot { width: 8px; height: 8px; background: #ef4444; border-radius: 50%; animation: pulse 1.2s infinite; }
+.rec-actions { display: inline-flex; gap: 8px; margin-left: auto; }
+.preview-audio { height: 32px; }
+
+@keyframes pulse { 0%{ opacity:.2 } 50%{ opacity:1 } 100%{ opacity:.2 } }
+
+/* 多行编辑器 */
+.wechat-editor {
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  border: none;
+  outline: none;
+  padding: 6px 2px 6px 2px;
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 70px;
+  background: transparent;
+}
+
+.send-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.send-hint { color: #94a3b8; font-size: 12px; }
 
 .error { color: #dc3545; margin-top: 8px; font-size: 12px; }
 
@@ -1813,6 +2092,7 @@ export default {
     max-width: 320px;
     bottom: 0;
     background: white;
+  border-radius: 0;
     z-index: 1001;
     padding: 20px;
     overflow-y: auto;
@@ -1825,6 +2105,7 @@ export default {
     display: flex;
     flex-direction: column;
     transform: translateX(0);
+  border-radius: 0;
   }
 
   .mobile-overlay {
@@ -1839,7 +2120,7 @@ export default {
 
   .chat-area {
     flex: 1;
-    border-radius: 12px;
+  border-radius: 0;
     margin: 0;
   }
 
@@ -1869,6 +2150,12 @@ export default {
   .chat-actions {
     flex-shrink: 0;
     gap: 4px;
+  }
+
+  .back-home-btn {
+    height: 32px;
+    padding: 0 8px;
+    border-radius: 6px;
   }
 
   .action-btn {
@@ -1924,6 +2211,8 @@ export default {
     width: 36px;
     height: 36px;
   }
+
+  .recording-row { flex-wrap: wrap; gap: 8px; }
 
   /* Element Plus 组件移动端优化 */
   .input-container :deep(.el-input__wrapper) {
@@ -2022,6 +2311,41 @@ export default {
   .form-two {
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+
+  /* Element Plus Dialog 移动端适配：防止超出视口 */
+  :global(.el-overlay-dialog),
+  :global(.el-modal-dialog) {
+    inset: 0;
+    position: fixed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  :global(.el-dialog) {
+    width: calc(100vw - 32px) !important; /* 覆盖内联宽度 520/720px */
+    max-width: none !important;
+    margin: 0 !important; /* 去掉顶部 15vh 等默认外边距 */
+    border-radius: 12px;
+    max-height: calc(100svh - 32px);
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+
+  :global(.el-dialog__body) {
+    overflow: auto; /* 内容超出时内部滚动 */
+    flex: 1 1 auto;
+    min-height: 0; /* 防止与 max-height 冲突导致溢出 */
+  }
+
+  :global(.el-dialog__footer) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-end;
   }
 }
 

@@ -105,7 +105,7 @@ const routes = [
     path: '/chat-rooms',
     name: 'ChatRooms',
     component: ChatRooms,
-    meta: { requiresAuth: true }
+  meta: { requiresAuth: true, fullScreen: true, hideBottomNav: true }
   },
   {
     path: '/course-notes',

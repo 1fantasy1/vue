@@ -11,13 +11,14 @@
     <div class="container" :class="{ 
       'knowledge-container': $route.path === '/knowledge', 
       'profile-container': $route.path === '/profile',
-      'login-container': $route.path === '/login'
+      'login-container': $route.path === '/login',
+      'full-screen-container': $route.matched.some(r=>r.meta && r.meta.fullScreen)
     }">
       <router-view />
     </div>
 
-    <!-- 底部导航 - 仅在已登录且非智库页面时显示 -->
-    <div class="bottom-nav" v-if="$route.path !== '/knowledge' && $route.path !== '/login' && isAuthenticated">
+    <!-- 底部导航 - 可按路由隐藏 -->
+    <div class="bottom-nav" v-if="$route.path !== '/knowledge' && $route.path !== '/login' && isAuthenticated && !$route.matched.some(r=>r.meta && r.meta.hideBottomNav)">
       <router-link to="/" class="nav-item" active-class="active">
         <div class="nav-icon">🏠</div>
         <div class="nav-text">首页</div>
@@ -61,12 +62,22 @@ export default {
       } else {
         document.body.classList.remove('knowledge-page')
       }
+
+      // 全屏页面（如聊天室）加类，便于局部样式微调
+      if (to.matched.some(r => r.meta && r.meta.fullScreen)) {
+        document.body.classList.add('full-screen-page')
+      } else {
+        document.body.classList.remove('full-screen-page')
+      }
     }
   },
   mounted() {
     // 初始化时检查路由
     if (this.$route.path === '/knowledge') {
       document.body.classList.add('knowledge-page')
+    }
+    if (this.$route.matched.some(r => r.meta && r.meta.fullScreen)) {
+      document.body.classList.add('full-screen-page')
     }
   }
 }
@@ -189,4 +200,27 @@ export default {
 
 .status-active { background: #d4edda; color: #155724; }
 .status-pending { background: #fff3cd; color: #856404; }
+
+/* 全屏容器：去掉左右内边距、高度100vh，适合聊天室沉浸式布局 */
+.full-screen-container {
+  padding: 0 !important;          /* 去掉上下左右内边距 */
+  max-width: none !important;
+  height: 100vh;                  /* 容器本身占满视口 */
+  min-height: 100vh;
+}
+
+body.full-screen-page {
+  overflow: hidden;              /* 防止出现双滚动条 */
+  padding-bottom: 0 !important;  /* 覆盖全局为了底部导航预留的空间 */
+}
+
+/* 全屏页面的全局覆盖（确保不受 scoped 限制） */
+body.full-screen-page .container.full-screen-container .page {
+  padding: 0 !important;
+  min-height: 100vh !important;
+}
+body.full-screen-page .container.full-screen-container .chat-layout {
+  height: 100vh !important;
+  gap: 0 !important;
+}
 </style>
