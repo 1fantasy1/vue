@@ -159,7 +159,7 @@
 
 <script>
 import { ref, computed, onMounted, watch } from 'vue'
-import { ApiService } from '@/services/api.js'
+import remoteApiService from '@/services/remoteApi.js'
 
 export default {
   name: 'ProjectApplications',
@@ -293,17 +293,12 @@ export default {
       applicationData.value.message = ''
     }
 
-    const submitApplication = async () => {
+  const submitApplication = async () => {
       submitting.value = true
       try {
-        const response = await ApiService.applyToProject(props.projectId, applicationData.value)
-        if (response.data.success) {
-          emit('applicationSubmitted', response.data.data)
-          closeApplyModal()
-          // 可以显示成功提示
-        } else {
-          alert(response.data.message || '申请提交失败')
-        }
+    const data = await remoteApiService.projects.applyToProject(props.projectId, applicationData.value)
+    emit('applicationSubmitted', data?.data || data)
+    closeApplyModal()
       } catch (error) {
         alert(error.message || '申请提交失败')
       } finally {
@@ -316,14 +311,12 @@ export default {
       if (!hasViewApplicationsPermission.value) return
       
       try {
-    const response = await ApiService.getProjectApplications(props.projectId, statusFilter)
-        if (response.data.success) {
-          applications.value = response.data.data || []
-          hasViewApplicationsPermission.value = true
-          noAccessMessage.value = ''
+    const data = await remoteApiService.projects.getProjectApplications(props.projectId, statusFilter)
+        applications.value = data?.data || data || []
+        hasViewApplicationsPermission.value = true
+        noAccessMessage.value = ''
       serverAllowsApplications.value = true
       accessChecked.value = true
-        }
       } catch (error) {
         // 更友好的错误处理
         console.error('加载申请列表失败:', error)
@@ -343,13 +336,11 @@ export default {
       if (!props.showMembers) return
       
       try {
-        const response = await ApiService.getProjectMembers(props.projectId)
-        if (response.data.success) {
-          members.value = response.data.data || []
-          // 成员加载后，如具备管理员权限则尝试加载申请
-          if (canManage.value) {
-            await loadApplications(currentStatusFilter.value)
-          }
+        const data = await remoteApiService.projects.getProjectMembers(props.projectId)
+        members.value = data?.data || data || []
+        // 成员加载后，如具备管理员权限则尝试加载申请
+        if (canManage.value) {
+          await loadApplications(currentStatusFilter.value)
         }
       } catch (error) {
     console.error('加载成员列表失败:', error)
@@ -367,21 +358,17 @@ export default {
           // 可选：也允许填写通过附言
           // process_message = window.prompt('通过申请，可填写附言（可选）：') || undefined
         }
-        const response = await ApiService.processProjectApplication(applicationId, { status, process_message })
-        if (response.data.success) {
-          // 更新本地申请状态
-          const app = applications.value.find(a => a.id === applicationId)
-          if (app) {
-            Object.assign(app, response.data.data)
-          }
-          emit('applicationProcessed', response.data.data)
-          
-          // 如果通过申请，重新加载成员列表
-          if (status === 'approved') {
-            await loadMembers()
-          }
-        } else {
-          alert(response.data.message || '处理申请失败')
+        const data = await remoteApiService.projects.processProjectApplication(applicationId, { status, process_message })
+        // 更新本地申请状态
+        const app = applications.value.find(a => a.id === applicationId)
+        if (app) {
+          Object.assign(app, data?.data || data)
+        }
+        emit('applicationProcessed', data?.data || data)
+        
+        // 如果通过申请，重新加载成员列表
+        if (status === 'approved') {
+          await loadMembers()
         }
       } catch (error) {
         alert(error.message || '处理申请失败')
@@ -400,12 +387,10 @@ export default {
       loadMembers().then(async () => {
         if (!accessChecked.value) {
           try {
-            const resp = await ApiService.getProjectApplications(props.projectId, currentStatusFilter.value)
-            if (resp.data.success) {
-              applications.value = resp.data.data || []
-              serverAllowsApplications.value = true
-              accessChecked.value = true
-            }
+            const data = await remoteApiService.projects.getProjectApplications(props.projectId, currentStatusFilter.value)
+            applications.value = data?.data || data || []
+            serverAllowsApplications.value = true
+            accessChecked.value = true
           } catch (e) {
             const msg = (e && e.message) || ''
             if (msg.includes('403')) {

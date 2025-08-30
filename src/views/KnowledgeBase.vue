@@ -15,8 +15,8 @@
                 {{ kb.name }} ({{ kb.access_type === 'private' ? '私有' : '公开' }})
               </option>
             </select>
-            <button type="button" class="kb-btn" @click="openKbModal">新建知识库</button>
-            <button type="button" class="kb-btn secondary" @click="editCurrentKb" v-if="selectedKbId">编辑</button>
+            <BaseButton variant="primary" @click="openKbModal">新建知识库</BaseButton>
+            <BaseButton variant="secondary" @click="editCurrentKb" v-if="selectedKbId">编辑</BaseButton>
           </div>
           <div class="kb-status-filter">
             <label for="status">状态：</label>
@@ -189,7 +189,7 @@
       <div class="section-header">
         <h3 class="section-title">知识文章</h3>
         <div class="actions">
-          <button class="kb-btn" @click="openCreateArticle">新建文章</button>
+          <BaseButton variant="primary" @click="openCreateArticle">新建文章</BaseButton>
         </div>
       </div>
 
@@ -240,120 +240,104 @@
     />
 
     <!-- 文章编辑弹窗（简单实现） -->
-    <div v-if="articleModalVisible" class="modal-mask">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h3>{{ isEditingArticle ? '编辑文章' : '新建文章' }}</h3>
-          <button class="close" @click="closeArticleModal">×</button>
+    <BaseModal :show="articleModalVisible" :title="isEditingArticle ? '编辑文章' : '新建文章'" @close="closeArticleModal">
+      <div class="modal-body">
+        <div class="form-row">
+          <label>标题</label>
+          <input v-model="articleForm.title" type="text" class="form-input" placeholder="文章标题" />
         </div>
-        <div class="modal-body">
-          <div class="form-row">
-            <label>标题</label>
-            <input v-model="articleForm.title" type="text" placeholder="文章标题" />
-          </div>
-          <div class="form-row">
-            <label>版本</label>
-            <input v-model="articleForm.version" type="text" placeholder="可选，如 v1.0" />
-          </div>
-          <div class="form-row">
-            <label>标签</label>
-            <input v-model="articleForm.tags" type="text" placeholder="用逗号分隔" />
-          </div>
-          <div class="form-row">
-            <label>内容</label>
-            <textarea v-model="articleForm.content" rows="8" placeholder="文章内容..." />
-          </div>
+        <div class="form-row">
+          <label>版本</label>
+          <input v-model="articleForm.version" type="text" class="form-input" placeholder="可选，如 v1.0" />
         </div>
-        <div class="modal-footer">
-          <button class="kb-btn" @click="submitArticle" :disabled="!articleForm.title">{{ isEditingArticle ? '保存' : '创建' }}</button>
+        <div class="form-row">
+          <label>标签</label>
+          <input v-model="articleForm.tags" type="text" class="form-input" placeholder="用逗号分隔" />
+        </div>
+        <div class="form-row">
+          <label>内容</label>
+          <textarea v-model="articleForm.content" rows="8" class="form-textarea" placeholder="文章内容..." />
         </div>
       </div>
-    </div>
+      <template #footer>
+        <div class="d-flex" style="gap: 8px; justify-content: flex-end; width: 100%">
+          <BaseButton variant="primary" @click="submitArticle" :disabled="!articleForm.title">{{ isEditingArticle ? '保存' : '创建' }}</BaseButton>
+        </div>
+      </template>
+    </BaseModal>
 
     <!-- 知识库创建/编辑弹窗 -->
-    <div v-if="kbModalVisible" class="modal-mask">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h3>{{ isEditingKb ? '编辑知识库' : '新建知识库' }}</h3>
-          <button class="close" @click="closeKbModal">×</button>
+    <BaseModal :show="kbModalVisible" :title="isEditingKb ? '编辑知识库' : '新建知识库'" @close="closeKbModal">
+      <div class="modal-body">
+        <div class="form-row">
+          <label>名称 *</label>
+          <input v-model="kbForm.name" type="text" class="form-input" placeholder="知识库名称" />
         </div>
-        <div class="modal-body">
-          <div class="form-row">
-            <label>名称 *</label>
-            <input v-model="kbForm.name" type="text" placeholder="知识库名称" />
-          </div>
-          <div class="form-row">
-            <label>描述</label>
-            <textarea v-model="kbForm.description" rows="3" placeholder="知识库描述（可选）" />
-          </div>
-          <div class="form-row">
-            <label>访问类型</label>
-            <select v-model="kbForm.access_type">
-              <option value="private">私有 - 只有我可以访问</option>
-              <option value="public">公开 - 所有用户可查看</option>
-            </select>
-          </div>
+        <div class="form-row">
+          <label>描述</label>
+          <textarea v-model="kbForm.description" rows="3" class="form-textarea" placeholder="知识库描述（可选）" />
         </div>
-        <div class="modal-footer">
-          <button class="kb-btn" @click="submitKb" :disabled="!kbForm.name">{{ isEditingKb ? '保存' : '创建' }}</button>
-          <button v-if="isEditingKb" class="kb-btn danger" @click="deleteCurrentKb">删除知识库</button>
+        <div class="form-row">
+          <label>访问类型</label>
+          <select v-model="kbForm.access_type" class="form-select">
+            <option value="private">私有 - 只有我可以访问</option>
+            <option value="public">公开 - 所有用户可查看</option>
+          </select>
         </div>
       </div>
-    </div>
+      <template #footer>
+        <div class="d-flex" style="gap: 8px; justify-content: flex-end; width: 100%">
+          <BaseButton variant="primary" @click="submitKb" :disabled="!kbForm.name">{{ isEditingKb ? '保存' : '创建' }}</BaseButton>
+          <BaseButton v-if="isEditingKb" variant="danger" @click="deleteCurrentKb">删除知识库</BaseButton>
+        </div>
+      </template>
+    </BaseModal>
 
     <!-- 文档内容查看弹窗 -->
-    <div v-if="contentModalVisible" class="modal-mask">
-      <div class="modal-card large">
-        <div class="modal-header">
-          <h3>文档内容：{{ currentDocument?.title }}</h3>
-          <div class="modal-header-actions">
-            <button class="kb-btn secondary" @click="viewDocumentChunks" v-if="currentDocument">查看分块</button>
-            <button class="close" @click="closeContentModal">×</button>
-          </div>
+    <BaseModal :show="contentModalVisible" :title="`文档内容：${currentDocument?.title}`" @close="closeContentModal">
+      <div class="modal-body">
+        <div v-if="loadingContent" class="loading">正在加载内容...</div>
+        <div v-else-if="documentContent" class="document-content">
+          <pre>{{ documentContent }}</pre>
         </div>
-        <div class="modal-body">
-          <div v-if="loadingContent" class="loading">正在加载内容...</div>
-          <div v-else-if="documentContent" class="document-content">
-            <pre>{{ documentContent }}</pre>
-          </div>
-          <div v-else class="empty-content">无法获取文档内容</div>
-        </div>
+        <div v-else class="empty-content">无法获取文档内容</div>
       </div>
-    </div>
+      <template #footer>
+        <div class="d-flex" style="gap: 8px; justify-content: flex-end; width: 100%">
+          <BaseButton variant="secondary" @click="viewDocumentChunks" v-if="currentDocument">查看分块</BaseButton>
+        </div>
+      </template>
+    </BaseModal>
 
     <!-- 文档分块查看弹窗 -->
-    <div v-if="chunksModalVisible" class="modal-mask">
-      <div class="modal-card large">
-        <div class="modal-header">
-          <h3>文档分块：{{ currentDocument?.title }}</h3>
-          <button class="close" @click="closeChunksModal">×</button>
-        </div>
-        <div class="modal-body">
-          <div v-if="loadingChunks" class="loading">正在加载分块...</div>
-          <div v-else-if="documentChunks.length > 0" class="chunks-list">
-            <div v-for="chunk in documentChunks" :key="chunk.id" class="chunk-item">
-              <div class="chunk-header">
-                <span class="chunk-index">第 {{ chunk.chunk_index + 1 }} 块</span>
-                <span class="chunk-id">ID: {{ chunk.id }}</span>
-              </div>
-              <div class="chunk-content">{{ chunk.content }}</div>
+    <BaseModal :show="chunksModalVisible" :title="`文档分块：${currentDocument?.title}`" @close="closeChunksModal">
+      <div class="modal-body">
+        <div v-if="loadingChunks" class="loading">正在加载分块...</div>
+        <div v-else-if="documentChunks.length > 0" class="chunks-list">
+          <div v-for="chunk in documentChunks" :key="chunk.id" class="chunk-item">
+            <div class="chunk-header">
+              <span class="chunk-index">第 {{ chunk.chunk_index + 1 }} 块</span>
+              <span class="chunk-id">ID: {{ chunk.id }}</span>
             </div>
+            <div class="chunk-content">{{ chunk.content }}</div>
           </div>
-          <div v-else class="empty-content">无分块数据</div>
         </div>
+        <div v-else class="empty-content">无分块数据</div>
       </div>
-    </div>
+    </BaseModal>
   </div>
 </template>
 
 <script>
 import CollectionModal from '@/components/CollectionModal.vue'
 import CollectButton from '@/components/CollectButton.vue'
-import { ApiService } from '@/services/api.js'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import remoteApiService from '@/services/remoteApi.js'
 
 export default {
   name: 'KnowledgeBase',
-  components: { CollectionModal, CollectButton },
+  components: { CollectionModal, CollectButton, BaseModal, BaseButton },
   data() {
     return {
       searchQuery: '',
@@ -496,8 +480,8 @@ export default {
     },
     async init() {
       try {
-        const res = await ApiService.getKnowledgeBases()
-        const list = res?.data?.data || []
+  const resp = await remoteApiService.knowledgeBases.getAllKnowledgeBases()
+  const list = Array.isArray(resp) ? resp : (resp?.data || [])
         this.knowledgeBases = Array.isArray(list) ? list : []
         if (this.knowledgeBases.length > 0) {
           this.selectedKbId = this.knowledgeBases[0].id
@@ -516,33 +500,20 @@ export default {
       if (!this.selectedKbId) return
       this.loadingDocs = true
       try {
-        const res = await ApiService.getKnowledgeBaseDocuments(this.selectedKbId, this.statusFilter || null)
-        console.log('Documents API response:', res) // 调试日志
+        const resp = await remoteApiService.knowledgeBases.getDocuments(this.selectedKbId, this.statusFilter || null)
+        console.log('Documents API response:', resp) // 调试日志
         
         // 更灵活地处理响应数据结构
         let raw = []
         
-        // 基于 createResponse 函数的结构 { data: { success, data, message } }
-        if (res?.data?.data) {
-          const apiData = res.data.data
-          if (Array.isArray(apiData)) {
-            raw = apiData
-          } else if (apiData.documents && Array.isArray(apiData.documents)) {
-            raw = apiData.documents
-          } else if (apiData.items && Array.isArray(apiData.items)) {
-            raw = apiData.items
-          } else if (apiData.list && Array.isArray(apiData.list)) {
-            raw = apiData.list
-          }
-        } else if (res?.data) {
-          // 后备解析方案
-          if (Array.isArray(res.data)) {
-            raw = res.data
-          } else if (res.data.success !== false && Array.isArray(res.data.documents)) {
-            raw = res.data.documents
-          } else if (res.data.success !== false && Array.isArray(res.data.items)) {
-            raw = res.data.items
-          }
+        const base = resp?.data ?? resp
+        if (Array.isArray(base)) {
+          raw = base
+        } else if (base) {
+          if (Array.isArray(base.documents)) raw = base.documents
+          else if (Array.isArray(base.items)) raw = base.items
+          else if (Array.isArray(base.list)) raw = base.list
+          else if (Array.isArray(base.data)) raw = base.data
         }
         
         console.log('Parsed documents:', raw) // 调试日志
@@ -594,8 +565,8 @@ export default {
     async loadArticles() {
       if (!this.selectedKbId) return
       try {
-        const res = await ApiService.getKnowledgeBaseArticles(this.selectedKbId)
-        const list = res?.data?.data || []
+  const resp = await remoteApiService.knowledgeBases.getArticles(this.selectedKbId)
+  const list = Array.isArray(resp) ? resp : (resp?.data || [])
         this.articles = Array.isArray(list) ? list : []
         this.articlesLoaded = true
       } catch (e) {
@@ -632,14 +603,12 @@ export default {
     },
     async onCollectionSubmit(payload) {
       try {
-        const { ApiService } = await import('@/services/api.js')
         const toTagsString = (val) => Array.isArray(val) ? val.join(',') : (typeof val === 'string' ? val : undefined)
-        const res = await ApiService.createCollection({
+        await remoteApiService.collections.createCollection({
           ...payload,
           type: 'knowledge_article',
           tags: toTagsString(payload.tags)
         })
-        if (res?.data?.success === false) throw new Error(res.data.message || '收藏失败')
         this.collectionModalVisible = false
         if (this.currentDocument) this.currentDocument.favorite = true
       } catch (e) {
@@ -679,10 +648,8 @@ export default {
       }
       try {
         console.log('Uploading file:', file.name, 'to KB:', this.selectedKbId) // 调试日志
-        const res = await ApiService.uploadDocument(this.selectedKbId, file)
-        console.log('Upload response:', res) // 调试日志
-        
-        if (res?.data?.success === false) throw new Error(res.data.message || '上传失败')
+  const resp = await remoteApiService.knowledgeBases.uploadDocument(this.selectedKbId, file)
+  console.log('Upload response:', resp) // 调试日志
         alert('上传成功，后台正在处理...')
         
         // 延迟1秒后重新加载，确保后端已保存
@@ -701,8 +668,7 @@ export default {
       if (!this.selectedKbId) return
       if (!confirm(`确认删除文档：${document.title}？该操作不可恢复`)) return
       try {
-        const res = await ApiService.deleteKnowledgeDocument(this.selectedKbId, document.id)
-        if (res?.data?.success === false) throw new Error(res.data.message || '删除失败')
+  await remoteApiService.knowledgeBases.deleteDocument(this.selectedKbId, document.id)
         this.documents = this.documents.filter(d => d.id !== document.id)
       } catch (e) {
         console.error(e)
@@ -737,13 +703,11 @@ export default {
           version: this.articleForm.version || undefined,
           tags: this.articleForm.tags || undefined
         }
-        let res
         if (this.isEditingArticle && this.articleForm.id) {
-          res = await ApiService.updateArticle(this.articleForm.id, payload)
+          await remoteApiService.articles.updateArticle(this.articleForm.id, payload)
         } else {
-          res = await ApiService.createKnowledgeBaseArticle(this.selectedKbId, payload)
+          await remoteApiService.knowledgeBases.createArticle(this.selectedKbId, payload)
         }
-        if (res?.data?.success === false) throw new Error(res.data.message || '保存失败')
         this.articleModalVisible = false
         await this.loadArticles()
       } catch (e) {
@@ -757,8 +721,7 @@ export default {
     async deleteArticle(article) {
       if (!confirm(`确认删除文章：${article.title}？`)) return
       try {
-        const res = await ApiService.deleteArticle(article.id)
-        if (res?.data?.success === false) throw new Error(res.data.message || '删除失败')
+  await remoteApiService.articles.deleteArticle(article.id)
         this.articles = this.articles.filter(a => a.id !== article.id)
       } catch (e) {
         console.error(e)
@@ -773,8 +736,8 @@ export default {
     async editCurrentKb() {
       if (!this.selectedKbId) return
       try {
-        const res = await ApiService.getKnowledgeBase(this.selectedKbId)
-        const kb = res?.data?.data
+        const resp = await remoteApiService.knowledgeBases.getKnowledgeBaseById(this.selectedKbId)
+        const kb = resp?.data ?? resp
         if (!kb) throw new Error('知识库不存在')
         this.isEditingKb = true
         this.kbForm = {
@@ -799,13 +762,11 @@ export default {
           description: this.kbForm.description || undefined,
           access_type: this.kbForm.access_type
         }
-        let res
         if (this.isEditingKb && this.kbForm.id) {
-          res = await ApiService.updateKnowledgeBase(this.kbForm.id, payload)
+          await remoteApiService.knowledgeBases.updateKnowledgeBase(this.kbForm.id, payload)
         } else {
-          res = await ApiService.createKnowledgeBase(payload)
+          await remoteApiService.knowledgeBases.createKnowledgeBase(payload)
         }
-        if (res?.data?.success === false) throw new Error(res.data.message || '保存失败')
         this.kbModalVisible = false
         await this.init()
       } catch (e) {
@@ -817,8 +778,7 @@ export default {
       if (!this.kbForm.id) return
       if (!confirm(`确认删除知识库："${this.kbForm.name}"？此操作将删除其中的所有文章和文档，不可恢复`)) return
       try {
-        const res = await ApiService.deleteKnowledgeBase(this.kbForm.id)
-        if (res?.data?.success === false) throw new Error(res.data.message || '删除失败')
+        await remoteApiService.knowledgeBases.deleteKnowledgeBase(this.kbForm.id)
         this.kbModalVisible = false
         await this.init()
       } catch (e) {
@@ -834,8 +794,9 @@ export default {
       this.documentContent = ''
       
       try {
-        const res = await ApiService.getKnowledgeDocumentContent(this.selectedKbId, document.id)
-        this.documentContent = res?.data?.data?.content || '无内容'
+        const resp = await remoteApiService.knowledgeBases.getDocumentContent(this.selectedKbId, document.id)
+        const body = resp?.data ?? resp
+        this.documentContent = body?.content || '无内容'
       } catch (e) {
         console.error(e)
         this.documentContent = `加载失败: ${e.message}`
@@ -854,8 +815,8 @@ export default {
       this.documentChunks = []
       
       try {
-        const res = await ApiService.getKnowledgeDocumentChunks(this.selectedKbId, this.currentDocument.id)
-        this.documentChunks = res?.data?.data || []
+  const resp = await remoteApiService.knowledgeBases.getDocumentChunks(this.selectedKbId, this.currentDocument.id)
+  this.documentChunks = resp?.data?.data || resp?.data || resp || []
       } catch (e) {
         console.error(e)
         alert(`加载分块失败: ${e.message}`)
@@ -870,8 +831,8 @@ export default {
       const name = prompt('请输入知识库名称')
       if (!name) return
       try {
-        const res = await ApiService.createKnowledgeBase({ name })
-        if (res?.data?.success === false) throw new Error(res.data.message || '创建失败')
+  const resp = await remoteApiService.knowledgeBases.createKnowledgeBase({ name })
+  if (resp?.data?.success === false) throw new Error(resp.data.message || '创建失败')
         await this.init()
       } catch (e) {
         console.error(e)
@@ -902,7 +863,6 @@ export default {
 /* KB 工具栏 */
 .kb-toolbar { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 8px 0 0; }
 .kb-select select, .kb-status-filter select { padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; }
-.kb-btn { margin-left: 8px; padding: 6px 10px; background: #4f46e5; color: #fff; border: 0; border-radius: 8px; cursor: pointer; }
 .hidden-file-input { display: none; }
 
 /* 头部区域 */
@@ -964,7 +924,6 @@ export default {
   outline: none;
   transition: border-color 0.3s ease;
 }
-
 .search-input:focus {
   border-color: #667eea;
 }
@@ -1226,12 +1185,13 @@ export default {
 .action-btn.info { color: #3b82f6; border-color: #dbeafe; }
 .action-btn.info:hover { background: #3b82f6; color: #fff; border-color: #3b82f6; }
 
-.kb-btn.secondary { background: #6b7280; }
-.kb-btn.secondary:hover { background: #4b5563; }
 
-/* 弹窗样式增强 */
-.modal-card.large { width: min(90vw, 1000px); max-height: 80vh; }
-.modal-header-actions { display: flex; gap: 8px; align-items: center; }
+
+/* 表单样式 */
+.form-row { display: grid; gap: 6px; }
+.form-input, .form-textarea, .form-select { padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; }
+
+/* 文档内容显示 */
 .document-content { max-height: 60vh; overflow-y: auto; background: #f9fafb; padding: 12px; border-radius: 8px; }
 .document-content pre { white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.5; }
 
@@ -1239,6 +1199,8 @@ export default {
 .chunk-item { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; background: #f9fafb; }
 .chunk-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; color: #6b7280; }
 .chunk-content { font-size: 13px; line-height: 1.5; white-space: pre-wrap; }
+
+.loading, .empty-content { text-align: center; color: #6b7280; padding: 20px; }
 
 .loading, .empty-content { text-align: center; padding: 40px; color: #6b7280; }
 
@@ -1294,15 +1256,7 @@ export default {
 .article-meta { display: flex; gap: 12px; font-size: 12px; color: #6b7280; }
 .article-actions { display: flex; gap: 8px; }
 
-/* 简易弹窗 */
-.modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 50; }
-.modal-card { width: min(720px, 92vw); background: #fff; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,.15); overflow: hidden; }
-.modal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #e5e7eb; }
-.modal-header .close { background: transparent; border: 0; font-size: 20px; cursor: pointer; color: #6b7280; }
-.modal-body { padding: 12px 16px; display: grid; gap: 12px; }
-.form-row { display: grid; gap: 6px; }
-.form-row input, .form-row textarea { padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; }
-.modal-footer { display: flex; justify-content: flex-end; padding: 10px 16px; border-top: 1px solid #e5e7eb; }
+
 
 /* 响应式设计 */
 @media (max-width: 768px) {

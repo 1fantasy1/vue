@@ -183,7 +183,7 @@
 <script>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ApiService } from '@/services/api.js'
+import remoteApiService from '@/services/remoteApi.js'
 
 export default {
   name: 'ProjectRecommendations',
@@ -226,16 +226,12 @@ export default {
       error.value = ''
       
       try {
-        const response = await ApiService.recommendProjects(currentUserId.value, {
-          initialK: settings.value.initialK,
-          finalK: settings.value.finalK
-        })
-        
-        if (response.data.success) {
-          recommendations.value = response.data.data || []
-        } else {
-          error.value = response.data.message || '获取推荐失败'
-        }
+        const data = await remoteApiService.recommend.recommendProjects(
+          currentUserId.value,
+          settings.value.initialK,
+          settings.value.finalK
+        )
+        recommendations.value = data || []
       } catch (err) {
         error.value = err.message || '获取推荐失败'
       } finally {

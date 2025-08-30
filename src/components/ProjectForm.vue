@@ -150,7 +150,7 @@
 
 <script>
 import { ref, computed, watch } from 'vue'
-import { ApiService } from '@/services/api.js'
+import remoteApiService from '@/services/remoteApi.js'
 
 export default {
 	name: 'ProjectForm',
@@ -356,19 +356,19 @@ export default {
 			submitting.value = true
 			try {
 				const payload = buildPayload()
-				let res
+				let project
 				if (isEdit.value) {
-					res = await ApiService.updateProject(props.project.id, payload)
+					project = await remoteApiService.projects.updateProject(props.project.id, payload)
 				} else {
-					res = await ApiService.createProject(payload)
+					project = await remoteApiService.projects.createProject(payload)
 				}
-						if (res?.data?.success) {
-					emit('success', res.data.data)
+				if (project && project.id) {
+					emit('success', project)
 				} else {
-							alert(res?.data?.message || '提交失败：请检查必填项')
+					alert('提交失败：请检查必填项')
 				}
 			} catch (e) {
-						alert(e.message || '提交失败：请检查必填项与字段格式')
+				alert(e.message || '提交失败：请检查必填项与字段格式')
 			} finally {
 				submitting.value = false
 			}

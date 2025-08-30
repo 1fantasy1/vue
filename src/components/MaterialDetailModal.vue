@@ -1,18 +1,11 @@
 <template>
-  <div class="material-detail-modal">
-    <div class="modal-overlay" @click="closeModal">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <h2>{{ material?.title || '材料详情' }}</h2>
-          <button @click="closeModal" class="close-btn">×</button>
-        </div>
+  <BaseModal :show="visible" :title="material?.title || '材料详情'" @close="closeModal">
+    <div v-if="loading" class="loading-container">
+      <div class="loading-spinner"></div>
+      <p>加载材料详情中...</p>
+    </div>
 
-  <div v-if="loading" class="loading-container">
-          <div class="loading-spinner"></div>
-          <p>加载材料详情中...</p>
-        </div>
-
-  <div v-else-if="material" class="modal-body">
+    <div v-else-if="material" class="modal-body">
           <!-- 材料基本信息 -->
           <div class="material-info">
             <div class="material-header">
@@ -73,12 +66,12 @@
                   </div>
                 </div>
                 <div class="file-actions">
-                  <button @click="downloadFile" class="btn-primary">
+                  <BaseButton variant="primary" @click="downloadFile">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                       <path d="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z"/>
                     </svg>
                     下载文件
-                  </button>
+                  </BaseButton>
                 </div>
               </div>
 
@@ -96,29 +89,31 @@
               </div>
             </div>
           </div>
-        </div>
-
-        <div v-else-if="tried && !material" class="error-state">
-          <p>{{ errorMsg || '加载材料详情失败' }}</p>
-          <button @click="loadMaterialDetail" class="btn-secondary">重试</button>
-        </div>
-
-        <div v-else class="loading-container">
-          <div class="loading-spinner"></div>
-          <p>准备加载...</p>
-        </div>
-
-        <div class="modal-footer">
-          <button @click="closeModal" class="btn-secondary">关闭</button>
-        </div>
       </div>
+
+    <div v-else-if="tried && !material" class="error-state">
+          <p>{{ errorMsg || '加载材料详情失败' }}</p>
+      <BaseButton variant="secondary" type="button" @click="loadMaterialDetail">重试</BaseButton>
     </div>
-  </div>
+
+    <div v-else class="loading-container">
+      <div class="loading-spinner"></div>
+      <p>准备加载...</p>
+    </div>
+
+    <template #footer>
+      <div class="d-flex" style="justify-content: flex-end; width: 100%">
+        <BaseButton variant="secondary" type="button" @click="closeModal">关闭</BaseButton>
+      </div>
+    </template>
+    </BaseModal>
 </template>
 
 <script>
 import { ref, onMounted, watch, computed } from 'vue'
-import apiService from '@/services/api.js'
+import remoteApiService from '@/services/remoteApi.js'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
 
 export default {
   name: 'MaterialDetailModal',
@@ -142,6 +137,7 @@ export default {
     }
   },
   emits: ['close'],
+  components: { BaseModal, BaseButton },
   setup(props, { emit }) {
   const loading = ref(false)
   const material = ref(null)
@@ -156,12 +152,11 @@ export default {
       errorMsg.value = ''
       try {
         loading.value = true
-        const response = await apiService.getCourseMaterial(props.courseId, props.materialId)
-        if (response.data.success) {
-          material.value = response.data.data
-        } else {
-          material.value = null
-          errorMsg.value = response.data.message || '加载材料详情失败'
+        const data = await remoteApiService.courses.getMaterialById(props.courseId, props.materialId)
+        // remoteApiService 直接返回实体对象
+        material.value = data || null
+        if (!material.value) {
+          errorMsg.value = '未找到材料详情'
         }
       } catch (error) {
         console.error('加载材料详情失败:', error)
@@ -288,78 +283,6 @@ export default {
 </script>
 
 <style scoped>
-.material-detail-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 1000;
-}
-
-.modal-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 16px;
-  width: 100%;
-  max-width: 800px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24px;
-  border-bottom: 1px solid #e9ecef;
-}
-
-.modal-header h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #2c3e50;
-  margin: 0;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  color: #6c757d;
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.3s ease;
-}
-
-.close-btn:hover {
-  background: #f8f9fa;
-  color: #495057;
-}
-
-.modal-body {
-  padding: 0;
-}
-
 .loading-container {
   display: flex;
   flex-direction: column;
@@ -552,12 +475,6 @@ export default {
   color: #6c757d;
 }
 
-.modal-footer {
-  padding: 20px 24px;
-  border-top: 1px solid #e9ecef;
-  text-align: right;
-}
-
 .btn-primary, .btn-secondary {
   border: none;
   border-radius: 8px;
@@ -594,9 +511,6 @@ export default {
 
 /* 响应式 */
 @media (max-width: 768px) {
-  .modal-overlay {
-    padding: 10px;
-  }
   
   .material-header {
     flex-direction: column;

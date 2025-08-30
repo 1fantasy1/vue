@@ -204,16 +204,58 @@
         </div>
       </div>
     </div>
+
+    <!-- UI 基础组件示例 -->
+    <div class="tool-category">
+      <h2 class="category-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12,17A5,5 0 0,1 7,12H3L8,7L13,12H9A3,3 0 0,0 12,15A3,3 0 0,0 15,12H13.5A1.5,1.5 0 0,1 12,10.5V9A3,3 0 0,0 9,6H7A5,5 0 0,1 12,1A5,5 0 0,1 17,6V7.5A3.5,3.5 0 0,1 13.5,11H15A5,5 0 0,1 20,16V18H18V16A3,3 0 0,0 15,13A5,5 0 0,1 12,17Z"/>
+        </svg>
+        UI 基础组件示例
+      </h2>
+      <div class="tools-grid">
+        <div class="tool-card" style="text-align:left;">
+          <h3 class="tool-title">表单与按钮</h3>
+          <p class="tool-description">使用 BaseInput 与 BaseButton 构建一致的交互</p>
+          <div style="margin-top:12px; display:flex; gap:12px; align-items:center;">
+            <BaseInput v-model="uiDemo.name" label="称呼" placeholder="请输入您的称呼" />
+            <BaseButton :loading="uiDemo.loading" @click="openDemo">打开示例对话框</BaseButton>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <BaseModal :show="uiDemo.show" title="基础组件示例" @close="closeDemo">
+      <div class="form-group">
+        <label class="form-label">您的称呼</label>
+        <BaseInput v-model="uiDemo.name" placeholder="如：小王" />
+      </div>
+      <template #footer>
+        <BaseButton variant="secondary" @click="closeDemo">取消</BaseButton>
+        <BaseButton :loading="uiDemo.loading" @click="submitDemo">提交</BaseButton>
+      </template>
+    </BaseModal>
   </div>
 </template>
 
 <script>
 import { useRouter } from 'vue-router'
+import { ref } from 'vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import BaseInput from '@/components/ui/BaseInput.vue'
 
 export default {
   name: 'DevTools',
+  components: { BaseButton, BaseModal, BaseInput },
   setup() {
     const router = useRouter()
+    // UI 基础组件示例状态
+    const uiDemo = ref({
+      show: false,
+      name: '',
+      loading: false
+    })
 
     const openTool = (toolType) => {
       // 这里可以实现具体的工具功能
@@ -278,18 +320,38 @@ export default {
       return toolNames[toolType] || '未知工具'
     }
 
+    // UI Demo 行为
+    const openDemo = () => {
+      uiDemo.value.show = true
+    }
+    const closeDemo = () => {
+      uiDemo.value.show = false
+      uiDemo.value.loading = false
+    }
+    const submitDemo = async () => {
+      uiDemo.value.loading = true
+      await new Promise(r => setTimeout(r, 800))
+      alert(`提交成功：您好，${uiDemo.value.name || '朋友'}！`)
+      closeDemo()
+    }
+
     return {
       openTool,
-      navigateToAdmin
+      navigateToAdmin,
+      uiDemo,
+      openDemo,
+      closeDemo,
+      submitDemo
     }
   }
 }
 </script>
 
 <style scoped>
+
 .page {
   padding: 24px;
-  background: #f8f9fa;
+  background: var(--bg-secondary);
   min-height: calc(100vh - 48px);
 }
 
@@ -329,10 +391,10 @@ export default {
   gap: 12px;
   font-size: 1.5rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text-primary);
   margin-bottom: 24px;
   padding-bottom: 12px;
-  border-bottom: 2px solid #e9ecef;
+  border-bottom: 2px solid var(--border-color);
 }
 
 .tools-grid {
@@ -342,12 +404,12 @@ export default {
 }
 
 .tool-card {
-  background: white;
-  border: 2px solid #e9ecef;
+  background: var(--bg-primary);
+  border: 2px solid var(--border-color);
   border-radius: 16px;
   padding: 24px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: var(--transition-base);
   text-align: center;
   min-height: 200px;
   display: flex;
@@ -356,7 +418,7 @@ export default {
 }
 
 .tool-card:hover {
-  border-color: #667eea;
+  border-color: var(--primary-color);
   transform: translateY(-4px);
   box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
 }
@@ -417,12 +479,12 @@ export default {
 .tool-title {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text-primary);
   margin: 0 0 8px 0;
 }
 
 .tool-description {
-  color: #6c757d;
+  color: var(--text-secondary);
   font-size: 14px;
   margin: 0;
   line-height: 1.4;

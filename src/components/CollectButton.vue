@@ -17,7 +17,7 @@
 </template>
 
 <script>
-import ApiService from '@/services/api.js'
+import remoteApiService from '@/services/remoteApi.js'
 
 export default {
   name: 'CollectButton',
@@ -103,24 +103,18 @@ export default {
             title: this.customTitle || null
           }
 
-          const response = await ApiService.addPlatformContentToCollection(collectionData)
-          
-          if (response.data.success) {
-            this.isCollected = true
-            this.$emit('collected', {
-              contentType: this.contentType,
-              contentId: this.contentId,
-              collectionData: response.data.data
-            })
-            
-            // 显示成功提示
-            this.$emit('message', {
-              type: 'success',
-              text: '收藏成功！'
-            })
-          } else {
-            throw new Error(response.data.message || '收藏失败')
-          }
+          const data = await remoteApiService.collections.addFromPlatform(collectionData)
+          this.isCollected = true
+          this.$emit('collected', {
+            contentType: this.contentType,
+            contentId: this.contentId,
+            collectionData: data
+          })
+          // 显示成功提示
+          this.$emit('message', {
+            type: 'success',
+            text: '收藏成功！'
+          })
         }
       } catch (error) {
         console.error('收藏操作失败:', error)

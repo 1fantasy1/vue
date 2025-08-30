@@ -229,147 +229,148 @@
     </div>
 
     <!-- 创建/编辑课程模态框 -->
-    <div v-if="showCreateModal || showEditModal" class="modal-overlay" 
-         @mousedown="handleOverlayMouseDown" 
-         @mouseup="handleOverlayMouseUp">
-      <div class="modal-content large" @click.stop>
-        <div class="modal-header">
-          <h3>{{ showCreateModal ? '创建新课程' : '编辑课程' }}</h3>
-          <button @click="closeModal" class="modal-close">×</button>
+    <BaseModal :show="showCreateModal || showEditModal" 
+               :title="showCreateModal ? '创建新课程' : '编辑课程'" 
+               @close="closeModal">
+      <form @submit.prevent="submitCourse">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>课程标题*</label>
+            <input 
+              v-model="courseForm.title" 
+              type="text" 
+              required 
+              placeholder="请输入课程标题"
+              class="form-input"
+            >
+          </div>
+
+          <div class="form-group">
+            <label>讲师姓名</label>
+            <input 
+              v-model="courseForm.instructor" 
+              type="text" 
+              placeholder="请输入讲师姓名"
+              class="form-input"
+            >
+          </div>
+
+          <div class="form-group">
+            <label>课程分类</label>
+            <select v-model="courseForm.category" class="form-select">
+              <option value="">选择分类</option>
+              <option value="前端开发">前端开发</option>
+              <option value="后端开发">后端开发</option>
+              <option value="移动开发">移动开发</option>
+              <option value="数据科学">数据科学</option>
+              <option value="人工智能">人工智能</option>
+              <option value="设计">设计</option>
+              <option value="产品管理">产品管理</option>
+              <option value="其他">其他</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>总课时数</label>
+            <input 
+              v-model.number="courseForm.total_lessons" 
+              type="number" 
+              min="1"
+              placeholder="请输入课时数"
+              class="form-input"
+            >
+          </div>
+
+          <div class="form-group">
+            <label>课程封面URL</label>
+            <input 
+              v-model="courseForm.cover_image_url" 
+              type="url" 
+              placeholder="请输入封面图片URL"
+              class="form-input"
+            >
+          </div>
+
+          <div class="form-group">
+            <label>平均评分</label>
+            <input 
+              v-model.number="courseForm.avg_rating" 
+              type="number" 
+              min="0" 
+              max="5" 
+              step="0.1"
+              placeholder="0.0 - 5.0"
+              class="form-input"
+            >
+          </div>
         </div>
 
-        <form @submit.prevent="submitCourse" class="modal-body">
-          <div class="form-grid">
-            <div class="form-group">
-              <label>课程标题*</label>
-              <input 
-                v-model="courseForm.title" 
-                type="text" 
-                required 
-                placeholder="请输入课程标题"
-              >
-            </div>
+        <div class="form-group full-width">
+          <label>课程描述</label>
+          <textarea 
+            v-model="courseForm.description" 
+            rows="4"
+            placeholder="请输入课程描述"
+            class="form-textarea"
+          ></textarea>
+        </div>
 
-            <div class="form-group">
-              <label>讲师姓名</label>
+        <!-- 技能要求 -->
+        <div class="form-group full-width">
+          <label>技能要求</label>
+          <div class="skills-input">
+            <div v-for="(skill, index) in courseForm.required_skills" :key="index" class="skill-input-row">
               <input 
-                v-model="courseForm.instructor" 
+                v-model="skill.name" 
                 type="text" 
-                placeholder="请输入讲师姓名"
+                placeholder="技能名称"
+                class="skill-name-input"
               >
-            </div>
-
-            <div class="form-group">
-              <label>课程分类</label>
-              <select v-model="courseForm.category">
-                <option value="">选择分类</option>
-                <option value="前端开发">前端开发</option>
-                <option value="后端开发">后端开发</option>
-                <option value="移动开发">移动开发</option>
-                <option value="数据科学">数据科学</option>
-                <option value="人工智能">人工智能</option>
-                <option value="设计">设计</option>
-                <option value="产品管理">产品管理</option>
-                <option value="其他">其他</option>
+              <select v-model="skill.level" class="skill-level-select">
+                <option value="初窥门径">初窥门径</option>
+                <option value="登堂入室">登堂入室</option>
+                <option value="融会贯通">融会贯通</option>
+                <option value="炉火纯青">炉火纯青</option>
               </select>
-            </div>
-
-            <div class="form-group">
-              <label>总课时数</label>
-              <input 
-                v-model.number="courseForm.total_lessons" 
-                type="number" 
-                min="1"
-                placeholder="请输入课时数"
-              >
-            </div>
-
-            <div class="form-group">
-              <label>课程封面URL</label>
-              <input 
-                v-model="courseForm.cover_image_url" 
-                type="url" 
-                placeholder="请输入封面图片URL"
-              >
-            </div>
-
-            <div class="form-group">
-              <label>平均评分</label>
-              <input 
-                v-model.number="courseForm.avg_rating" 
-                type="number" 
-                min="0" 
-                max="5" 
-                step="0.1"
-                placeholder="0.0 - 5.0"
-              >
-            </div>
-          </div>
-
-          <div class="form-group full-width">
-            <label>课程描述</label>
-            <textarea 
-              v-model="courseForm.description" 
-              rows="4"
-              placeholder="请输入课程描述"
-            ></textarea>
-          </div>
-
-          <!-- 技能要求 -->
-          <div class="form-group full-width">
-            <label>技能要求</label>
-            <div class="skills-input">
-              <div v-for="(skill, index) in courseForm.required_skills" :key="index" class="skill-input-row">
-                <input 
-                  v-model="skill.name" 
-                  type="text" 
-                  placeholder="技能名称"
-                  class="skill-name-input"
-                >
-                <select v-model="skill.level" class="skill-level-select">
-                  <option value="初窥门径">初窥门径</option>
-                  <option value="登堂入室">登堂入室</option>
-                  <option value="融会贯通">融会贯通</option>
-                  <option value="炉火纯青">炉火纯青</option>
-                </select>
-                <button type="button" @click="removeSkill(index)" class="remove-skill-btn">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
-                  </svg>
-                </button>
-              </div>
-              <button type="button" @click="addSkill" class="add-skill-btn">
+              <button type="button" @click="removeSkill(index)" class="remove-skill-btn">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+                  <path d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"/>
                 </svg>
-                添加技能
               </button>
             </div>
-          </div>
-
-          <div class="form-actions">
-            <button type="button" @click="closeModal" class="btn-secondary">
-              取消
-            </button>
-            <button type="submit" class="btn-primary" :disabled="submitting">
-              {{ submitting ? '保存中...' : '保存' }}
+            <button type="button" @click="addSkill" class="add-skill-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+              </svg>
+              添加技能
             </button>
           </div>
-        </form>
-      </div>
-    </div>
+        </div>
+      </form>
+      
+      <template #footer>
+        <div class="form-actions">
+          <BaseButton variant="secondary" @click="closeModal">取消</BaseButton>
+          <BaseButton variant="primary" @click="submitCourse" :loading="submitting">
+            {{ submitting ? '保存中...' : '保存' }}
+          </BaseButton>
+        </div>
+      </template>
+    </BaseModal>
   </div>
 </template>
 
 <script>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import apiService from '@/services/api.js'
+import remoteApiService from '@/services/remoteApi.js'
 import CollectButton from '@/components/CollectButton.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
 
 export default {
   name: 'CourseManagement',
-  components: { CollectButton },
+  components: { CollectButton, BaseModal, BaseButton },
   setup() {
     const router = useRouter()
     
@@ -450,14 +451,14 @@ export default {
     })
 
     // 方法
-    const loadCourses = async () => {
+  const loadCourses = async () => {
       try {
         loading.value = true
-        const response = await apiService.getCourses()
-        if (response.data.success) {
-          courses.value = response.data.data
-          updateStats()
-        }
+    const resp = await remoteApiService.courses.getAllCourses()
+    const unwrap = (r) => (r && r.data !== undefined ? r.data : r)
+    const data = unwrap(resp)
+    courses.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
+    updateStats()
       } catch (error) {
         console.error('加载课程失败:', error)
       } finally {
@@ -547,17 +548,17 @@ export default {
         }
 
         if (showEditModal.value) {
-          response = await apiService.updateCourse(editingCourse.value.id, courseData)
+          response = await remoteApiService.courses.updateCourse(editingCourse.value.id, courseData)
         } else {
-          response = await apiService.createCourse(courseData)
+          response = await remoteApiService.courses.createCourse(courseData)
         }
 
-        if (response.data.success) {
+        if (response) {
           alert(showEditModal.value ? '课程更新成功!' : '课程创建成功!')
           closeModal()
           loadCourses()
         } else {
-          alert(response.data.message || '操作失败')
+          alert('操作失败')
         }
       } catch (error) {
         console.error('提交失败:', error)
@@ -576,23 +577,6 @@ export default {
       Object.keys(courseForm).forEach(key => {
         courseForm[key] = key === 'required_skills' ? [] : ''
       })
-    }
-
-    // 处理模态框覆盖层的鼠标事件，防止文字选择时意外关闭
-    let overlayMouseDownTarget = null
-    
-    const handleOverlayMouseDown = (event) => {
-      // 记录鼠标按下时的目标元素
-      overlayMouseDownTarget = event.target
-    }
-    
-    const handleOverlayMouseUp = (event) => {
-      // 只有当鼠标按下和抬起都在覆盖层上时，才关闭模态框
-      // 这避免了文字选择时意外关闭模态框
-      if (overlayMouseDownTarget === event.target && event.target.classList.contains('modal-overlay')) {
-        closeModal()
-      }
-      overlayMouseDownTarget = null
     }
 
     const addSkill = () => {
@@ -660,8 +644,6 @@ export default {
       showMessage,
       submitCourse,
       closeModal,
-      handleOverlayMouseDown,
-      handleOverlayMouseUp,
       addSkill,
       removeSkill,
       truncateText,
@@ -1132,70 +1114,7 @@ export default {
   font-size: 0.9rem;
 }
 
-/* 模态框样式 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 16px;
-  width: 90%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-}
-
-.modal-content.large {
-  max-width: 800px;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24px 24px 0 24px;
-  border-bottom: 1px solid #e9ecef;
-  margin-bottom: 24px;
-}
-
-.modal-header h3 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #2c3e50;
-  margin: 0;
-}
-
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  color: #6c757d;
-  cursor: pointer;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-close:hover {
-  color: #495057;
-}
-
-.modal-body {
-  padding: 0 24px 24px 24px;
-}
+/* 表单样式 */
 
 .form-grid {
   display: grid;
@@ -1219,9 +1138,9 @@ export default {
   margin-bottom: 8px;
 }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
+.form-input,
+.form-select,
+.form-textarea {
   width: 100%;
   padding: 12px;
   border: 1px solid #e9ecef;
@@ -1230,9 +1149,9 @@ export default {
   transition: border-color 0.3s ease;
 }
 
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
@@ -1302,25 +1221,7 @@ export default {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
-  margin-top: 32px;
-  padding-top: 20px;
-  border-top: 1px solid #e9ecef;
-}
-
-.btn-secondary {
-  background: white;
-  color: #6c757d;
-  border: 1px solid #e9ecef;
-  border-radius: 8px;
-  padding: 12px 24px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.btn-secondary:hover {
-  background: #f8f9fa;
-  color: #495057;
+  width: 100%;
 }
 
 /* 响应式 */

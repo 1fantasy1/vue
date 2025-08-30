@@ -74,133 +74,128 @@
               </div>
             </div>
             <!-- 详细信息已隐藏，仅在编辑时可以修改 -->
-            <!--
-            <div class="interests-section">
-              <div class="interests-title">
-                <span class="meta-icon">❤️</span>
-                <span>兴趣爱好</span>
-              </div>
-              <div class="interests-content">{{ userProfile.interests || '暂无兴趣爱好' }}</div>
-            </div>
-            <div class="bio-section">
-              <div class="bio-title">
-                <span class="meta-icon">📝</span>
-                <span>个人简介</span>
-              </div>
-              <div class="bio-content">{{ userProfile.bio }}</div>
-            </div>
-            <div class="awards-section">
-              <div class="awards-title">
-                <span class="meta-icon">🏆</span>
-                <span>奖项比赛</span>
-              </div>
-              <div class="awards-content">{{ userProfile.awards_competitions }}</div>
-            </div>
-            <div class="academic-section">
-              <div class="academic-title">
-                <span class="meta-icon">🎓</span>
-                <span>学术成就</span>
-              </div>
-              <div class="academic-content">
-                <div v-if="academicAchievementsList.length > 0" class="academic-list">
-                  <div v-for="(achievement, index) in academicAchievementsList" :key="index" class="academic-item">
-                    {{ achievement }}
+            <!-- 编辑资料弹窗：使用 BaseModal -->
+            <BaseModal :show="isEditing" title="编辑个人资料" @close="cancelEdit">
+              <div class="edit-form">
+                <div class="form-row">
+                  <div class="input-group">
+                    <label class="input-label">姓名</label>
+                    <input type="text" class="form-input" v-model="editProfile.name" placeholder="请输入姓名">
+                  </div>
+                  <div class="input-group">
+                    <label class="input-label">用户名</label>
+                    <input type="text" class="form-input" v-model="editProfile.username" placeholder="请输入用户名">
                   </div>
                 </div>
-                <div v-else class="academic-placeholder">
-                  {{ userProfile.academic_achievements }}
+                <div class="form-row">
+                  <div class="input-group">
+                    <label class="input-label">专业</label>
+                    <input type="text" class="form-input" v-model="editProfile.major" placeholder="请输入专业">
+                  </div>
+                  <div class="input-group">
+                    <label class="input-label">学校</label>
+                    <input type="text" class="form-input" v-model="editProfile.school" placeholder="请输入学校名称">
+                  </div>
                 </div>
-              </div>
-            </div>
-            <div class="soft-skills-section">
-              <div class="soft-skills-title">
-                <span class="meta-icon">🧠</span>
-                <span>软技能</span>
-              </div>
-              <div class="soft-skills-content">{{ userProfile.soft_skills }}</div>
-            </div>
-            <div class="portfolio-section">
-              <div class="portfolio-title">
-                <span class="meta-icon">🔗</span>
-                <span>作品集链接</span>
-              </div>
-              <div class="portfolio-content">
-                <a v-if="userProfile.portfolio_link && userProfile.portfolio_link !== '作品集链接待完善'" 
-                   :href="userProfile.portfolio_link" 
-                   target="_blank" 
-                   class="portfolio-link">
-                  {{ userProfile.portfolio_link }}
-                </a>
-                <span v-else class="portfolio-placeholder">{{ userProfile.portfolio_link }}</span>
-              </div>
-            </div>
-            <div class="role-section">
-              <div class="role-title">
-                <span class="meta-icon">👤</span>
-                <span>偏好角色</span>
-              </div>
-              <div class="role-content">{{ userProfile.preferred_role }}</div>
-            </div>
-            <div class="availability-section">
-              <div class="availability-title">
-                <span class="meta-icon">⏰</span>
-                <span>可用时间</span>
-              </div>
-              <div class="availability-content">{{ userProfile.availability }}</div>
-            </div>
-            -->
-            <div class="skills-section">
-              <div 
-                v-for="skill in userProfile.skills" 
-                :key="typeof skill === 'string' ? skill : skill.name"
-                :class="{
-                  'skill-card': typeof skill === 'object',
-                  'tag': typeof skill === 'string'
-                }"
-              >
-                <div v-if="typeof skill === 'object'" class="skill-content">
-                  <span class="skill-name">{{ skill.name }}</span>
-                  <div v-if="skill.level" class="skill-level">
-                    <span class="level-text">{{ skill.level }}</span>
-                    <div class="level-indicator">
-                      <div 
-                        class="level-bar" 
-                        :style="{ width: getLevelWidth(skill.level) }"
-                      ></div>
+                <div class="form-row">
+                  <div class="input-group">
+                    <label class="input-label">手机号</label>
+                    <input type="tel" class="form-input" v-model="editProfile.phone" placeholder="请输入手机号">
+                  </div>
+                </div>
+
+                <div class="input-group full-width">
+                  <label class="input-label">技能标签</label>
+                  <div class="skill-edit-wrapper">
+                    <div class="skill-edit-list">
+                      <div class="skill-edit-item" v-for="(s,idx) in (editProfile.skillsList || [])" :key="idx">
+                        <input class="skill-name-input" v-model="s.name" placeholder="技能名称 如：Python" />
+                        <select class="skill-level-select" v-model="s.level">
+                          <option disabled value="">选择等级</option>
+                          <option v-for="lv in skillLevelOptions" :key="lv" :value="lv">{{ lv }}</option>
+                        </select>
+                        <div class="skill-level-bar">
+                          <div class="skill-level-bar-inner" :style="{ width: getLevelWidth(s.level) }"></div>
+                        </div>
+                        <button type="button" class="skill-remove-btn" @click="removeSkill(idx)">✕</button>
+                      </div>
+                      <div v-if="!(editProfile.skillsList && editProfile.skillsList.length)" class="skill-empty-hint">暂无技能，点击下方按钮添加</div>
+                    </div>
+                    <div class="skill-edit-actions">
+                      <button type="button" class="skill-add-btn" @click="addSkill">+ 添加技能</button>
                     </div>
                   </div>
                 </div>
-                <span v-else>{{ skill }}</span>
+                <div class="input-group full-width">
+                  <label class="input-label">兴趣爱好</label>
+                  <textarea class="form-input" rows="2" v-model="editProfile.interests" placeholder="描述您的兴趣爱好（可选）"></textarea>
+                </div>
+                <div class="input-group full-width">
+                  <label class="input-label">个人简介</label>
+                  <textarea class="form-input" rows="3" v-model="editProfile.bio" placeholder="介绍一下自己吧"></textarea>
+                </div>
+                <div class="input-group full-width">
+            <label class="input-label">奖项比赛</label>
+                  <textarea class="form-input" rows="3" v-model="editProfile.awards_competitions" placeholder="描述您获得的奖项和参与的比赛"></textarea>
+                </div>
+                <div class="input-group full-width">
+                  <label class="input-label">学术成就</label>
+                  <textarea class="form-input" rows="3" v-model="editProfile.academic_achievements" placeholder="描述您的学术成就和研究成果"></textarea>
+                </div>
+                <div class="input-group full-width">
+                  <label class="input-label">软技能</label>
+                  <textarea class="form-input" rows="2" v-model="editProfile.soft_skills" placeholder="描述您的软技能，如沟通能力、团队协作等"></textarea>
+                </div>
+                <div class="input-group full-width">
+                  <label class="input-label">作品集链接</label>
+                  <input type="url" class="form-input" v-model="editProfile.portfolio_link" placeholder="输入您的作品集或项目展示链接">
+                </div>
+                <div class="form-row">
+                  <div class="input-group">
+                    <label class="input-label">偏好角色</label>
+                    <input type="text" class="form-input" v-model="editProfile.preferred_role" placeholder="如前端开发、产品经理等">
+                  </div>
+                  <div class="input-group">
+                    <label class="input-label">可用时间</label>
+                    <input type="text" class="form-input" v-model="editProfile.availability" placeholder="如每周10小时、全职等">
+                  </div>
+                </div>
+              </div>
+              <template #footer>
+                <div class="d-flex" style="gap: 8px; justify-content: flex-end; width: 100%">
+                  <BaseButton variant="secondary" type="button" @click="cancelEdit">取消</BaseButton>
+                  <BaseButton variant="primary" type="button" @click="saveProfile">保存修改</BaseButton>
+                </div>
+              </template>
+            </BaseModal>
+          </div>
+          
+          <div class="stats-section">
+            <div class="stats-grid">
+              <div class="stat-item">
+                <div class="stat-number">{{ statistics.projects }}</div>
+                <div class="stat-label">参与项目</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-number">{{ statistics.courses }}</div>
+                <div class="stat-label">完成课程</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-number">{{ statistics.recommendations }}</div>
+                <div class="stat-label">获得推荐</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-number">{{ statistics.points }}</div>
+                <div class="stat-label">积分</div>
               </div>
             </div>
           </div>
-        </div>
       </div>
     </div>
 
-    <!-- 统计数据区域 -->
-    <div class="stats-section">
-      <div class="stats-grid">
-        <div class="stat-item">
-          <div class="stat-number">{{ statistics.projects }}</div>
-          <div class="stat-label">参与项目</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-number">{{ statistics.courses }}</div>
-          <div class="stat-label">完成课程</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-number">{{ statistics.recommendations }}</div>
-          <div class="stat-label">获得推荐</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-number">{{ statistics.points }}</div>
-          <div class="stat-label">积分</div>
-        </div>
-      </div>
-    </div>
+  </div>
 
-    <!-- 设置区域 -->
+  <!-- 设置区域 -->
     <div class="settings-wrapper">
       <div class="settings-header" @click="toggleSettings">
         <div class="settings-title">
@@ -1085,121 +1080,10 @@
     </div>
   </div>
 
+
   
 
-  <!-- 编辑资料弹窗 -->
-  <div v-if="isEditing" class="edit-modal">
-    <div class="edit-modal-content">
-      <div class="edit-modal-header">
-        <h3 class="edit-modal-title">
-          <span class="edit-icon">✏️</span>
-          编辑个人资料
-        </h3>
-        <button class="close-btn" @click="cancelEdit">
-          <span>✕</span>
-        </button>
-      </div>
-      
-      <div class="edit-modal-body">
-        <div class="edit-form">
-          <div class="form-row">
-            <div class="input-group">
-              <label class="input-label">姓名</label>
-              <input type="text" class="form-input" v-model="editProfile.name" placeholder="请输入姓名">
-            </div>
-            <div class="input-group">
-              <label class="input-label">用户名</label>
-              <input type="text" class="form-input" v-model="editProfile.username" placeholder="请输入用户名">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="input-group">
-              <label class="input-label">专业</label>
-              <input type="text" class="form-input" v-model="editProfile.major" placeholder="请输入专业">
-            </div>
-            <div class="input-group">
-              <label class="input-label">学校</label>
-              <input type="text" class="form-input" v-model="editProfile.school" placeholder="请输入学校名称">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="input-group">
-              <label class="input-label">手机号码</label>
-              <input type="tel" class="form-input" v-model="editProfile.phone" placeholder="请输入手机号码">
-            </div>
-          </div>
-
-          <div class="input-group full-width">
-            <label class="input-label">技能标签</label>
-            <div class="skill-edit-wrapper">
-              <div class="skill-edit-list">
-                <div class="skill-edit-item" v-for="(s,idx) in (editProfile.skillsList || [])" :key="idx">
-                  <input class="skill-name-input" v-model="s.name" placeholder="技能名称 如：Python" />
-                  <select class="skill-level-select" v-model="s.level">
-                    <option disabled value="">选择等级</option>
-                    <option v-for="lv in skillLevelOptions" :key="lv" :value="lv">{{ lv }}</option>
-                  </select>
-                  <div class="skill-level-bar">
-                    <div class="skill-level-bar-inner" :style="{ width: getLevelWidth(s.level) }"></div>
-                  </div>
-                  <button type="button" class="skill-remove-btn" @click="removeSkill(idx)">✕</button>
-                </div>
-                <div v-if="!(editProfile.skillsList && editProfile.skillsList.length)" class="skill-empty-hint">暂无技能，点击下方按钮添加</div>
-              </div>
-              <div class="skill-edit-actions">
-                <button type="button" class="skill-add-btn" @click="addSkill">+ 添加技能</button>
-              </div>
-            </div>
-          </div>
-          <div class="input-group full-width">
-            <label class="input-label">兴趣爱好</label>
-            <textarea class="form-input" rows="2" v-model="editProfile.interests" placeholder="描述您的兴趣爱好（可选）"></textarea>
-          </div>
-          <div class="input-group full-width">
-            <label class="input-label">个人简介</label>
-            <textarea class="form-input" rows="3" v-model="editProfile.bio" placeholder="介绍一下自己吧"></textarea>
-          </div>
-          <div class="input-group full-width">
-            <label class="input-label">奖项比赛</label>
-            <textarea class="form-input" rows="3" v-model="editProfile.awards_competitions" placeholder="描述您获得的奖项和参与的比赛"></textarea>
-          </div>
-          <div class="input-group full-width">
-            <label class="input-label">学术成就</label>
-            <textarea class="form-input" rows="3" v-model="editProfile.academic_achievements" placeholder="描述您的学术成就和研究成果"></textarea>
-          </div>
-          <div class="input-group full-width">
-            <label class="input-label">软技能</label>
-            <textarea class="form-input" rows="2" v-model="editProfile.soft_skills" placeholder="描述您的软技能，如沟通能力、团队协作等"></textarea>
-          </div>
-          <div class="input-group full-width">
-            <label class="input-label">作品集链接</label>
-            <input type="url" class="form-input" v-model="editProfile.portfolio_link" placeholder="输入您的作品集或项目展示链接">
-          </div>
-          <div class="form-row">
-            <div class="input-group">
-              <label class="input-label">偏好角色</label>
-              <input type="text" class="form-input" v-model="editProfile.preferred_role" placeholder="如前端开发、产品经理等">
-            </div>
-            <div class="input-group">
-              <label class="input-label">可用时间</label>
-              <input type="text" class="form-input" v-model="editProfile.availability" placeholder="如每周10小时、全职等">
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div class="edit-modal-footer">
-        <button class="modal-btn cancel-btn" @click="cancelEdit">
-          <span class="btn-icon">❌</span>
-          取消
-        </button>
-        <button class="modal-btn save-btn" @click="saveProfile">
-          <span class="btn-icon">💾</span>
-          保存修改
-        </button>
-      </div>
-    </div>
-  </div>
+  
 
 </template>
 
@@ -1211,9 +1095,12 @@ import { useGlobalStore } from '@/stores/global'
 import remoteApiService from '@/services/remoteApi.js'
 
 import { useUserData, useDashboardData, useProjectsData } from '@/composables/useApiData.js'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
 
 export default {
   name: 'Profile',
+  components: { BaseModal, BaseButton },
   setup() {
     const router = useRouter()
     const globalStore = useGlobalStore()
@@ -3202,7 +3089,7 @@ export default {
 
 .level-bar {
   height: 100%;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  background: linear-gradient(90deg, #667eea, #764ba2, #f093fb);
   border-radius: 3px;
   transition: width 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   position: relative;
@@ -3879,7 +3766,7 @@ export default {
   animation: slideInRight 0.3s ease-out;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 /* 桌面端设置详情页面优化 */
@@ -4291,7 +4178,7 @@ export default {
     border-color: #667eea;
     box-shadow: 
       0 4px 16px rgba(102, 126, 234, 0.4),
-      0 2px 8px rgba(0, 0, 0, 0.12);
+      0 2px 4px rgba(0, 0, 0, 0.1);
     transform: scale(1.1);
   }
   
@@ -4454,7 +4341,6 @@ export default {
   }
   
   .user-header {
-    flex-direction: row;
     gap: 16px;
     align-items: flex-start;
   }
@@ -4769,97 +4655,7 @@ export default {
   }
 }
 
-/* 编辑弹窗样式 */
-.edit-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(12px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: 2rem;
-}
-
-.edit-modal-content {
-  background: rgba(255, 255, 255, 0.98);
-  backdrop-filter: blur(30px);
-  border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
-  width: 100%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow: hidden;
-  animation: modalSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes modalSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-50px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.edit-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 2rem 2rem 1rem;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.edit-modal-title {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #2d3748;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  letter-spacing: -0.01em;
-}
-
-.edit-icon {
-  font-size: 1.3rem;
-}
-
-.close-btn {
-  background: transparent;
-  border: none;
-  font-size: 1.5rem;
-  color: #718096;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 50%;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.close-btn:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: #2d3748;
-  transform: scale(1.1);
-}
-
-.edit-modal-body {
-  padding: 2rem;
-  max-height: 60vh;
-  overflow-y: auto;
-}
-
+/* Form styling inside modal content - kept for edit form layout */
 .edit-form {
   display: flex;
   flex-direction: column;
@@ -4915,58 +4711,6 @@ export default {
 textarea.form-input {
   resize: vertical;
   min-height: 100px;
-}
-
-.edit-modal-footer {
-  padding: 1rem 2rem 2rem;
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
-}
-
-.modal-btn {
-  padding: 14px 28px;
-  border: none;
-  border-radius: 12px;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 120px;
-  justify-content: center;
-  letter-spacing: 0.3px;
-}
-
-.btn-icon {
-  font-size: 16px;
-}
-
-.cancel-btn {
-  background: rgba(248, 250, 252, 0.9);
-  color: #718096;
-  border: 2px solid rgba(226, 232, 240, 0.8);
-}
-
-.cancel-btn:hover {
-  background: rgba(255, 255, 255, 1);
-  color: #4a5568;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.save-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
-}
-
-.save-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 35px rgba(102, 126, 234, 0.5);
 }
 
 /* 结构化技能编辑器样式 */
@@ -5064,6 +4808,26 @@ textarea.form-input {
     font-size: 13px;
     padding: 8px 12px;
   }
+}
+
+/* ========== Modal edit form layout fixes ========== */
+/* 说明：页面内存在多处对 .edit-form/.form-row 的样式声明，
+   这里用更高优先级的选择器在底部做最终覆盖，
+   确保编辑资料表单在弹窗内铺满且采用两列网格布局。 */
+.modal-content .edit-form {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.modal-content .form-row {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.modal-content .input-group.full-width {
+  grid-column: 1 / -1;
+  width: 100%;
 }
 
 @media (max-width: 480px) {
@@ -5242,6 +5006,7 @@ textarea.form-input {
   font-size: 16px;
   font-weight: 600;
   color: #2d3748;
+  margin: 0;
 }
 
 .config-type {
@@ -5324,7 +5089,7 @@ textarea.form-input {
 
 .test-config-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 4px 12px rgba(59,130,246,.4);
 }
 
 .edit-config-btn {
@@ -5334,7 +5099,7 @@ textarea.form-input {
 
 .edit-config-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+  box-shadow: 0 4px 12px rgba(245,158,11,.4);
 }
 
 .activate-config-btn {
@@ -5344,7 +5109,7 @@ textarea.form-input {
 
 .activate-config-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 4px 12px rgba(16,185,129,.4);
 }
 
 .deactivate-config-btn {
@@ -5354,7 +5119,7 @@ textarea.form-input {
 
 .deactivate-config-btn:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(107, 114, 128, 0.4);
+  box-shadow: 0 4px 12px rgba(107, 114, 128, .4);
 }
 
 .delete-config-btn {
@@ -5501,7 +5266,7 @@ textarea.form-input {
   max-width: 500px;
   width: 90%;
   max-height: 80vh;
-  overflow-y: 1000;
+  overflow-y: auto;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
 }
 
@@ -5510,7 +5275,7 @@ textarea.form-input {
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px 16px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .form-header h4 {
@@ -5528,7 +5293,7 @@ textarea.form-input {
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .close-form-btn:hover {

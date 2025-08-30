@@ -5,29 +5,19 @@ import App from './App.vue'
 import router from './router'
 import { createPinia } from 'pinia'
 
-// Element Plus
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
-import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+import { registerElementIcons } from '@/plugins/elementIcons.js'
 
-// 导入API服务并初始化
-import { ApiService } from './services/api.js'
-
-// 初始化API服务
-ApiService.initialize()
+// 统一使用 remoteApiService，移除旧 ApiService 初始化
 
 // 创建应用实例
 const app = createApp(App)
 
-// 注册Element Plus图标
-for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
-  app.component(key, component)
-}
-
 // 使用插件
 app.use(createPinia())
 app.use(router)
-app.use(ElementPlus)
+
+// 注册少量按需图标
+registerElementIcons(app)
 
 // 挂载应用
 app.mount('#app')

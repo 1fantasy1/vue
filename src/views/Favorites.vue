@@ -333,7 +333,7 @@
 <script>
 import { useRouter } from 'vue-router'
 import { ref, computed, watch, onMounted } from 'vue'
-import { ApiService } from '@/services/api.js'
+import remoteApiService from '@/services/remoteApi.js'
 
 export default {
   name: 'Favorites',
@@ -373,12 +373,9 @@ export default {
     // 远程加载
     const loadFolders = async () => {
       try {
-        const { data } = await ApiService.getFolders(null)
-        if (data?.success !== false) {
-          folders.value = data.data || data
-        } else {
-          throw new Error(data.message || '获取文件夹失败')
-        }
+        const data = await remoteApiService.folders.getAllFolders()
+        // 兼容后端直接返回数组或包含 data 字段的对象
+        folders.value = Array.isArray(data) ? data : (data?.data || [])
       } catch (e) {
         console.error(e)
       }
@@ -389,17 +386,13 @@ export default {
       errorMsg.value = ''
       try {
         const mapTabToBackendType = (tab) => tab === 'projects' ? 'project' : tab === 'courses' ? 'course' : tab === 'articles' ? 'knowledge_article' : undefined
-        const { data } = await ApiService.getCollections({
+        const result = await remoteApiService.collections.getAllCollections({
           folderId: currentFolderId.value === -1 ? undefined : currentFolderId.value,
           typeFilter: activeTab.value === 'all' ? undefined : mapTabToBackendType(activeTab.value),
           tagFilter: debouncedSearchQuery.value || undefined
         })
-        if (data?.success !== false) {
-          const items = data.data || data
-          favorites.value = (items || []).map(mapCollectionToView)
-        } else {
-          throw new Error(data.message || '获取收藏失败')
-        }
+        const items = result?.data ?? result
+        favorites.value = (items || []).map(mapCollectionToView)
       } catch (e) {
         errorMsg.value = e.message || '加载失败'
       } finally {
@@ -478,7 +471,7 @@ export default {
     const viewItem = async (item) => {
       try {
         // 调用详情接口以增加访问计数
-        await ApiService.getCollection(item.id)
+        await remoteApiService.collections.getCollectionById(item.id)
       } catch (e) {
         // 忽略计数失败
       }
@@ -493,11 +486,10 @@ export default {
       router.push({ name: 'CollectionDetail', params: { id: item.id } })
     }
 
-    const removeFavorite = async (itemId) => {
+  const removeFavorite = async (itemId) => {
       if (!confirm('确定要取消收藏吗？')) return
       try {
-        const { data } = await ApiService.deleteCollection(itemId)
-        if (data?.success === false) throw new Error(data.message || '删除失败')
+    await remoteApiService.collections.deleteCollection(itemId)
         favorites.value = favorites.value.filter(i => i.id !== itemId)
       } catch (e) {
         alert(e.message || '删除失败')
@@ -528,20 +520,19 @@ export default {
       newFolder.value = { name: '', description: '', color: '', icon: '', parent_id: parentId }
     }
 
-    const submitCreateFolder = async () => {
+  const submitCreateFolder = async () => {
       if (!newFolder.value.name?.trim()) {
         alert('请输入文件夹名称')
         return
       }
       try {
-        const { data } = await ApiService.createFolder({
+    await remoteApiService.folders.createFolder({
           name: newFolder.value.name.trim(),
           description: newFolder.value.description || undefined,
           color: newFolder.value.color || undefined,
           icon: newFolder.value.icon || undefined,
           parent_id: newFolder.value.parent_id ?? undefined
         })
-        if (data?.success === false) throw new Error(data.message || '创建失败')
         creatingFolder.value = false
         await loadFolders()
       } catch (e) {
@@ -549,11 +540,10 @@ export default {
       }
     }
 
-    const openEditFolder = async () => {
+  const openEditFolder = async () => {
       if (!(currentFolderId.value > 0)) return
       try {
-        const { data } = await ApiService.getFolder(currentFolderId.value)
-        const f = data?.data || data
+    const f = await remoteApiService.folders.getFolderById(currentFolderId.value)
         folderForm.value = {
           id: f.id,
           name: f.name || '',
@@ -585,8 +575,7 @@ export default {
           icon: folderForm.value.icon || undefined,
           parent_id: folderForm.value.parent_id ?? undefined
         }
-        const { data } = await ApiService.updateFolder(folderForm.value.id, payload)
-        if (data?.success === false) throw new Error(data.message || '保存失败')
+        await remoteApiService.folders.updateFolder(folderForm.value.id, payload)
         editingFolder.value = false
         await loadFolders()
       } catch (e) {
@@ -599,8 +588,7 @@ export default {
       if (!confirm('确定要删除该文件夹吗？\n提示：若文件夹非空，可选择“级联删除”一并删除其下内容。')) return
       try {
         // 先尝试普通删除
-        const { data } = await ApiService.deleteFolder(currentFolderId.value)
-        if (data?.success === false) throw new Error(data.message || '删除失败')
+        await remoteApiService.folders.deleteFolder(currentFolderId.value)
         currentFolderId.value = -1
         await loadFolders()
         await loadCollections()
@@ -609,8 +597,7 @@ export default {
         const ok = confirm('删除失败，可能因为文件夹内仍有内容。\n是否级联删除该文件夹及其所有子内容？此操作不可撤销。')
         if (!ok) { alert(e1.message || '删除失败'); return }
         try {
-          const { data } = await ApiService.deleteFolder(currentFolderId.value, { cascade: true, recursive: true })
-          if (data?.success === false) throw new Error(data.message || '删除失败')
+          await remoteApiService.folders.deleteFolder(currentFolderId.value, { cascade: true, recursive: true })
           currentFolderId.value = -1
           await loadFolders()
           await loadCollections()
@@ -637,10 +624,9 @@ export default {
       collectionModalVisible.value = true
     }
 
-    const openEditCollection = async (item) => {
+  const openEditCollection = async (item) => {
       try {
-        const { data } = await ApiService.getCollection(item.id)
-        const c = data?.data || data
+    const c = await remoteApiService.collections.getCollectionById(item.id)
         isEditingCollection.value = true
         collectionForm.value = {
           id: c.id,
@@ -673,11 +659,9 @@ export default {
       }
       try {
         if (isEditingCollection.value) {
-          const { data } = await ApiService.updateCollection(collectionForm.value.id, payload)
-          if (data?.success === false) throw new Error(data.message || '保存失败')
+          await remoteApiService.collections.updateCollection(collectionForm.value.id, payload)
         } else {
-          const { data } = await ApiService.createCollection(payload)
-          if (data?.success === false) throw new Error(data.message || '创建失败')
+          await remoteApiService.collections.createCollection(payload)
         }
         collectionModalVisible.value = false
         await loadCollections()

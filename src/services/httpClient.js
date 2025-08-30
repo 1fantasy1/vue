@@ -1,18 +1,22 @@
 // HTTP客户端配置
 import axios from 'axios'
 import { config } from '@/config/index.js'
+import { STORAGE_KEYS } from '@/utils/storageKeys.js'
 
 // API基础配置
 const API_BASE_URL = config.api.baseURL
 const API_TIMEOUT = config.api.timeout
 
-// 在生产环境中输出API配置信息
-console.log('API配置信息:', {
-  baseURL: API_BASE_URL,
-  timeout: API_TIMEOUT,
-  isDev: typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV,
-  envViteApiBaseUrl: typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL
-})
+// 仅在开发或显式开启时输出API配置信息
+const __DEV__ = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV) || config?.dev?.showApiLogs
+if (config?.dev?.showApiLogs && __DEV__) {
+  console.log('API配置信息:', {
+    baseURL: API_BASE_URL,
+    timeout: API_TIMEOUT,
+    isDev: typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV,
+    envViteApiBaseUrl: typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL
+  })
+}
 
 // 创建axios实例
 const httpClient = axios.create({
@@ -27,8 +31,18 @@ const httpClient = axios.create({
 // 请求拦截器
 httpClient.interceptors.request.use(
   (config) => {
-    // 从localStorage获取token（如果有的话）
-    const token = localStorage.getItem('access_token')
+    // 统一读取 token，兼容历史键名
+    let token = localStorage.getItem(STORAGE_KEYS.token)
+    if (!token) {
+      token = localStorage.getItem(STORAGE_KEYS.legacyToken)
+      if (token) {
+        // 迁移到新键名
+        try {
+          localStorage.setItem(STORAGE_KEYS.token, token)
+          localStorage.removeItem(STORAGE_KEYS.legacyToken)
+        } catch {}
+      }
+    }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -49,11 +63,13 @@ httpClient.interceptors.request.use(
       }
     }
     
-    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`)
+    if (config?.dev?.showApiLogs || __DEV__) {
+      console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`)
+    }
     return config
   },
   (error) => {
-    console.error('请求拦截器错误:', error)
+    if (__DEV__) console.error('请求拦截器错误:', error)
     return Promise.reject(error)
   }
 )
@@ -61,11 +77,13 @@ httpClient.interceptors.request.use(
 // 响应拦截器
 httpClient.interceptors.response.use(
   (response) => {
-    console.log(`API Response: ${response.status} ${response.config.url}`)
+    if (config?.dev?.showApiLogs || __DEV__) {
+      console.log(`API Response: ${response.status} ${response.config.url}`)
+    }
     return response
   },
   (error) => {
-    console.error('API请求错误:', error)
+    if (__DEV__) console.error('API请求错误:', error)
     
     // 处理常见错误
     if (error.response) {
@@ -73,9 +91,11 @@ httpClient.interceptors.response.use(
       
       switch (status) {
         case 401:
-          // 未授权，清除token并跳转到登录页
-          localStorage.removeItem('access_token')
-          localStorage.removeItem('currentUser')
+          // 未授权，清除token与用户信息（含历史键名）
+          localStorage.removeItem(STORAGE_KEYS.token)
+          localStorage.removeItem(STORAGE_KEYS.user)
+          localStorage.removeItem(STORAGE_KEYS.legacyToken)
+          localStorage.removeItem(STORAGE_KEYS.legacyUser)
           // 这里可以触发路由跳转到登录页
           break
         case 403:
@@ -85,18 +105,18 @@ httpClient.interceptors.response.use(
           console.error('资源不存在')
           break
         case 422:
-          console.error('请求参数验证失败:', data.detail)
+          if (__DEV__) console.error('请求参数验证失败:', data.detail)
           break
         case 500:
-          console.error('服务器内部错误')
+      if (__DEV__) console.error('服务器内部错误')
           break
         default:
-          console.error(`HTTP错误 ${status}:`, data.detail || data.message || '未知错误')
+      if (__DEV__) console.error(`HTTP错误 ${status}:`, data.detail || data.message || '未知错误')
       }
     } else if (error.request) {
-      console.error('网络错误，请检查网络连接')
+    if (__DEV__) console.error('网络错误，请检查网络连接')
     } else {
-      console.error('请求配置错误:', error.message)
+    if (__DEV__) console.error('请求配置错误:', error.message)
     }
     
     return Promise.reject(error)

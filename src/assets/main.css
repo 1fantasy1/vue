@@ -1,4 +1,5 @@
 @import './base.css';
+@import '../styles/index.css';
 
 /* 全局基础样式 - 修复版本 */
 *,

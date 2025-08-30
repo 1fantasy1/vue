@@ -1,12 +1,25 @@
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import AutoImport from 'unplugin-auto-import/vite'
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import { resolve } from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
+    AutoImport({
+      resolvers: [ElementPlusResolver()],
+      dts: false
+    }),
+    Components({
+      resolvers: [ElementPlusResolver({
+        importStyle: 'css'
+      })],
+      dts: false
+    }),
   ],
   // 使用相对路径，确保 Electron 通过 file:// 加载时资源能正确解析
   base: './',

@@ -1,6 +1,7 @@
 // 鸿庆书云创新协作平台API服务
 import httpClient from './httpClient.js'
 import { config } from '@/config/index.js'
+import { STORAGE_KEYS } from '@/utils/storageKeys.js'
 
 // 基础API类
 class BaseAPI {
@@ -81,9 +82,11 @@ export class AuthAPI extends BaseAPI {
       const response = await httpClient(config)
       const data = response.data
       
-      // 如果登录成功，保存token
+      // 如果登录成功，保存token（统一键名）
       if (data.access_token) {
-        localStorage.setItem('access_token', data.access_token)
+        localStorage.setItem(STORAGE_KEYS.token, data.access_token)
+        // 清理旧键名
+        try { localStorage.removeItem(STORAGE_KEYS.legacyToken) } catch {}
       }
       
       return data
@@ -93,8 +96,12 @@ export class AuthAPI extends BaseAPI {
   }
 
   logout() {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('currentUser')
+    localStorage.removeItem(STORAGE_KEYS.token)
+    localStorage.removeItem(STORAGE_KEYS.user)
+    try {
+      localStorage.removeItem(STORAGE_KEYS.legacyToken)
+      localStorage.removeItem(STORAGE_KEYS.legacyUser)
+    } catch {}
   }
 
   async sendSmsCode(phoneData) {

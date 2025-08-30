@@ -1,27 +1,10 @@
 <template>
-  <div class="modal-overlay" v-if="show" @click.self="handleCancel">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>{{ editMode ? '编辑笔记' : '新建笔记' }}</h2>
-        <button class="close-btn" @click="handleCancel">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
-          </svg>
-        </button>
-      </div>
-
-      <div class="modal-body">
-        <form @submit.prevent="handleSubmit">
+  <BaseModal :show="show" :title="editMode ? '编辑笔记' : '新建笔记'" @close="handleCancel">
+      <form id="note-form" @submit.prevent="handleSubmit" class="modal-body">
           <!-- 标题 -->
           <div class="form-group">
             <label for="title">笔记标题</label>
-            <input
-              id="title"
-              v-model="formData.title"
-              type="text"
-              placeholder="请输入笔记标题"
-              class="form-input"
-            />
+            <BaseInput id="title" v-model="formData.title" placeholder="请输入笔记标题" />
           </div>
 
           <!-- 内容 -->
@@ -87,13 +70,7 @@
           <!-- 标签 -->
           <div class="form-group">
             <label for="tags">标签</label>
-            <input
-              id="tags"
-              v-model="formData.tags"
-              type="text"
-              placeholder="多个标签用逗号分隔，如：Vue3,JavaScript,前端"
-              class="form-input"
-            />
+            <BaseInput id="tags" v-model="formData.tags" placeholder="多个标签用逗号分隔，如：Vue3,JavaScript,前端" />
           </div>
 
           <!-- 文件上传 -->
@@ -145,13 +122,7 @@
           <!-- 媒体URL（如果没有上传文件） -->
           <div class="form-group" v-if="!selectedFile">
             <label for="mediaUrl">媒体链接（可选）</label>
-            <input
-              id="mediaUrl"
-              v-model="formData.media_url"
-              type="url"
-              placeholder="外部文件或图片链接"
-              class="form-input"
-            />
+            <BaseInput id="mediaUrl" v-model="formData.media_url" type="url" placeholder="外部文件或图片链接" />
             <div v-if="formData.media_url" class="form-group">
               <label for="mediaType">媒体类型</label>
               <select id="mediaType" v-model="formData.media_type" class="form-select">
@@ -162,27 +133,24 @@
               </select>
             </div>
           </div>
-        </form>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" @click="handleCancel" :disabled="loading">
-          取消
-        </button>
-        <button type="button" class="btn btn-primary" @click="handleSubmit" :disabled="loading || !isValid">
-          {{ loading ? '保存中...' : editMode ? '更新笔记' : '创建笔记' }}
-        </button>
-      </div>
-    </div>
-  </div>
+      </form>
+      <template #footer>
+        <BaseButton variant="secondary" type="button" @click="handleCancel" :disabled="loading">取消</BaseButton>
+        <BaseButton variant="primary" type="submit" form="note-form" :loading="loading" :disabled="!isValid">{{ editMode ? '更新笔记' : '创建笔记' }}</BaseButton>
+      </template>
+  </BaseModal>
 </template>
 
 <script>
 import { ref, reactive, computed, watch, nextTick } from 'vue'
-import apiService from '@/services/api.js'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import BaseInput from '@/components/ui/BaseInput.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import remoteApiService from '@/services/remoteApi.js'
 
 export default {
   name: 'NoteModal',
+  components: { BaseModal, BaseInput, BaseButton },
   props: {
     show: {
       type: Boolean,
@@ -393,25 +361,23 @@ export default {
           }
         }
 
-        let response
+        let payload
         if (editMode.value) {
-          response = await apiService.updateNote(props.note.id, submitData)
+          const updated = await remoteApiService.notes.updateNote(props.note.id, submitData)
+          payload = updated
         } else {
-          response = await apiService.createNote(submitData)
+          const created = await remoteApiService.notes.createNote(submitData)
+          payload = created
         }
 
-        if (response.data.success) {
-          // 发送成功事件和具体操作事件
-          emit('success', response.data.data)
-          if (editMode.value) {
-            emit('updated', response.data.data)
-          } else {
-            emit('created', response.data.data)
-          }
-          handleCancel()
+        // remoteApiService 直接返回数据对象
+        emit('success', payload)
+        if (editMode.value) {
+          emit('updated', payload)
         } else {
-          alert(response.data.message || '操作失败')
+          emit('created', payload)
         }
+        handleCancel()
       } catch (error) {
         console.error('保存笔记失败:', error)
         alert('保存失败: ' + error.message)
@@ -444,18 +410,6 @@ export default {
 </script>
 
 <style scoped>
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
 
 .modal-content {
   background: white;

@@ -1,26 +1,28 @@
 import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
 import { useGlobalStore } from '../stores/global'
-import Home from '../views/Home.vue'
-import Login from '../views/Login.vue'
-import KnowledgeHub from '../views/KnowledgeHub.vue'
-import KnowledgeBase from '../views/KnowledgeBase.vue'
-import Plaza from '../views/Plaza.vue'
-import Profile from '../views/Profile.vue'
-import MyProjects from '../views/MyProjects.vue'
-import ProjectDetail from '../views/ProjectDetail.vue'
-import ProjectRecommendations from '../views/ProjectRecommendations.vue'
-import AllProjects from '../views/AllProjects.vue'
-import MyCourses from '../views/MyCourses.vue'
-import CourseDetail from '../views/CourseDetail.vue'
-import CourseBrowser from '../views/CourseBrowser.vue'
-import CourseManagement from '../views/CourseManagement.vue'
-import ChatRooms from '../views/ChatRooms.vue'
-import CourseNotes from '../views/CourseNotes.vue'
-import Favorites from '../views/Favorites.vue'
-import QuickNotes from '../views/QuickNotes.vue'
-import DevTools from '../views/DevTools.vue'
-import CollectionDetail from '../views/CollectionDetail.vue'
-import DocumentDetail from '../views/DocumentDetail.vue'
+import { config } from '@/config/index.js'
+// 视图按需加载，减少首屏体积
+const Home = () => import('../views/Home.vue')
+const Login = () => import('../views/Login.vue')
+const KnowledgeHub = () => import('../views/KnowledgeHub.vue')
+const KnowledgeBase = () => import('../views/KnowledgeBase.vue')
+const Plaza = () => import('../views/Plaza.vue')
+const Profile = () => import('../views/Profile.vue')
+const MyProjects = () => import('../views/MyProjects.vue')
+const ProjectDetail = () => import('../views/ProjectDetail.vue')
+const ProjectRecommendations = () => import('../views/ProjectRecommendations.vue')
+const AllProjects = () => import('../views/AllProjects.vue')
+const MyCourses = () => import('../views/MyCourses.vue')
+const CourseDetail = () => import('../views/CourseDetail.vue')
+const CourseBrowser = () => import('../views/CourseBrowser.vue')
+const CourseManagement = () => import('../views/CourseManagement.vue')
+const ChatRooms = () => import('../views/ChatRooms.vue')
+const CourseNotes = () => import('../views/CourseNotes.vue')
+const Favorites = () => import('../views/Favorites.vue')
+const QuickNotes = () => import('../views/QuickNotes.vue')
+const DevTools = () => import('../views/DevTools.vue')
+const CollectionDetail = () => import('../views/CollectionDetail.vue')
+const DocumentDetail = () => import('../views/DocumentDetail.vue')
 
 const routes = [
   {
@@ -164,11 +166,14 @@ const router = createRouter({
 
 // 全局路由守卫
 router.beforeEach((to, from, next) => {
-  console.log('路由守卫:', {
-    to: to.path,
-    from: from.path,
-    isElectron: window.navigator.userAgent.indexOf('Electron') !== -1
-  })
+  const SHOW_LOG = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV) || config?.dev?.showApiLogs
+  if (SHOW_LOG) {
+    console.log('路由守卫:', {
+      to: to.path,
+      from: from.path,
+      isElectron: window.navigator.userAgent.indexOf('Electron') !== -1
+    })
+  }
   
   const globalStore = useGlobalStore()
   
@@ -176,12 +181,12 @@ router.beforeEach((to, from, next) => {
   globalStore.initAuth()
   
   const isAuthenticated = globalStore.checkAuth()
-  console.log('认证状态:', isAuthenticated)
+  if (SHOW_LOG) console.log('认证状态:', isAuthenticated)
   
   // 如果需要认证但用户未登录
   if (to.matched.some(record => record.meta.requiresAuth)) {
     if (!isAuthenticated) {
-      console.log('需要认证但用户未登录，重定向到登录页')
+  if (SHOW_LOG) console.log('需要认证但用户未登录，重定向到登录页')
       next('/login')
       return
     }
@@ -196,7 +201,7 @@ router.beforeEach((to, from, next) => {
     const isAdmin = lsRole === 'admin' || storeRole === 'admin'
 
     if (!isAdmin) {
-      console.log('无管理员权限，重定向到首页')
+    if (SHOW_LOG) console.log('无管理员权限，重定向到首页')
       // 无权限，跳回首页并带上提示参数
       next({ path: '/', query: { forbidden: 'admin' } })
       return
@@ -206,13 +211,13 @@ router.beforeEach((to, from, next) => {
   // 如果是登录页面但用户已登录
   if (to.matched.some(record => record.meta.requiresGuest)) {
     if (isAuthenticated) {
-      console.log('已登录用户访问登录页，重定向到首页')
+    if (SHOW_LOG) console.log('已登录用户访问登录页，重定向到首页')
       next('/')
       return
     }
   }
   
-  console.log('路由守卫通过，允许访问:', to.path)
+  if (SHOW_LOG) console.log('路由守卫通过，允许访问:', to.path)
   next()
 })
 

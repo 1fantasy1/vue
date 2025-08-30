@@ -96,233 +96,217 @@
       </div>
     </div>
 
-    <!-- 忘记密码弹窗 -->
-    <div v-if="showForgotPassword" class="modal-overlay" @mousedown.stop @mouseup.stop @mousemove.stop @click.stop>
-      <div class="modal-content" @mousedown.stop @mouseup.stop @mousemove.stop @click.stop>
-        <div class="modal-header">
-          <h3>重置密码</h3>
-          <button class="close-btn" @click="showForgotPassword = false">×</button>
+    <!-- 忘记密码弹窗：使用 BaseModal -->
+    <BaseModal :show="showForgotPassword" title="重置密码" @close="showForgotPassword = false">
+      <div class="form-group">
+        <BaseInput
+          id="reset-email"
+          v-model="resetEmail"
+          type="email"
+          label="邮箱地址"
+          placeholder="请输入注册邮箱"
+          required
+        />
+      </div>
+      <template #footer>
+        <div class="d-flex" style="gap: 8px; justify-content: flex-end; width: 100%">
+          <BaseButton variant="secondary" type="button" @click="showForgotPassword = false">取消</BaseButton>
+          <BaseButton variant="primary" type="button" :loading="isResetting" @click="handlePasswordReset">发送重置链接</BaseButton>
         </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label for="reset-email">邮箱地址</label>
+      </template>
+    </BaseModal>
+
+    <!-- 注册弹窗：使用 BaseModal -->
+    <BaseModal :show="showRegister" title="用户注册" @close="showRegister = false">
+      <!-- 注册方式切换 -->
+      <div class="register-type-tabs">
+        <button 
+          type="button" 
+          class="tab-btn" 
+          :class="{ active: registerType === 'email' }"
+          @click="switchRegisterType('email')"
+        >
+          邮箱注册
+        </button>
+        <button 
+          type="button" 
+          class="tab-btn" 
+          :class="{ active: registerType === 'phone' }"
+          @click="switchRegisterType('phone')"
+        >
+          手机号注册
+        </button>
+      </div>
+
+      <form @submit.prevent="handleRegister">
+        <div class="form-group">
+          <BaseInput
+            id="reg-username"
+            v-model="registerForm.username"
+            type="text"
+            label="用户名"
+            placeholder="请输入用户名（3-20位，仅字母数字下划线）"
+            required
+          />
+        </div>
+        
+        <!-- 邮箱注册 -->
+        <div v-if="registerType === 'email'" class="form-group">
+          <BaseInput
+            id="reg-email"
+            v-model="registerForm.email"
+            type="email"
+            label="邮箱"
+            placeholder="请输入邮箱地址"
+            required
+          />
+        </div>
+        
+        <!-- 手机号注册 -->
+        <div v-if="registerType === 'phone'" class="form-group">
+          <BaseInput
+            id="reg-phone"
+            v-model="registerForm.phone_number"
+            type="tel"
+            label="手机号"
+            placeholder="请输入手机号"
+            required
+          />
+        </div>
+        
+        <!-- 手机号注册时的验证码 -->
+        <div v-if="registerType === 'phone'" class="form-group">
+          <label for="reg-sms-code">短信验证码</label>
+          <div class="sms-input-group">
             <input
-              id="reset-email"
-              v-model="resetEmail"
-              type="email"
-              placeholder="请输入注册邮箱"
+              id="reg-sms-code"
+              v-model="registerForm.smsCode"
+              type="text"
+              class="form-input"
+              placeholder="请输入验证码"
+              maxlength="6"
               required
             />
-          </div>
-          <button
-            type="button"
-            class="reset-btn"
-            @click="handlePasswordReset"
-            :disabled="isResetting"
-          >
-            <span v-if="isResetting">发送中...</span>
-            <span v-else>发送重置链接</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 注册弹窗 -->
-    <div v-if="showRegister" class="modal-overlay" @mousedown.stop @mouseup.stop @mousemove.stop @click.stop>
-      <div class="modal-content register-modal" @mousedown.stop @mouseup.stop @mousemove.stop @click.stop>
-        <div class="modal-header">
-          <h3>用户注册</h3>
-          <button class="close-btn" @click="showRegister = false">×</button>
-        </div>
-        <div class="modal-body">
-          <!-- 注册方式切换 -->
-          <div class="register-type-tabs">
-            <button 
-              type="button" 
-              class="tab-btn" 
-              :class="{ active: registerType === 'email' }"
-              @click="switchRegisterType('email')"
+            <button
+              type="button"
+              class="sms-btn"
+              @click="sendSmsCode"
+              :disabled="smsCountdown > 0 || isSendingSms"
             >
-              邮箱注册
-            </button>
-            <button 
-              type="button" 
-              class="tab-btn" 
-              :class="{ active: registerType === 'phone' }"
-              @click="switchRegisterType('phone')"
-            >
-              手机号注册
+              <span v-if="isSendingSms">发送中...</span>
+              <span v-else-if="smsCountdown > 0">{{ smsCountdown }}s后重试</span>
+              <span v-else>获取验证码</span>
             </button>
           </div>
-
-          <form @submit.prevent="handleRegister">
-            <div class="form-group">
-              <label for="reg-username">用户名</label>
+        </div>
+        <div class="form-group">
+          <BaseInput
+            id="reg-password"
+            v-model="registerForm.password"
+            type="password"
+            label="密码"
+            placeholder="请输入密码（至少8位）"
+            required
+          />
+        </div>
+        <div class="form-group">
+          <BaseInput
+            id="reg-confirm"
+            v-model="registerForm.confirmPassword"
+            type="password"
+            label="确认密码"
+            placeholder="请再次输入密码"
+            required
+          />
+        </div>
+        <div class="form-group">
+          <BaseInput
+            id="reg-fullname"
+            v-model="registerForm.name"
+            type="text"
+            label="真实姓名"
+            placeholder="请输入真实姓名"
+            required
+          />
+        </div>
+        <div class="form-group">
+          <BaseInput
+            id="reg-school"
+            v-model="registerForm.school"
+            type="text"
+            label="学校"
+            placeholder="请输入学校名称（可选）"
+          />
+        </div>
+        <div class="form-group">
+          <BaseInput
+            id="reg-major"
+            v-model="registerForm.major"
+            type="text"
+            label="专业"
+            placeholder="请输入专业名称（可选）"
+          />
+        </div>
+        <!-- 技能列表（结构化：名称 + 熟练度） -->
+        <div class="form-group">
+          <label>技能列表（名称 + 熟练度）</label>
+          <div class="skills-wrapper">
+            <div
+              class="skill-item"
+              v-for="(skill, idx) in registerForm.skills"
+              :key="idx"
+            >
               <input
-                id="reg-username"
-                v-model="registerForm.username"
+                class="skill-name form-input"
+                v-model="skill.name"
                 type="text"
-                placeholder="请输入用户名（3-20位，仅字母数字下划线）"
-                required
+                placeholder="技能名称 如：Python"
+                maxlength="30"
               />
-            </div>
-            
-            <!-- 邮箱注册 -->
-            <div v-if="registerType === 'email'" class="form-group">
-              <label for="reg-email">邮箱</label>
-              <input
-                id="reg-email"
-                v-model="registerForm.email"
-                type="email"
-                placeholder="请输入邮箱地址"
-                required
-              />
-            </div>
-            
-            <!-- 手机号注册 -->
-            <div v-if="registerType === 'phone'" class="form-group">
-              <label for="reg-phone">手机号</label>
-              <input
-                id="reg-phone"
-                v-model="registerForm.phone_number"
-                type="tel"
-                placeholder="请输入手机号码"
-                required
-              />
-            </div>
-            
-            <!-- 手机号注册时的验证码 -->
-            <div v-if="registerType === 'phone'" class="form-group">
-              <label for="reg-sms-code">短信验证码</label>
-              <div class="sms-input-group">
-                <input
-                  id="reg-sms-code"
-                  v-model="registerForm.smsCode"
-                  type="text"
-                  placeholder="请输入验证码"
-                  maxlength="6"
-                  required
-                />
-                <button
-                  type="button"
-                  class="sms-btn"
-                  @click="sendSmsCode"
-                  :disabled="smsCountdown > 0 || isSendingSms"
-                >
-                  <span v-if="isSendingSms">发送中...</span>
-                  <span v-else-if="smsCountdown > 0">{{ smsCountdown }}s后重试</span>
-                  <span v-else>获取验证码</span>
-                </button>
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="reg-password">密码</label>
-              <input
-                id="reg-password"
-                v-model="registerForm.password"
-                type="password"
-                placeholder="请输入密码（至少8位）"
-                required
-              />
-            </div>
-            <div class="form-group">
-              <label for="reg-confirm">确认密码</label>
-              <input
-                id="reg-confirm"
-                v-model="registerForm.confirmPassword"
-                type="password"
-                placeholder="请再次输入密码"
-                required
-              />
-            </div>
-            <div class="form-group">
-              <label for="reg-fullname">真实姓名</label>
-              <input
-                id="reg-fullname"
-                v-model="registerForm.name"
-                type="text"
-                placeholder="请输入真实姓名"
-                required
-              />
-            </div>
-            <div class="form-group">
-              <label for="reg-school">学校</label>
-              <input
-                id="reg-school"
-                v-model="registerForm.school"
-                type="text"
-                placeholder="请输入学校名称（可选）"
-              />
-            </div>
-            <div class="form-group">
-              <label for="reg-major">专业</label>
-              <input
-                id="reg-major"
-                v-model="registerForm.major"
-                type="text"
-                placeholder="请输入专业名称（可选）"
-              />
-            </div>
-            <!-- 技能列表（结构化：名称 + 熟练度） -->
-            <div class="form-group">
-              <label>技能列表（名称 + 熟练度）</label>
-              <div class="skills-wrapper">
-                <div
-                  class="skill-item"
-                  v-for="(skill, idx) in registerForm.skills"
-                  :key="idx"
-                >
-                  <input
-                    class="skill-name"
-                    v-model="skill.name"
-                    type="text"
-                    placeholder="技能名称 如：Python"
-                    maxlength="30"
-                  />
-                  <select v-model="skill.level" class="skill-level">
-                    <option disabled value="">熟练度</option>
-                    <option value="初窥门径">初窥门径</option>
-                    <option value="登堂入室">登堂入室</option>
-                    <option value="融会贯通">融会贯通</option>
-                    <option value="炉火纯青">炉火纯青</option>
-                  </select>
-                  <button
-                    type="button"
-                    class="remove-skill-btn"
-                    @click="removeSkill(idx)"
-                    v-if="registerForm.skills.length > 1"
-                  >×</button>
-                </div>
-                <button
-                  type="button"
-                  class="add-skill-btn"
-                  @click="addSkill"
-                  :disabled="registerForm.skills.length >= 20"
-                >+ 添加技能</button>
-                <small class="skill-hint">不填则为空数组；熟练度枚举：初窥门径 / 登堂入室 / 融会贯通 / 炉火纯青（默认 初窥门径）</small>
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="reg-bio">个人简介</label>
-              <textarea
-                id="reg-bio"
-                v-model="registerForm.bio"
-                placeholder="请简单介绍一下自己（可选）"
-                rows="3"
-              ></textarea>
+              <select v-model="skill.level" class="skill-level form-select">
+                <option disabled value="">熟练度</option>
+                <option value="初窥门径">初窥门径</option>
+                <option value="登堂入室">登堂入室</option>
+                <option value="融会贯通">融会贯通</option>
+                <option value="炉火纯青">炉火纯青</option>
+              </select>
+              <button
+                type="button"
+                class="remove-skill-btn"
+                @click="removeSkill(idx)"
+                v-if="registerForm.skills.length > 1"
+              >×</button>
             </div>
             <button
-              type="submit"
-              class="register-btn"
-              :disabled="isRegistering"
-            >
-              <span v-if="isRegistering">注册中...</span>
-              <span v-else>注册</span>
-            </button>
-          </form>
+              type="button"
+              class="add-skill-btn"
+              @click="addSkill"
+              :disabled="registerForm.skills.length >= 20"
+            >+ 添加技能</button>
+            <small class="skill-hint">不填则为空数组；熟练度枚举：初窥门径 / 登堂入室 / 融会贯通 / 炉火纯青（默认 初窥门径）</small>
+          </div>
         </div>
-      </div>
-    </div>
+        <div class="form-group">
+          <label for="reg-bio">个人简介</label>
+          <textarea
+            id="reg-bio"
+            v-model="registerForm.bio"
+            class="form-textarea"
+            placeholder="请简单介绍一下自己（可选）"
+            rows="3"
+          ></textarea>
+        </div>
+        <div class="d-flex" style="justify-content: flex-end">
+          <BaseButton type="submit" variant="primary" :loading="isRegistering">注册</BaseButton>
+        </div>
+      </form>
+
+      <template #footer>
+        <div class="d-flex" style="justify-content: flex-end; width: 100%">
+          <BaseButton variant="secondary" type="button" @click="showRegister = false">关闭</BaseButton>
+        </div>
+      </template>
+    </BaseModal>
   </div>
 </template>
 
@@ -330,10 +314,14 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGlobalStore } from '../stores/global'
-import { ApiService } from '../services/api.js'
+import remoteApiService from '@/services/remoteApi.js'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import BaseInput from '@/components/ui/BaseInput.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
 
 export default {
   name: 'Login',
+  components: { BaseModal, BaseInput, BaseButton },
   setup() {
     const router = useRouter()
     const globalStore = useGlobalStore()
@@ -415,13 +403,12 @@ export default {
           loginData.phone_number = loginForm.username  // 修正字段名为 phone_number
         }
         
-        // 调用真正的登录API
-        const response = await ApiService.login(loginData)
-        
-        if (response.data.success) {
-          // 登录成功，更新全局状态
-          const loggedUser = response.data.data.user
-          globalStore.login(loggedUser)
+  // 调用真正的登录API（remoteApiService.auth.login 返回 { access_token, token_type, ... }）
+  const authData = await remoteApiService.auth.login(loginData)
+  // 登陆后获取用户信息
+  const loggedUser = await remoteApiService.users.getMe()
+  // 更新全局状态
+  globalStore.login(loggedUser)
 
           // 尝试从返回的用户对象中推断角色并写入 localStorage，便于前端 isAdmin 判定
           try {
@@ -441,10 +428,7 @@ export default {
           router.push('/')
           
           alert('登录成功！')
-        } else {
-          // 登录失败，显示错误信息
-          alert(response.data.message || `登录失败，请检查${loginType.value === 'email' ? '邮箱' : '手机号'}和密码`)
-        }
+        
       } catch (error) {
         console.error('登录错误:', error)
         alert('登录失败：' + (error.message || '网络连接错误，请稍后重试'))
@@ -570,11 +554,11 @@ export default {
         console.log('表单中的真实姓名:', registerForm.name)
         console.log('请求数据中的真实姓名:', requestData.name)
         
-        // 调用真正的注册API
-        const response = await ApiService.register(requestData)
-        console.log('注册API响应:', response)
+  // 调用真正的注册API（直接抛错或返回数据）
+  const resp = await remoteApiService.auth.register(requestData)
+  console.log('注册API响应:', resp)
         
-        if (response.data.success) {
+  if (resp) {
           alert('注册成功！请登录')
           showRegister.value = false
           
@@ -599,10 +583,7 @@ export default {
             preferred_role: '',
             availability: ''
           })
-        } else {
-          console.error('注册失败详情:', response)
-          alert(response.data.message || '注册失败，请稍后重试')
-        }
+  }
       } catch (error) {
         console.error('注册错误详情:', error)
         console.error('错误响应:', error.response)
@@ -697,10 +678,10 @@ export default {
       isSendingSms.value = true
       
       try {
-        // 调用发送短信验证码API
-        const response = await ApiService.sendSmsCode({ phone_number: registerForm.phone_number })
+  // 调用发送短信验证码API
+  const response = await remoteApiService.auth.sendSmsCode({ phone_number: registerForm.phone_number })
         
-        if (response.data.success) {
+  if (response && (response.success === undefined || response.success === true)) {
           alert('验证码已发送，请注意查收')
           
           // 开始倒计时
@@ -711,9 +692,7 @@ export default {
               clearInterval(countdown)
             }
           }, 1000)
-        } else {
-          alert(response.data.message || '发送验证码失败')
-        }
+  }
         
       } catch (error) {
         console.error('发送短信验证码失败:', error)
@@ -1116,104 +1095,6 @@ export default {
 
 .register-link a:hover {
   text-decoration: underline;
-}
-
-/* 弹窗样式 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  padding: 20px;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 15px;
-  padding: 30px;
-  width: 100%;
-  max-width: 400px;
-  max-height: 90vh;
-  overflow-y: auto;
-  animation: modalSlideUp 0.3s ease-out;
-}
-
-.register-modal {
-  max-width: 600px;
-}
-
-@keyframes modalSlideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #e1e5e9;
-}
-
-.modal-header h3 {
-  color: #333;
-  font-size: 20px;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #666;
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.close-btn:hover {
-  color: #333;
-}
-
-.reset-btn,
-.register-btn {
-  width: 100%;
-  padding: 14px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s ease;
-}
-
-.reset-btn:hover:not(:disabled),
-.register-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-}
-
-.reset-btn:disabled,
-.register-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
 }
 
 /* 响应式设计 */

@@ -188,7 +188,7 @@
 import { useRouter } from 'vue-router'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useGlobalStore } from '@/stores/global'
-import apiService from '@/services/api.js'
+import remoteApiService from '@/services/remoteApi.js'
 
 export default {
   name: 'MyCourses',
@@ -215,15 +215,15 @@ export default {
       courses.value = []
     }
 
-    // 从API加载课程数据：必要信息来自 /dashboard/courses，详情来自 /courses/，按 id 合并
+  // 从API加载课程数据：必要信息来自 /dashboard/courses，详情来自 /courses/，按 id 合并（统一到 remoteApiService）
     const loadCourses = async () => {
       try {
         loading.value = true
 
         // 并行获取工作台课程卡片与课程详情列表
         const [dashResp, listResp] = await Promise.all([
-          apiService.getDashboardCourses(),
-          apiService.getCourses()
+      remoteApiService.dashboard.getCourses(),
+      remoteApiService.courses.getAllCourses()
         ])
 
         const statusMap = {
@@ -240,18 +240,12 @@ export default {
           return p <= 1 ? Math.round(p * 100) : Math.round(p)
         }
 
-        // 解包响应（兼容 createResponse 的包装）
-        const dashData = dashResp?.data || {}
-        const listData = listResp?.data || {}
-        if (dashData?.success === false) {
-          throw new Error(dashData?.message || '获取工作台课程失败')
-        }
-        if (listData?.success === false) {
-          throw new Error(listData?.message || '获取课程列表失败')
-        }
-
-        const dashList = Array.isArray(dashData?.data) ? dashData.data : (Array.isArray(dashData) ? dashData : [])
-        const allCourses = Array.isArray(listData?.data) ? listData.data : (Array.isArray(listData) ? listData : [])
+  // 解包响应（兼容 wrapped 或 direct data）
+  const unwrap = (res) => (res && res.data !== undefined ? res.data : res)
+  const dashData = unwrap(dashResp)
+  const listData = unwrap(listResp)
+  const dashList = Array.isArray(dashData?.data) ? dashData.data : (Array.isArray(dashData) ? dashData : [])
+  const allCourses = Array.isArray(listData?.data) ? listData.data : (Array.isArray(listData) ? listData : [])
 
         // 详情表按 id 建索引
         const detailsMap = new Map()

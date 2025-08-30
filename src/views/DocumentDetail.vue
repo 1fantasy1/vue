@@ -75,7 +75,7 @@
 </template>
 
 <script>
-import { ApiService } from '@/services/api.js'
+import remoteApiService from '@/services/remoteApi.js'
 
 export default {
   name: 'DocumentDetail',
@@ -111,10 +111,9 @@ export default {
       if (!this.kbId || !this.docId) return
       this.loadingDetail = true
       try {
-        const res = await ApiService.getKnowledgeDocumentDetail(this.kbId, this.docId)
-        // createResponse 格式: { data: { success, data, message } }
-        const d = res?.data?.data || res?.data || res
-        this.detail = d?.data || d?.document || d
+  const resp = await remoteApiService.knowledgeBases.getDocumentDetail(this.kbId, this.docId)
+  const d = resp?.data ?? resp
+  this.detail = d?.data || d?.document || d
       } catch (e) {
         console.error('加载文档详情失败:', e)
       } finally {
@@ -126,8 +125,8 @@ export default {
       this.loadingContent = true
       this.content = ''
       try {
-        const res = await ApiService.getKnowledgeDocumentContent(this.kbId, this.docId)
-        const body = res?.data?.data || res?.data || {}
+  const resp = await remoteApiService.knowledgeBases.getDocumentContent(this.kbId, this.docId)
+  const body = resp?.data ?? resp ?? {}
         this.content = body?.content || body?.text || ''
       } catch (e) {
         console.error('加载文档内容失败:', e)
@@ -141,8 +140,8 @@ export default {
       this.loadingChunks = true
       this.chunks = []
       try {
-        const res = await ApiService.getKnowledgeDocumentChunks(this.kbId, this.docId)
-        const list = res?.data?.data || []
+  const resp = await remoteApiService.knowledgeBases.getDocumentChunks(this.kbId, this.docId)
+  const list = resp?.data ?? resp ?? []
         this.chunks = Array.isArray(list) ? list : []
       } catch (e) {
         console.error('加载文档分块失败:', e)

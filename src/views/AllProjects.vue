@@ -251,7 +251,7 @@
 <script>
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { ApiService } from '@/services/api.js'
+import remoteApiService from '@/services/remoteApi.js'
 import ProjectForm from '@/components/ProjectForm.vue'
 
 export default {
@@ -504,21 +504,18 @@ export default {
       editingProject.value = null
     }
 
-    const openEditForm = async (project) => {
+  const openEditForm = async (project) => {
       try {
-        const response = await ApiService.getProject(project.id)
-        if (response.data.success) {
-          editingProject.value = response.data.data
-        } else {
-          editingProject.value = project
-        }
+    const data = await remoteApiService.projects.getProjectById(project.id)
+    // remoteApi 返回真实对象
+    editingProject.value = data?.data || data || project
       } catch {
         editingProject.value = project
       }
       showForm.value = true
     }
 
-    const quickApply = async (project) => {
+  const quickApply = async (project) => {
   if (applyingIds.has(project.id)) return
       // 可选：填写申请留言
       let message = ''
@@ -527,15 +524,11 @@ export default {
       } catch {}
   applyingIds.add(project.id)
       try {
-        const res = await ApiService.applyToProject(project.id, message ? { message } : {})
-        if (res?.data?.success) {
-          alert('申请已提交，等待处理。')
-          // 本地更新计数与状态，避免重复点击
-          project.applications_count = (project.applications_count || 0) + 1
-          project._applied_by_me = true
-        } else {
-          throw new Error(res?.data?.message || '申请失败')
-        }
+    await remoteApiService.projects.applyToProject(project.id, message ? { message } : {})
+    alert('申请已提交，等待处理。')
+    // 本地更新计数与状态，避免重复点击
+    project.applications_count = (project.applications_count || 0) + 1
+    project._applied_by_me = true
       } catch (e) {
         alert(e.message || '申请失败')
       } finally {
@@ -558,15 +551,11 @@ export default {
     }
 
     // 加载所有项目
-    const loadProjects = async () => {
+  const loadProjects = async () => {
       loading.value = true
       try {
-        const response = await ApiService.getProjects()
-        if (response.data.success) {
-          projects.value = response.data.data || []
-        } else {
-          console.warn('获取项目失败:', response.data.message)
-        }
+    const data = await remoteApiService.projects.getAllProjects()
+    projects.value = data?.data || data || []
       } catch (error) {
         console.error('获取项目失败:', error)
       } finally {

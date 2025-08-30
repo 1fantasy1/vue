@@ -283,33 +283,25 @@
       </div>
     </div>
 
-    <!-- 删除确认对话框 -->
+    <!-- 删除确认对话框：使用 BaseModal -->
     <teleport to="body">
-      <div v-if="showDeleteDialog" class="modal-overlay" @click="cancelDelete">
-        <div class="modal-card" @click.stop>
-          <div class="modal-header">
-            <h3>删除项目</h3>
-            <button class="close-btn" @click="cancelDelete">×</button>
-          </div>
-          <div class="modal-body">
-            <div class="warning-icon">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2L1 21H23M12 6L19.53 19H4.47M11 10V14H13V10M11 16V18H13V16"/>
-              </svg>
-            </div>
-            <p class="warning-text">
-              确定要删除项目 <strong>{{ deletingProject?.title }}</strong> 吗？
-            </p>
-            <p class="warning-sub">此操作不可撤销，项目的所有数据都将被永久删除。</p>
-          </div>
-          <div class="modal-actions">
-            <button class="btn secondary" @click="cancelDelete">取消</button>
-            <button class="btn danger" @click="deleteProject" :disabled="deleting">
-              {{ deleting ? '删除中...' : '确定删除' }}
-            </button>
-          </div>
+      <BaseModal :show="showDeleteDialog" title="删除项目" @close="cancelDelete">
+        <div class="warning-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2L1 21H23M12 6L19.53 19H4.47M11 10V14H13V10M11 16V18H13V16"/>
+          </svg>
         </div>
-      </div>
+        <p class="warning-text">
+          确定要删除项目 <strong>{{ deletingProject?.title }}</strong> 吗？
+        </p>
+        <p class="warning-sub">此操作不可撤销，项目的所有数据都将被永久删除。</p>
+        <template #footer>
+          <div class="d-flex" style="gap: 8px; justify-content: flex-end; width: 100%">
+            <BaseButton variant="secondary" type="button" @click="cancelDelete">取消</BaseButton>
+            <BaseButton variant="danger" type="button" :loading="deleting" @click="deleteProject">确定删除</BaseButton>
+          </div>
+        </template>
+      </BaseModal>
     </teleport>
   </div>
 </template>
@@ -317,13 +309,15 @@
 <script>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ApiService } from '@/services/api.js'
+import remoteApiService from '@/services/remoteApi.js'
 import ProjectForm from '@/components/ProjectForm.vue'
 import CollectButton from '@/components/CollectButton.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
 
 export default {
   name: 'MyProjects',
-  components: { ProjectForm, CollectButton },
+  components: { ProjectForm, CollectButton, BaseModal, BaseButton },
   setup() {
     const router = useRouter()
     
@@ -740,48 +734,36 @@ export default {
     const loadProjects = async () => {
       loading.value = true
       try {
-        const res = await ApiService.getDashboardProjects()
+  const res = await remoteApiService.dashboard.getProjects()
         let filled = false
-        if (res?.data?.success) {
-          // 兼容多种返回结构，提取项目数组
-          const rawList = extractList(res.data.data)
-          if (rawList.length > 0) {
-            // 追加：尝试获取全部项目以补全字段
-            try {
-              const allRes = await ApiService.getProjects()
-              if (allRes?.data?.success) {
-                const allList = extractList(allRes.data.data)
-                const fullMap = new Map(allList.map(item => [String(item.id), item]))
-                const merged = rawList.map(d => mergeForCompleteness(d, fullMap.get(String(d.id))))
-                projects.value = merged.map(mapProject)
-                filled = true
-              } else {
-                // 退化：仅用 dashboard 数据
-                projects.value = rawList.map(mapProject)
-                filled = true
-              }
-            } catch (e2) {
-              // 退化：仅用 dashboard 数据
-              console.warn('补全项目详情失败，使用工作台数据', e2)
-              projects.value = rawList.map(mapProject)
+        // 兼容多种返回结构，提取项目数组
+        const rawList = extractList(res?.data ?? res)
+        if (rawList.length > 0) {
+          // 追加：尝试获取全部项目以补全字段
+          try {
+            const allRes = await remoteApiService.projects.getAllProjects()
+            {
+              const allList = extractList(allRes?.data ?? allRes)
+              const fullMap = new Map(allList.map(item => [String(item.id), item]))
+              const merged = rawList.map(d => mergeForCompleteness(d, fullMap.get(String(d.id))))
+              projects.value = merged.map(mapProject)
               filled = true
             }
+          } catch (e2) {
+            // 退化：仅用 dashboard 数据
+            console.warn('补全项目详情失败，使用工作台数据', e2)
+            projects.value = rawList.map(mapProject)
+            filled = true
           }
-        } else {
-          console.warn(res?.data?.message || '获取我的项目失败，将尝试使用全部项目作为兜底')
         }
 
         // 兜底：如果我的项目为空，则拉取全部项目
         if (!filled || projects.value.length === 0) {
           try {
-            const allRes = await ApiService.getProjects()
-            if (allRes?.data?.success) {
-              const list = extractList(allRes.data.data)
-              projects.value = list.map(mapProject)
-              console.info('[MyProjects] 使用全部项目数据作为兜底展示')
-            } else {
-              console.warn(allRes?.data?.message || '获取全部项目失败')
-            }
+            const allRes = await remoteApiService.projects.getAllProjects()
+            const list = extractList(allRes?.data ?? allRes)
+            projects.value = list.map(mapProject)
+            console.info('[MyProjects] 使用全部项目数据作为兜底展示')
           } catch (e2) {
             console.error('兜底获取全部项目失败', e2)
           }
@@ -797,12 +779,10 @@ export default {
         console.error('获取我的项目失败', e)
         // 发生异常也尝试兜底
         try {
-          const allRes = await ApiService.getProjects()
-          if (allRes?.data?.success) {
-            const list = extractList(allRes.data.data)
-            projects.value = list.map(mapProject)
-            console.info('[MyProjects] 异常后使用全部项目数据作为兜底展示')
-          }
+          const allRes = await remoteApiService.projects.getAllProjects()
+          const list = extractList(allRes?.data ?? allRes)
+          projects.value = list.map(mapProject)
+          console.info('[MyProjects] 异常后使用全部项目数据作为兜底展示')
         } catch (e2) {
           console.error('兜底获取全部项目失败', e2)
         }
@@ -840,13 +820,13 @@ export default {
           if (!proj?.id) continue
           try {
             // 命中缓存直接复用
-            let res = applicationsCache.get(proj.id)
-            if (!res) {
-              res = await ApiService.getProjectApplications(proj.id, 'approved')
-              applicationsCache.set(proj.id, res)
+            let appsData = applicationsCache.get(proj.id)
+            if (!appsData) {
+              appsData = await remoteApiService.projects.getProjectApplications(proj.id, 'approved')
+              applicationsCache.set(proj.id, appsData)
             }
-            if (res?.data?.success) {
-              const teamArr = deriveTeamFromApplications(res.data.data)
+            {
+              const teamArr = deriveTeamFromApplications(appsData?.data ?? appsData)
               if (teamArr.length) {
                 const idx = projects.value.findIndex(p => p.id === proj.id)
                 if (idx !== -1) {
@@ -911,13 +891,13 @@ export default {
           if (!proj?.id) continue
           try {
             // 命中缓存直接复用
-            let res = membersCache.get(proj.id)
-            if (!res) {
-              res = await ApiService.getProjectMembers(proj.id)
-              membersCache.set(proj.id, res)
+            let members = membersCache.get(proj.id)
+            if (!members) {
+              members = await remoteApiService.projects.getProjectMembers(proj.id)
+              membersCache.set(proj.id, members)
             }
-            if (res?.data?.success) {
-              const membersRaw = res.data.data
+            {
+              const membersRaw = members?.data ?? members
               const teamArr = deriveTeamFromMembers(membersRaw)
               const myRole = findMyRoleFromMembers(teamArr, currentUserId.value, currentUserEmail.value)
               const idx = projects.value.findIndex(p => p.id === proj.id)
@@ -950,13 +930,8 @@ export default {
     const openEditForm = async (project) => {
       closeMenus()
       try {
-        const res = await ApiService.getProject(project.id)
-        if (res?.data?.success && res.data.data) {
-          editingProject.value = res.data.data
-        } else {
-          // 回退：使用卡片数据
-          editingProject.value = project
-        }
+        const data = await remoteApiService.projects.getProjectById(project.id)
+        editingProject.value = data?.data ?? data ?? project
       } catch {
         editingProject.value = project
       }
@@ -981,15 +956,11 @@ export default {
       
       deleting.value = true
       try {
-        const response = await ApiService.deleteProject(deletingProject.value.id)
-        if (response.data.success) {
-          // 从列表中移除项目
-          projects.value = projects.value.filter(p => p.id !== deletingProject.value.id)
-          cancelDelete()
-          // 可以添加成功提示
-        } else {
-          alert(response.data.message || '删除项目失败')
-        }
+        await remoteApiService.projects.deleteProject(deletingProject.value.id)
+        // 从列表中移除项目
+        projects.value = projects.value.filter(p => p.id !== deletingProject.value.id)
+        cancelDelete()
+        // 可以添加成功提示
       } catch (error) {
         alert(error.message || '删除项目失败')
       } finally {
@@ -1058,72 +1029,7 @@ export default {
 </script>
 
 <style scoped>
-/* 模态对话框样式 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  backdrop-filter: blur(4px);
-}
-
-.modal-card {
-  background: white;
-  border-radius: 16px;
-  padding: 0;
-  width: min(450px, 90vw);
-  max-height: 80vh;
-  overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: modalSlideIn 0.2s ease-out;
-}
-
-@keyframes modalSlideIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9) translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px 16px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.modal-header h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-  color: #111827;
-}
-
-.close-btn {
-  border: none;
-  background: transparent;
-  font-size: 24px;
-  cursor: pointer;
-  color: #6b7280;
-  padding: 4px;
-  line-height: 1;
-}
-
-.close-btn:hover {
-  color: #374151;
-}
-
+/* Modal body and actions - kept for content styling */
 .modal-body {
   padding: 24px;
   text-align: center;
@@ -1147,47 +1053,6 @@ export default {
   color: #6b7280;
   margin: 0;
   line-height: 1.5;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  padding: 16px 24px 24px;
-  background: #f9fafb;
-}
-
-.btn {
-  border: none;
-  border-radius: 8px;
-  padding: 10px 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 14px;
-}
-
-.btn.secondary {
-  background: #f3f4f6;
-  color: #374151;
-}
-
-.btn.secondary:hover {
-  background: #e5e7eb;
-}
-
-.btn.danger {
-  background: #ef4444;
-  color: white;
-}
-
-.btn.danger:hover {
-  background: #dc2626;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 /* 页面基础样式 */

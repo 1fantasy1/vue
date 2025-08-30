@@ -154,57 +154,49 @@
     </div>
 
     <!-- 笔记详情模态框 -->
-    <div class="modal-overlay" v-if="selectedNote" @click="closeNote">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <h2>{{ selectedNote.title || '无标题' }}</h2>
-          <button class="close-btn" @click="closeNote">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
-            </svg>
-          </button>
+    <BaseModal :show="!!selectedNote" :title="selectedNote?.title || '无标题'" @close="closeNote">
+      <div class="modal-meta" v-if="selectedNote">
+        <span class="course" v-if="selectedNote.course_title">{{ selectedNote.course_title }}</span>
+        <span class="folder" v-else-if="selectedNote.folder_name">📁 {{ selectedNote.folder_name }}</span>
+        <span class="type">{{ getNoteTypeLabel(selectedNote.note_type) }}</span>
+        <span class="date">{{ formatDate(selectedNote.created_at) }}</span>
+      </div>
+      <div class="modal-body" v-if="selectedNote">
+        <div class="note-full-content" v-if="selectedNote.content">
+          {{ selectedNote.content }}
         </div>
-        <div class="modal-meta">
-          <span class="course" v-if="selectedNote.course_title">{{ selectedNote.course_title }}</span>
-          <span class="folder" v-else-if="selectedNote.folder_name">📁 {{ selectedNote.folder_name }}</span>
-          <span class="type">{{ getNoteTypeLabel(selectedNote.note_type) }}</span>
-          <span class="date">{{ formatDate(selectedNote.created_at) }}</span>
-        </div>
-        <div class="modal-body">
-          <div class="note-full-content" v-if="selectedNote.content">
-            {{ selectedNote.content }}
-          </div>
-          <div class="note-media" v-if="selectedNote.media_url">
-            <img v-if="selectedNote.media_type === 'image'" 
+        <div class="note-media" v-if="selectedNote.media_url">
+          <img v-if="selectedNote.media_type === 'image'" 
+               :src="selectedNote.media_url" 
+               :alt="selectedNote.original_filename" 
+               class="media-full">
+          <video v-else-if="selectedNote.media_type === 'video'" 
                  :src="selectedNote.media_url" 
-                 :alt="selectedNote.original_filename" 
+                 controls 
                  class="media-full">
-            <video v-else-if="selectedNote.media_type === 'video'" 
-                   :src="selectedNote.media_url" 
-                   controls 
-                   class="media-full">
-            </video>
-            <div v-else class="file-link">
-              <a :href="selectedNote.media_url" target="_blank" class="file-download">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
-                </svg>
-                {{ selectedNote.original_filename || '下载文件' }}
-              </a>
-            </div>
+          </video>
+          <div v-else class="file-link">
+            <a :href="selectedNote.media_url" target="_blank" class="file-download">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+              </svg>
+              {{ selectedNote.original_filename || '下载文件' }}
+            </a>
           </div>
         </div>
-        <div class="modal-footer">
+      </div>
+      <template #footer v-if="selectedNote">
+        <div class="modal-footer-content">
           <div class="tags" v-if="selectedNote.tags">
             <span class="tag" v-for="tag in getTagsArray(selectedNote.tags)" :key="tag">{{ tag }}</span>
           </div>
           <div class="actions">
-            <button class="btn primary" @click="editNote(selectedNote)">编辑笔记</button>
-            <button class="btn" @click="shareNote(selectedNote.id)">分享笔记</button>
+            <BaseButton variant="primary" @click="editNote(selectedNote)">编辑笔记</BaseButton>
+            <BaseButton variant="secondary" @click="shareNote(selectedNote.id)">分享笔记</BaseButton>
           </div>
         </div>
-      </div>
-    </div>
+      </template>
+    </BaseModal>
 
     <!-- 笔记编辑模态框 -->
     <NoteModal
@@ -223,13 +215,17 @@ import { useRouter } from 'vue-router'
 import { ref, computed, onMounted, nextTick } from 'vue'
 import CollectButton from '@/components/CollectButton.vue'
 import NoteModal from '@/components/NoteModal.vue'
-import apiService from '@/services/api.js'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import remoteApiService from '@/services/remoteApi.js'
 
 export default {
   name: 'CourseNotes',
   components: { 
     CollectButton,
-    NoteModal
+    NoteModal,
+    BaseModal,
+    BaseButton
   },
   setup() {
     const router = useRouter()
@@ -271,14 +267,12 @@ export default {
         if (selectedCourse.value) params.course_id = selectedCourse.value
         if (selectedFolder.value !== '') params.folder_id = selectedFolder.value
         
-        const response = await apiService.getNotes(params)
-        if (response.data.success) {
-          notes.value = response.data.data || []
+  const response = await remoteApiService.notes.getAllNotes(params)
+  const unwrap = (r) => (r && r.data !== undefined ? r.data : r)
+  const data = unwrap(response)
+  notes.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
           applySorting()
-        } else {
-          console.error('获取笔记失败:', response.data.message)
-          notes.value = []
-        }
+        
       } catch (error) {
         console.error('获取笔记失败:', error)
         notes.value = []
@@ -290,10 +284,10 @@ export default {
     // 获取课程列表
     const loadCourses = async () => {
       try {
-        const response = await apiService.getCourses()
-        if (response.data.success) {
-          courses.value = response.data.data || []
-        }
+  const response = await remoteApiService.courses.getAllCourses()
+  const unwrap = (r) => (r && r.data !== undefined ? r.data : r)
+  const data = unwrap(response)
+  courses.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
       } catch (error) {
         console.error('获取课程失败:', error)
         courses.value = []
@@ -303,10 +297,10 @@ export default {
     // 获取文件夹列表
     const loadFolders = async () => {
       try {
-        const response = await apiService.getFolders()
-        if (response.data.success) {
-          folders.value = response.data.data || []
-        }
+  const response = await remoteApiService.folders.getAllFolders()
+  const unwrap = (r) => (r && r.data !== undefined ? r.data : r)
+  const data = unwrap(response)
+  folders.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
       } catch (error) {
         console.error('获取文件夹失败:', error)
         folders.value = []
@@ -414,12 +408,12 @@ export default {
       if (!confirm('确定要删除这条笔记吗？')) return
       
       try {
-        const response = await apiService.deleteNote(noteId)
-        if (response.data.success) {
+        const response = await remoteApiService.notes.deleteNote(noteId)
+        if (response) {
           await loadNotes() // 重新加载列表
           showMessage({ type: 'success', text: '笔记删除成功' })
         } else {
-          showMessage({ type: 'error', text: response.data.message || '删除失败' })
+          showMessage({ type: 'error', text: '删除失败' })
         }
       } catch (error) {
         console.error('删除笔记失败:', error)
@@ -915,64 +909,9 @@ export default {
   font-size: 12px;
 }
 
-/* 模态框样式 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 16px;
-  width: 90%;
-  max-width: 800px;
-  max-height: 90vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24px;
-  border-bottom: 2px solid #e9ecef;
-}
-
-.modal-header h2 {
-  margin: 0;
-  color: #2c3e50;
-  font-size: 1.5rem;
-}
-
-.close-btn {
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: #f8f9fa;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #6c757d;
-}
-
-.close-btn:hover {
-  background: #e9ecef;
-}
-
+/* 笔记详情样式 */
 .modal-meta {
-  padding: 0 24px 16px;
+  padding: 0 0 16px;
   display: flex;
   gap: 16px;
   font-size: 14px;
@@ -996,12 +935,6 @@ export default {
 
 .modal-meta .date {
   color: #6c757d;
-}
-
-.modal-body {
-  flex: 1;
-  padding: 0 24px;
-  overflow-y: auto;
 }
 
 .note-full-content {
@@ -1036,35 +969,24 @@ export default {
   color: #3ad66f;
 }
 
-.modal-footer {
-  padding: 24px;
-  border-top: 2px solid #e9ecef;
+.modal-footer-content {
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
+  width: 100%;
 }
 
-.modal-footer .tags {
+.modal-footer-content .tags {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
 }
 
-.modal-footer .actions {
+.modal-footer-content .actions {
   display: flex;
   gap: 12px;
-}
-
-.btn.primary {
-  background: #43e97b;
-  border-color: #43e97b;
-  color: white;
-}
-
-.btn.primary:hover {
-  background: #3ad66f;
 }
 
 /* 响应式设计 */

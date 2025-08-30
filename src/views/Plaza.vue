@@ -114,24 +114,8 @@
     </div>
 
     <!-- 推荐内容弹窗 -->
-    <div class="recommendation-modal-overlay" v-if="showRecommendationModal" @click="closeRecommendationModal">
-      <div class="recommendation-modal" @click.stop>
-        <div class="modal-header">
-          <div class="modal-title">
-            <div class="modal-icon">
-              {{ selectedType === 'project' ? '🎯' : selectedType === 'course' ? '🎓' : '💡' }}
-            </div>
-            {{ selectedType === 'project' ? '智能项目推荐' : selectedType === 'course' ? '个性化课程推荐' : '知识库推荐' }}
-            <div class="modal-badge">
-              基于AI分析
-            </div>
-          </div>
-          <button class="modal-close-btn" @click="closeRecommendationModal">
-            <span class="close-icon">✕</span>
-          </button>
-        </div>
-        
-        <div class="modal-content">
+    <BaseModal :show="showRecommendationModal" :title="selectedType === 'project' ? '智能项目推荐' : selectedType === 'course' ? '个性化课程推荐' : '知识库推荐'" @close="closeRecommendationModal">
+      <div class="modal-content">
           <!-- 项目推荐内容 -->
           <div v-if="selectedType === 'project'" class="modal-recommendations">
             <div
@@ -155,9 +139,9 @@
               </div>
               <p class="recommendation-description">{{ project.description }}</p>
               <div class="recommendation-actions">
-                <button class="action-btn primary">立即查看</button>
-                <button class="action-btn secondary">收藏</button>
-                <button class="action-btn ghost">分享</button>
+                <BaseButton variant="primary">立即查看</BaseButton>
+                <BaseButton variant="secondary">收藏</BaseButton>
+                <BaseButton variant="ghost">分享</BaseButton>
               </div>
             </div>
           </div>
@@ -185,9 +169,9 @@
               </div>
               <p class="recommendation-description">{{ course.description }}</p>
               <div class="recommendation-actions">
-                <button class="action-btn primary">开始学习</button>
-                <button class="action-btn secondary">加入收藏</button>
-                <button class="action-btn ghost">分享课程</button>
+                <BaseButton variant="primary">开始学习</BaseButton>
+                <BaseButton variant="secondary">加入收藏</BaseButton>
+                <BaseButton variant="ghost">分享课程</BaseButton>
               </div>
             </div>
           </div>
@@ -215,25 +199,23 @@
               </div>
               <p class="recommendation-description">{{ knowledge.description }}</p>
               <div class="recommendation-actions">
-                <button class="action-btn primary">立即学习</button>
-                <button class="action-btn secondary">加入书签</button>
-                <button class="action-btn ghost">推荐给好友</button>
+                <BaseButton variant="primary">立即学习</BaseButton>
+                <BaseButton variant="secondary">加入书签</BaseButton>
+                <BaseButton variant="ghost">推荐给好友</BaseButton>
               </div>
             </div>
           </div>
-        </div>
-        
-        <div class="modal-footer">
-          <button class="refresh-modal-btn" @click="refreshRecommendations">
+      </div>
+      <template #footer>
+        <div class="d-flex" style="gap: 8px; justify-content: flex-end; width: 100%">
+          <BaseButton variant="secondary" @click="refreshRecommendations">
             <span class="refresh-icon">🔄</span>
             刷新推荐
-          </button>
-          <button class="close-modal-btn" @click="closeRecommendationModal">
-            关闭
-          </button>
+          </BaseButton>
+          <BaseButton variant="primary" @click="closeRecommendationModal">关闭</BaseButton>
         </div>
-      </div>
-    </div>
+      </template>
+    </BaseModal>
 
     <!-- 分隔线 -->
     <div class="section-divider">
@@ -719,10 +701,13 @@
 <script>
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { ApiService } from '@/services/api.js'
+import remoteApiService from '@/services/remoteApi.js'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
 
 export default {
   name: 'Plaza',
+  components: { BaseModal, BaseButton },
   setup() {
     const searchQuery = ref('')
     const showSmartMatch = ref(false)
@@ -852,7 +837,7 @@ export default {
   replies: []
     })
 
-    const pickData = (resp) => resp?.data?.data ?? resp?.data ?? []
+  const pickData = (resp) => resp?.data ?? resp ?? []
 
     const loadTopics = async (reset = false) => {
       try {
@@ -864,7 +849,7 @@ export default {
         }
         const options = { limit: pageSize.value, offset: offset.value }
         if (selectedTopic.value?.name) options.tag = selectedTopic.value.name
-        const resp = await ApiService.getForumTopics(options)
+  const resp = await remoteApiService.forum.getTopics(options)
         const list = Array.isArray(pickData(resp)) ? pickData(resp) : []
         const mapped = list.map(mapTopicToPost)
         posts.value = reset ? mapped : posts.value.concat(mapped)
@@ -1076,7 +1061,7 @@ export default {
           payload.file = newPostFile.value
           payload.media_type = newPostMediaType.value
         }
-        const resp = await ApiService.createForumTopic(payload)
+  const resp = await remoteApiService.forum.createTopic(payload)
         const data = pickData(resp)
         const post = mapTopicToPost(data)
         posts.value.unshift(post)
@@ -1098,9 +1083,9 @@ export default {
         post.isLiked = !post.isLiked
         post.likes += post.isLiked ? 1 : -1
         if (post.isLiked) {
-          await ApiService.likeForumTopic(post.id)
+          await remoteApiService.forum.likeTopic(post.id)
         } else {
-          await ApiService.unlikeForumTopic(post.id)
+          await remoteApiService.forum.unlikeTopic(post.id)
         }
       } catch (e) {
         // revert
@@ -1114,7 +1099,7 @@ export default {
       post.showComments = !post.showComments
       if (post.showComments && post.comments.length === 0) {
         try {
-          const resp = await ApiService.getForumComments(post.id, null, 50, 0)
+          const resp = await remoteApiService.forum.getComments(post.id, null, 50, 0)
           const list = Array.isArray(pickData(resp)) ? pickData(resp) : []
           post.comments = list.map(mapComment)
         } catch (e) {
@@ -1144,7 +1129,7 @@ export default {
           payload.file = post.newCommentFile
           payload.media_type = post.newCommentMediaType
         }
-        const resp = await ApiService.addForumComment(post.id, payload)
+  const resp = await remoteApiService.forum.addComment(post.id, payload)
         const data = pickData(resp)
         post.comments.push(mapComment(data))
         post.commentsCount = (post.commentsCount || 0) + 1
@@ -1206,7 +1191,7 @@ export default {
           payload.file = parentComment.replyFile
           payload.media_type = parentComment.replyMediaType
         }
-        const resp = await ApiService.addForumComment(post.id, payload)
+  const resp = await remoteApiService.forum.addComment(post.id, payload)
         const data = mapComment(pickData(resp))
         parentComment.replies = parentComment.replies || []
         parentComment.replies.push(data)
@@ -1224,9 +1209,9 @@ export default {
         comment.isLiked = !comment.isLiked
         comment.likesCount += comment.isLiked ? 1 : -1
         if (comment.isLiked) {
-          await ApiService.likeForumComment(comment.id)
+          await remoteApiService.forum.likeComment(comment.id)
         } else {
-          await ApiService.unlikeForumComment(comment.id)
+          await remoteApiService.forum.unlikeComment(comment.id)
         }
       } catch (e) {
         comment.isLiked = prev
@@ -1249,7 +1234,7 @@ export default {
       const text = (comment.editContent || '').trim()
       if (!text) return
       try {
-        await ApiService.updateForumComment(comment.id, { content: text })
+  await remoteApiService.forum.updateComment(comment.id, { content: text })
         comment.content = text
         comment.isEditing = false
         ElMessage.success('已更新评论')
@@ -1260,7 +1245,7 @@ export default {
 
     const deleteComment = async (post, comment) => {
       try {
-        await ApiService.deleteForumComment(comment.id)
+  await remoteApiService.forum.deleteComment(comment.id)
         post.comments = post.comments.filter(c => c.id !== comment.id)
         post.commentsCount = Math.max(0, (post.commentsCount || 0) - 1)
         ElMessage.success('已删除评论')
@@ -1277,7 +1262,7 @@ export default {
           content: text,
           tags: post.editTopic || undefined
         }
-        await ApiService.updateForumTopic(post.id, payload)
+  await remoteApiService.forum.updateTopic(post.id, payload)
         post.content = text
         
         // 更新话题标签
@@ -1316,7 +1301,7 @@ export default {
 
     const deletePost = async (post) => {
       try {
-        await ApiService.deleteForumTopic(post.id)
+  await remoteApiService.forum.deleteTopic(post.id)
         posts.value = posts.value.filter(p => p.id !== post.id)
         ElMessage.success('已删除动态')
       } catch (e) {
@@ -1350,10 +1335,10 @@ export default {
       try {
         updateFollowStateForUser(userId, !prev)
         if (!prev) {
-          await ApiService.followUser(userId)
+          await remoteApiService.forum.followUser(userId)
           ElMessage.success('已关注')
         } else {
-          await ApiService.unfollowUser(userId)
+          await remoteApiService.forum.unfollowUser(userId)
           ElMessage.success('已取消关注')
         }
       } catch (e) {
@@ -1966,101 +1951,6 @@ export default {
   border: 1px solid rgba(0, 123, 255, 0.3);
 }
 
-/* 推荐内容弹窗样式 */
-.recommendation-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(4px);
-  padding: 60px 20px 120px 20px;
-  overflow-y: auto;
-}
-
-.recommendation-modal {
-  background: white;
-  border-radius: 16px;
-  width: 90%;
-  max-width: 800px;
-  max-height: calc(100vh - 180px);
-  overflow: hidden;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  display: flex;
-  flex-direction: column;
-  margin-top: auto;
-  margin-bottom: auto;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 24px 32px;
-  border-bottom: 2px solid #f1f3f4;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-}
-
-.modal-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 1.5rem;
-  font-weight: 700;
-}
-
-.modal-icon {
-  width: 32px;
-  height: 32px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 16px;
-  backdrop-filter: blur(10px);
-}
-
-.modal-badge {
-  margin-left: 12px;
-  padding: 4px 12px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 16px;
-  font-size: 12px;
-  font-weight: 500;
-  backdrop-filter: blur(10px);
-}
-
-.modal-close-btn {
-  width: 32px;
-  height: 32px;
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  border-radius: 8px;
-  color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(10px);
-}
-
-.modal-close-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.close-icon {
-  font-size: 16px;
-  font-weight: bold;
-}
-
 .modal-content {
   flex: 1;
   overflow-y: auto;
@@ -2194,89 +2084,14 @@ export default {
   color: #495057;
 }
 
-.modal-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 32px;
-  border-top: 1px solid #e9ecef;
-  background: #f8f9fa;
-}
-
-.refresh-modal-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 20px;
-  background: #667eea;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.refresh-modal-btn:hover {
-  background: #5a67d8;
-  transform: translateY(-1px);
-}
-
-.close-modal-btn {
-  padding: 10px 20px;
-  background: #6c757d;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.close-modal-btn:hover {
-  background: #5a6268;
-  transform: translateY(-1px);
-}
-
 /* 弹窗移动端优化 */
 @media (max-width: 768px) {
-  .recommendation-modal-overlay {
-    padding: 40px 10px 100px 10px;
-  }
-  
-  .recommendation-modal {
-    width: 95%;
-    max-height: calc(100vh - 140px);
-  }
-  
-  .modal-header {
-    padding: 16px 20px;
-  }
-  
-  .modal-title {
-    font-size: 1.2rem;
-  }
-  
   .modal-content {
     padding: 16px 20px;
   }
   
   .modal-recommendation-item {
     padding: 16px;
-  }
-  
-  .modal-footer {
-    padding: 16px 20px;
-    flex-direction: column;
-    gap: 12px;
-  }
-  
-  .refresh-modal-btn,
-  .close-modal-btn {
-    width: 100%;
-    justify-content: center;
   }
 }
 

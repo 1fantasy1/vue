@@ -169,52 +169,44 @@
       </div>
     </div>
 
-    <!-- 编辑模态框 -->
-    <div class="modal-overlay" v-if="editingNote" @click="closeEdit">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <h3>编辑记录</h3>
-          <button class="close-btn" @click="closeEdit">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-body">
-          <textarea 
-            v-model="editContent" 
-            class="edit-input"
-            placeholder="编辑你的记录..."
-          ></textarea>
-          <div class="edit-mood">
-            <label>心情：</label>
-            <div class="mood-options">
-              <button 
-                v-for="mood in moods" 
-                :key="mood.value"
-                class="mood-btn"
-                :class="{ active: editMood === mood.value }"
-                @click="editMood = mood.value"
-              >
-                {{ mood.emoji }}
-              </button>
-            </div>
-          </div>
-          <div class="edit-tags">
-            <label>标签：</label>
-            <input 
-              v-model="editTagsInput" 
-              placeholder="用空格分隔多个标签"
-              class="tags-input"
+    <!-- 编辑模态框：使用 BaseModal -->
+    <BaseModal :show="editingNote" title="编辑记录" @close="closeEdit">
+      <div>
+        <textarea 
+          v-model="editContent" 
+          class="form-textarea"
+          placeholder="编辑你的记录..."
+        ></textarea>
+        <div class="edit-mood" style="margin-top: 12px">
+          <label>心情：</label>
+          <div class="mood-options">
+            <button 
+              v-for="mood in moods" 
+              :key="mood.value"
+              class="mood-btn"
+              :class="{ active: editMood === mood.value }"
+              @click="editMood = mood.value"
             >
+              {{ mood.emoji }}
+            </button>
           </div>
         </div>
-        <div class="modal-footer">
-          <button class="btn secondary" @click="closeEdit">取消</button>
-          <button class="btn primary" @click="saveEdit">保存</button>
+        <div class="edit-tags" style="margin-top: 12px">
+          <label>标签：</label>
+          <input 
+            v-model="editTagsInput" 
+            placeholder="用空格分隔多个标签"
+            class="form-input"
+          >
         </div>
       </div>
-    </div>
+      <template #footer>
+        <div class="d-flex" style="gap: 8px; justify-content: flex-end; width: 100%">
+          <BaseButton variant="secondary" type="button" @click="closeEdit">取消</BaseButton>
+          <BaseButton variant="primary" type="button" @click="saveEdit">保存</BaseButton>
+        </div>
+      </template>
+    </BaseModal>
 
     <div class="stats-info">
       <div class="stats-card">
@@ -236,12 +228,14 @@
 <script>
 import { useRouter } from 'vue-router'
 import { ref, computed, onMounted } from 'vue'
-import { ApiService } from '@/services/api.js'
+import remoteApiService from '@/services/remoteApi.js'
 import CollectButton from '@/components/CollectButton.vue'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
 
 export default {
   name: 'QuickNotes',
-  components: { CollectButton },
+  components: { CollectButton, BaseModal, BaseButton },
   setup() {
     const router = useRouter()
     const newNote = ref('')
@@ -257,13 +251,9 @@ export default {
     const loading = ref(false)
     const error = ref('')
 
-    // 统一解析 ApiService 响应
-    const parseApi = (res) => {
-      const success = res?.data?.success ?? res?.success ?? false
-      const payload = res?.data?.data ?? res?.data ?? null
-      const message = res?.data?.message ?? res?.message ?? ''
-      return { success, data: payload, message }
-    }
+  // 远程 API 直接返回数据或抛错，这里统一封装一个轻量解析器
+  const ok = (v) => ({ success: true, data: v, message: '' })
+  const fail = (e) => ({ success: false, data: null, message: e?.message || '请求失败' })
     
     const moods = ref([
       { value: 'happy', emoji: '😊', label: '开心' },
@@ -282,8 +272,8 @@ export default {
       error.value = ''
       try {
         // 仅将心情作为后端筛选参数；文本搜索在前端完成
-        const res = await ApiService.getDailyRecords(filterMood.value || null, null)
-        const { success, data, message } = parseApi(res)
+  const resp = await remoteApiService.dailyRecords.getAllRecords(filterMood.value || null, null)
+  const { success, data, message } = ok(resp)
         if (success) {
           notes.value = Array.isArray(data) ? data : (data ? [data] : [])
         } else {
@@ -388,8 +378,8 @@ export default {
                 null
         }
         
-        const res = await ApiService.createDailyRecord(recordData)
-        const { success, data: created, message } = parseApi(res)
+  const apiResp = await remoteApiService.dailyRecords.createRecord(recordData)
+  const { success, data: created, message } = ok(apiResp)
         if (success) {
           // 优先使用后端返回的记录插入到顶部；否则回退为刷新列表
           if (created && created.id) {
@@ -452,12 +442,18 @@ export default {
           tags: editTagsInput.value.trim() ? editTagsInput.value.replace(/\s+/g, ',') : null
         }
         
-        const res = await ApiService.updateDailyRecord(editingNote.value.id, updateData)
-        const { success, message } = parseApi(res)
-        if (success) {
-          await loadNotes()
-          closeEdit()
-        } else {
+        try {
+          await remoteApiService.dailyRecords.updateRecord(editingNote.value.id, updateData)
+          const { success, message } = ok(true)
+          if (success) {
+            await loadNotes()
+            closeEdit()
+          } else {
+            error.value = message || '更新记录失败'
+          }
+          return
+        } catch (e) {
+          const { message } = fail(e)
           error.value = message || '更新记录失败'
         }
       } catch (err) {
@@ -475,12 +471,11 @@ export default {
       error.value = ''
       
       try {
-        const res = await ApiService.deleteDailyRecord(noteId)
-        const { success, message } = parseApi(res)
-        if (success) {
+        try {
+          await remoteApiService.dailyRecords.deleteRecord(noteId)
           await loadNotes()
-        } else {
-          error.value = message || '删除记录失败'
+        } catch (e) {
+          error.value = e?.message || '删除记录失败'
         }
       } catch (err) {
         error.value = '网络错误，请稍后重试'
@@ -1019,61 +1014,7 @@ export default {
   font-weight: 500;
 }
 
-/* 模态框样式 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 16px;
-  width: 90%;
-  max-width: 500px;
-  max-height: 80vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  border-bottom: 2px solid #e9ecef;
-}
-
-.modal-header h3 {
-  margin: 0;
-  color: #2c3e50;
-}
-
-.close-btn {
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: #f8f9fa;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #6c757d;
-}
-
-.close-btn:hover {
-  background: #e9ecef;
-}
-
+/* Edit form styling for modal content - kept for form layout */
 .modal-body {
   padding: 20px;
   flex: 1;
@@ -1126,38 +1067,6 @@ export default {
 .tags-input:focus {
   outline: none;
   border-color: #a8edea;
-}
-
-.modal-footer {
-  padding: 20px;
-  border-top: 2px solid #e9ecef;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.btn {
-  padding: 10px 20px;
-  border: 2px solid #e9ecef;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.3s ease;
-}
-
-.btn.secondary {
-  background: white;
-  color: #6c757d;
-}
-
-.btn.primary {
-  background: #a8edea;
-  border-color: #a8edea;
-  color: #2c3e50;
-}
-
-.btn:hover {
-  opacity: 0.8;
 }
 
 .stats-info {

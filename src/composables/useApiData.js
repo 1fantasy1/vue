@@ -1,6 +1,5 @@
 // 统一API数据管理 Composable
 import { ref, reactive, onMounted } from 'vue'
-import { ApiService } from '@/services/api.js'
 import remoteApiService from '@/services/remoteApi.js'
 import { config } from '@/config/index.js'
 
@@ -15,14 +14,10 @@ export function useUserData() {
       loading.value = true
       error.value = null
       
-      const response = await ApiService.login(credentials)
-      
-      if (response.data.success) {
-        user.value = response.data.data.user
-        return { success: true, user: response.data.data.user }
-      } else {
-        throw new Error(response.data.message)
-      }
+  const tokenData = await remoteApiService.auth.login(credentials)
+  const me = await remoteApiService.users.getMe()
+  user.value = me
+  return { success: true, user: me, token: tokenData?.access_token }
     } catch (err) {
       error.value = err.message
       throw err
@@ -36,13 +31,8 @@ export function useUserData() {
       loading.value = true
       error.value = null
       
-      const response = await ApiService.register(userData)
-      
-      if (response.data.success) {
-        return { success: true, user: response.data.data }
-      } else {
-        throw new Error(response.data.message)
-      }
+  const data = await remoteApiService.auth.register(userData)
+  return { success: true, user: data }
     } catch (err) {
       error.value = err.message
       throw err
@@ -53,20 +43,16 @@ export function useUserData() {
 
   const logout = () => {
     user.value = null
-    ApiService.logout()
+  remoteApiService.auth.logout()
   }
 
   const getCurrentUser = async (forceRefresh = false) => {
     if (!user.value || forceRefresh) {
       try {
         console.log('获取用户信息...')
-        const response = await ApiService.getUser('me')
-        if (response.data.success) {
-          user.value = response.data.data
-          console.log('用户信息获取成功:', user.value)
-        } else {
-          console.warn('获取用户信息失败:', response.data.message)
-        }
+  const me = await remoteApiService.users.getMe()
+  user.value = me
+  console.log('用户信息获取成功:', user.value)
       } catch (err) {
         console.warn('获取用户信息失败:', err)
       }
@@ -77,14 +63,9 @@ export function useUserData() {
   const updateProfile = async (profileData) => {
     try {
       loading.value = true
-      const response = await ApiService.updateUser(user.value?.id || 'me', profileData)
-      
-      if (response.data.success) {
-        user.value = response.data.data
-        return { success: true, user: response.data.data }
-      } else {
-        throw new Error(response.data.message)
-      }
+  const updated = await remoteApiService.users.updateMe(profileData)
+  user.value = updated
+  return { success: true, user: updated }
     } catch (err) {
       error.value = err.message
       throw err
@@ -115,11 +96,8 @@ export function useStudentsData() {
   const fetchStudents = async () => {
     try {
       loading.value = true
-      const response = await ApiService.getStudents()
-      
-      if (response.data.success) {
-        students.value = response.data.data
-      }
+  const list = await remoteApiService.students.getAllStudents()
+  students.value = Array.isArray(list) ? list : (list?.data ?? [])
     } catch (err) {
       error.value = err.message
     } finally {
@@ -130,11 +108,7 @@ export function useStudentsData() {
   const fetchStudent = async (studentId) => {
     try {
       loading.value = true
-      const response = await ApiService.getStudent(studentId)
-      
-      if (response.data.success) {
-        currentStudent.value = response.data.data
-      }
+  currentStudent.value = await remoteApiService.students.getStudentById(studentId)
     } catch (err) {
       error.value = err.message
     } finally {
@@ -162,11 +136,8 @@ export function useProjectsData() {
   const fetchProjects = async () => {
     try {
       loading.value = true
-      const response = await ApiService.getProjects()
-      
-      if (response.data.success) {
-        projects.value = response.data.data
-      }
+  const list = await remoteApiService.projects.getAllProjects()
+  projects.value = Array.isArray(list) ? list : (list?.data ?? [])
     } catch (err) {
       error.value = err.message
     } finally {
@@ -177,11 +148,7 @@ export function useProjectsData() {
   const fetchProject = async (projectId) => {
     try {
       loading.value = true
-      const response = await ApiService.getProject(projectId)
-      
-      if (response.data.success) {
-        currentProject.value = response.data.data
-      }
+  currentProject.value = await remoteApiService.projects.getProjectById(projectId)
     } catch (err) {
       error.value = err.message
     } finally {
@@ -192,14 +159,9 @@ export function useProjectsData() {
   const createProject = async (projectData) => {
     try {
       loading.value = true
-      const response = await ApiService.createProject(projectData)
-      
-      if (response.data.success) {
-        projects.value.push(response.data.data)
-        return response.data.data
-      } else {
-        throw new Error(response.data.message)
-      }
+  const created = await remoteApiService.projects.createProject(projectData)
+  if (created) projects.value.push(created)
+  return created
     } catch (err) {
       error.value = err.message
       throw err
@@ -211,11 +173,12 @@ export function useProjectsData() {
   const recommendProjects = async (studentId, options = {}) => {
     try {
       loading.value = true
-      const response = await ApiService.recommendProjects(studentId, options)
-      
-      if (response.data.success) {
-        return response.data.data
-      }
+      const list = await remoteApiService.recommend.recommendProjects(
+        studentId,
+        options.initialK || 50,
+        options.finalK || 3
+      )
+      return Array.isArray(list) ? list : (list?.data ?? [])
     } catch (err) {
       error.value = err.message
       return []
@@ -227,11 +190,12 @@ export function useProjectsData() {
   const matchStudents = async (projectId, options = {}) => {
     try {
       loading.value = true
-      const response = await ApiService.matchStudents(projectId, options)
-      
-      if (response.data.success) {
-        return response.data.data
-      }
+      const list = await remoteApiService.projects.matchStudents(
+        projectId,
+        options.initialK || 50,
+        options.finalK || 3
+      )
+      return Array.isArray(list) ? list : (list?.data ?? [])
     } catch (err) {
       error.value = err.message
       return []
@@ -263,11 +227,8 @@ export function useNotesData() {
   const fetchNotes = async (userId, noteType = null) => {
     try {
       loading.value = true
-      const response = await ApiService.getNotes(userId, noteType)
-      
-      if (response.data.success) {
-        notes.value = response.data.data
-      }
+  const list = await remoteApiService.notes.getAllNotes({ user_id: userId, note_type: noteType })
+  notes.value = Array.isArray(list) ? list : (list?.data ?? [])
     } catch (err) {
       error.value = err.message
     } finally {
@@ -278,11 +239,7 @@ export function useNotesData() {
   const fetchNote = async (noteId) => {
     try {
       loading.value = true
-      const response = await ApiService.getNote(noteId)
-      
-      if (response.data.success) {
-        currentNote.value = response.data.data
-      }
+  currentNote.value = await remoteApiService.notes.getNoteById(noteId)
     } catch (err) {
       error.value = err.message
     } finally {
@@ -293,14 +250,9 @@ export function useNotesData() {
   const createNote = async (noteData) => {
     try {
       loading.value = true
-      const response = await ApiService.createNote(noteData)
-      
-      if (response.data.success) {
-        notes.value.push(response.data.data)
-        return response.data.data
-      } else {
-        throw new Error(response.data.message)
-      }
+  const created = await remoteApiService.notes.createNote(noteData)
+  if (created) notes.value.push(created)
+  return created
     } catch (err) {
       error.value = err.message
       throw err
@@ -312,17 +264,10 @@ export function useNotesData() {
   const updateNote = async (noteId, noteData) => {
     try {
       loading.value = true
-      const response = await ApiService.updateNote(noteId, noteData)
-      
-      if (response.data.success) {
-        const index = notes.value.findIndex(n => n.id === noteId)
-        if (index !== -1) {
-          notes.value[index] = response.data.data
-        }
-        return response.data.data
-      } else {
-        throw new Error(response.data.message)
-      }
+  const updated = await remoteApiService.notes.updateNote(noteId, noteData)
+  const index = notes.value.findIndex(n => n.id === noteId)
+  if (index !== -1) notes.value[index] = updated
+  return updated
     } catch (err) {
       error.value = err.message
       throw err
@@ -334,14 +279,9 @@ export function useNotesData() {
   const deleteNote = async (noteId) => {
     try {
       loading.value = true
-      const response = await ApiService.deleteNote(noteId)
-      
-      if (response.data.success) {
-        notes.value = notes.value.filter(n => n.id !== noteId)
-        return true
-      } else {
-        throw new Error(response.data.message)
-      }
+  await remoteApiService.notes.deleteNote(noteId)
+  notes.value = notes.value.filter(n => n.id !== noteId)
+  return true
     } catch (err) {
       error.value = err.message
       throw err
@@ -374,11 +314,7 @@ export function useDashboardData() {
   const fetchSummary = async () => {
     try {
       loading.value = true
-      const response = await ApiService.getDashboardSummary()
-      
-      if (response.data.success) {
-        summary.value = response.data.data
-      }
+  summary.value = await remoteApiService.dashboard.getSummary()
     } catch (err) {
       error.value = err.message
     } finally {
@@ -388,11 +324,8 @@ export function useDashboardData() {
 
   const fetchDashboardProjects = async (statusFilter = null) => {
     try {
-      const response = await ApiService.getDashboardProjects(statusFilter)
-      
-      if (response.data.success) {
-        projects.value = response.data.data
-      }
+  const list = await remoteApiService.dashboard.getProjects(statusFilter)
+  projects.value = Array.isArray(list) ? list : (list?.data ?? [])
     } catch (err) {
       error.value = err.message
     }
@@ -400,11 +333,8 @@ export function useDashboardData() {
 
   const fetchDashboardCourses = async (statusFilter = null) => {
     try {
-      const response = await ApiService.getDashboardCourses(statusFilter)
-      
-      if (response.data.success) {
-        courses.value = response.data.data
-      }
+  const list = await remoteApiService.dashboard.getCourses(statusFilter)
+  courses.value = Array.isArray(list) ? list : (list?.data ?? [])
     } catch (err) {
       error.value = err.message
     }
@@ -432,13 +362,8 @@ export function useAI() {
       loading.value = true
       error.value = null
       
-      const response = await ApiService.aiQA(query, options)
-      
-      if (response.data.success) {
-        return response.data.data
-      } else {
-        throw new Error(response.data.message)
-      }
+  const data = await remoteApiService.ai.qa(query, options)
+  return data
     } catch (err) {
       error.value = err.message
       throw err
@@ -465,12 +390,9 @@ export function useSearch() {
       loading.value = true
       error.value = null
       
-      const response = await ApiService.search(query)
-      
-      if (response.data.success) {
-        results.value = response.data.data
-        return response.data.data
-      }
+  const data = await remoteApiService.search.semanticSearch(query, null, 10)
+  results.value = data
+  return data
     } catch (err) {
       error.value = err.message
     } finally {
@@ -483,12 +405,9 @@ export function useSearch() {
       loading.value = true
       error.value = null
       
-      const response = await ApiService.semanticSearch(query, itemTypes, limit)
-      
-      if (response.data.success) {
-        results.value = response.data.data
-        return response.data.data
-      }
+  const data = await remoteApiService.search.semanticSearch(query, itemTypes, limit)
+  results.value = data
+  return data
     } catch (err) {
       error.value = err.message
     } finally {
@@ -516,12 +435,9 @@ export function useSystemHealth() {
       loading.value = true
       error.value = null
       
-      const response = await ApiService.healthCheck()
-      
-      if (response.data.success) {
-        status.value = response.data.data
-        return response.data.data
-      }
+  const data = await remoteApiService.health.check()
+  status.value = data
+  return data
     } catch (err) {
       error.value = err.message
       status.value = {

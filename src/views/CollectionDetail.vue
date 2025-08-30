@@ -113,7 +113,7 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ApiService } from '@/services/api.js'
+import remoteApiService from '@/services/remoteApi.js'
 import CollectionModal from '@/components/CollectionModal.vue'
 
 export default {
@@ -152,9 +152,8 @@ export default {
       error.value = ''
       try {
         const id = route.params.id
-        const res = await ApiService.getCollection(id)
-        if (res?.data?.success === false) throw new Error(res.data.message || '加载失败')
-        collection.value = res.data?.data || res.data
+        const data = await remoteApiService.collections.getCollectionById(id)
+        collection.value = data?.data ?? data
       } catch (e) {
         error.value = e.message || '加载失败'
       } finally {
@@ -181,8 +180,7 @@ export default {
     const onSubmit = async (payload) => {
       try {
         const toTagsString = (val) => Array.isArray(val) ? val.join(',') : (typeof val === 'string' ? val : undefined)
-        const res = await ApiService.updateCollection(editForm.value.id, { ...payload, tags: toTagsString(payload.tags) })
-        if (res?.data?.success === false) throw new Error(res.data.message || '保存失败')
+        await remoteApiService.collections.updateCollection(editForm.value.id, { ...payload, tags: toTagsString(payload.tags) })
         editVisible.value = false
         await load()
       } catch (e) {
@@ -193,8 +191,7 @@ export default {
       if (!collection.value?.id) return
       if (!confirm('确定要删除该收藏吗？')) return
       try {
-        const res = await ApiService.deleteCollection(collection.value.id)
-        if (res?.data?.success === false) throw new Error(res.data.message || '删除失败')
+        await remoteApiService.collections.deleteCollection(collection.value.id)
         router.replace('/favorites')
       } catch (e) {
         alert(e.message || '删除失败')

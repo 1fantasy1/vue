@@ -224,66 +224,61 @@
     />
 
     <!-- 编辑材料模态框（仅管理员可见） -->
-    <div v-if="showEditModal && isAdmin" class="modal-overlay" @click="closeEditModal">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <h3>编辑课程材料</h3>
-          <button @click="closeEditModal" class="modal-close">×</button>
+    <BaseModal :show="showEditModal && isAdmin" title="编辑课程材料" @close="closeEditModal">
+      <form @submit.prevent="submitEditMaterial">
+        <div class="form-group">
+          <label>材料标题*</label>
+          <input v-model="materialForm.title" type="text" required placeholder="请输入材料标题" class="form-input" />
         </div>
 
-        <form @submit.prevent="submitEditMaterial" class="modal-body">
-          <div class="form-group">
-            <label>材料标题*</label>
-            <input v-model="materialForm.title" type="text" required placeholder="请输入材料标题" />
+        <div class="form-group">
+          <label>材料类型*</label>
+          <div class="type-selector">
+            <label class="type-option">
+              <input v-model="materialForm.type" type="radio" value="file" @change="clearTypeSpecificFields" />
+              <span>文件</span>
+            </label>
+            <label class="type-option">
+              <input v-model="materialForm.type" type="radio" value="link" @change="clearTypeSpecificFields" />
+              <span>链接</span>
+            </label>
+            <label class="type-option">
+              <input v-model="materialForm.type" type="radio" value="text" @change="clearTypeSpecificFields" />
+              <span>文档</span>
+            </label>
           </div>
+        </div>
 
-          <div class="form-group">
-            <label>材料类型*</label>
-            <div class="type-selector">
-              <label class="type-option">
-                <input v-model="materialForm.type" type="radio" value="file" @change="clearTypeSpecificFields" />
-                <span>文件</span>
-              </label>
-              <label class="type-option">
-                <input v-model="materialForm.type" type="radio" value="link" @change="clearTypeSpecificFields" />
-                <span>链接</span>
-              </label>
-              <label class="type-option">
-                <input v-model="materialForm.type" type="radio" value="text" @change="clearTypeSpecificFields" />
-                <span>文档</span>
-              </label>
-            </div>
-          </div>
+        <div v-if="materialForm.type === 'file'" class="form-group">
+          <label>替换文件（可选）</label>
+          <input ref="fileInput" type="file" @change="handleFileChange" class="form-input" />
+        </div>
 
-          <div v-if="materialForm.type === 'file'" class="form-group">
-            <label>替换文件（可选）</label>
-            <input ref="fileInput" type="file" @change="handleFileChange" />
-          </div>
+        <div v-if="materialForm.type === 'link'" class="form-group">
+          <label>链接地址*</label>
+          <input v-model="materialForm.url" type="url" required placeholder="https://example.com" class="form-input" />
+        </div>
 
-          <div v-if="materialForm.type === 'link'" class="form-group">
-            <label>链接地址*</label>
-            <input v-model="materialForm.url" type="url" required placeholder="https://example.com" />
-          </div>
+        <div v-if="materialForm.type === 'text'" class="form-group">
+          <label>文档内容*</label>
+          <textarea v-model="materialForm.content" rows="8" required placeholder="请输入文档内容" class="form-textarea"></textarea>
+        </div>
 
-          <div v-if="materialForm.type === 'text'" class="form-group">
-            <label>文档内容*</label>
-            <textarea v-model="materialForm.content" rows="8" required placeholder="请输入文档内容"></textarea>
-          </div>
-
-          <div v-if="materialForm.type !== 'text'" class="form-group">
-            <label>描述</label>
-            <textarea v-model="materialForm.content" rows="3" placeholder="可选的描述信息"></textarea>
-          </div>
-
-          <div class="form-actions">
-            <button type="button" @click="closeEditModal" class="material-btn secondary">取消</button>
-            <button type="submit" class="material-btn primary" :disabled="submittingEdit">
-              {{ submittingEdit ? '提交中...' : '确定' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div v-if="materialForm.type !== 'text'" class="form-group">
+          <label>描述</label>
+          <textarea v-model="materialForm.content" rows="3" placeholder="可选的描述信息" class="form-textarea"></textarea>
+        </div>
+      </form>
+      
+      <template #footer>
+        <div class="form-actions">
+          <BaseButton variant="secondary" @click="closeEditModal">取消</BaseButton>
+          <BaseButton variant="primary" @click="submitEditMaterial" :loading="submittingEdit">
+            {{ submittingEdit ? '提交中...' : '确定' }}
+          </BaseButton>
+        </div>
+      </template>
+    </BaseModal>
   </div>
 </template>
 
@@ -292,12 +287,14 @@ import { ref, computed, onMounted, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useGlobalStore } from '@/stores/global'
 import MaterialDetailModal from '@/components/MaterialDetailModal.vue'
-import apiService from '@/services/api.js'
+import BaseModal from '@/components/ui/BaseModal.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import remoteApiService from '@/services/remoteApi.js'
 import appConfig from '@/config/index.js'
 
 export default {
   name: 'CourseDetail',
-  components: { MaterialDetailModal },
+  components: { MaterialDetailModal, BaseModal, BaseButton },
   setup() {
     const route = useRoute()
     const router = useRouter()
@@ -347,10 +344,12 @@ export default {
         const courseId = route.params.id
         
         // 获取课程基本信息
-        const courseResponse = await apiService.getCourse(courseId)
-        
-        if (courseResponse.data.success && courseResponse.data.data) {
-          course.value = courseResponse.data.data
+        const courseResponse = await remoteApiService.courses.getCourseById(courseId)
+        const unwrap = (res) => (res && res.data !== undefined ? res.data : res)
+        const data = unwrap(courseResponse)
+        const courseData = data?.data ?? data
+        if (courseData) {
+          course.value = courseData
           
           // 并行加载其他数据
           // 并行加载其他数据（统计受特性开关控制）
@@ -379,10 +378,10 @@ export default {
     const loadCourseMaterials = async (courseId) => {
       try {
         loadingMaterials.value = true
-        const response = await apiService.getCourseMaterials(courseId)
-        if (response.data.success) {
-          materials.value = response.data.data
-        }
+  const response = await remoteApiService.courses.getMaterials(courseId)
+  const unwrap = (res) => (res && res.data !== undefined ? res.data : res)
+  const data = unwrap(response)
+  materials.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
       } catch (error) {
         console.error('加载课程材料失败:', error)
       } finally {
@@ -393,10 +392,11 @@ export default {
     // 加载课程统计
     const loadCourseStatistics = async (courseId) => {
       try {
-        const response = await apiService.getCourseCompletionCount(courseId)
-        if (response.data.success) {
-          completionCount.value = response.data.data.count
-        }
+  const response = await remoteApiService.courses.getCompletionCount(courseId)
+  const unwrap = (res) => (res && res.data !== undefined ? res.data : res)
+  const data = unwrap(response)
+  const count = data?.data?.count ?? data?.count
+  if (typeof count === 'number') completionCount.value = count
       } catch (error) {
         // 如果后端未实现该接口，静默忽略并不显示统计
         console.warn('课程完成统计接口不可用，已跳过。', error?.message || error)
@@ -407,12 +407,11 @@ export default {
     const loadRecommendations = async () => {
       try {
         loadingRecommendations.value = true
-        // 假设当前用户ID为1（实际应从用户状态获取）
-        const userId = 1
-        const response = await apiService.getRecommendedCourses(userId, { final_k: 5 })
-        if (response.data.success) {
-          recommendedCourses.value = response.data.data
-        }
+  // 使用推荐服务：基于当前用户（后端从 token 识别），无需显式 userId
+  const response = await remoteApiService.recommend.recommendCourses('me', 50, 5)
+  const unwrap = (res) => (res && res.data !== undefined ? res.data : res)
+  const data = unwrap(response)
+  recommendedCourses.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
       } catch (error) {
         console.error('加载推荐课程失败:', error)
       } finally {
@@ -425,8 +424,8 @@ export default {
       try {
         enrolling.value = true
         const courseId = route.params.id
-        const response = await apiService.enrollCourse(courseId, 1) // 假设用户ID为1
-        if (response.data.success) {
+  const response = await remoteApiService.courses.enrollCourse(courseId)
+  if (response) {
           // 重新加载课程信息获取用户进度
           await loadCourseDetail()
         }
@@ -531,7 +530,7 @@ export default {
           return
         }
 
-        const resp = await apiService.updateCourseMaterial(
+        const resp = await remoteApiService.courses.updateMaterial(
           courseId.value,
           editingMaterial.value.id,
           {
@@ -543,12 +542,12 @@ export default {
           selectedFile.value
         )
 
-        if (resp.data?.success) {
+        if (resp) {
           alert('材料更新成功!')
           closeEditModal()
           await loadCourseMaterials(courseId.value)
         } else {
-          alert(resp.data?.message || '更新失败')
+          alert('更新失败')
         }
       } catch (err) {
         console.error('更新材料失败:', err)
@@ -562,12 +561,12 @@ export default {
       if (!isAdmin.value) return
       if (!confirm(`确定要删除材料"${material.title}"吗？此操作不可撤销。`)) return
       try {
-        const resp = await apiService.deleteCourseMaterial(courseId.value, material.id)
-        if (resp.data?.success) {
+        const resp = await remoteApiService.courses.deleteMaterial(courseId.value, material.id)
+        if (resp) {
           alert('删除成功!')
           await loadCourseMaterials(courseId.value)
         } else {
-          alert(resp.data?.message || '删除失败')
+          alert('删除失败')
         }
       } catch (err) {
         console.error('删除材料失败:', err)
@@ -1136,44 +1135,7 @@ export default {
   background: #cc4949;
 }
 
-/* 简易模态框样式（与页面风格统一） */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: #fff;
-  width: 640px;
-  max-width: 92vw;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid #e9ecef;
-}
-
-.modal-close {
-  border: none;
-  background: transparent;
-  font-size: 20px;
-  cursor: pointer;
-}
-
-.modal-body {
-  padding: 20px;
-}
-
+/* 表单样式 */
 .form-group {
   margin-bottom: 16px;
 }
@@ -1185,10 +1147,8 @@ export default {
   font-weight: 500;
 }
 
-.form-group input[type="text"],
-.form-group input[type="url"],
-.form-group input[type="file"],
-.form-group textarea {
+.form-input,
+.form-textarea {
   width: 100%;
   padding: 10px 12px;
   border: 1px solid #e9ecef;
@@ -1210,7 +1170,7 @@ export default {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 12px;
+  width: 100%;
 }
 
 /* 推荐课程 */

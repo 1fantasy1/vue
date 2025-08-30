@@ -373,7 +373,7 @@
 <script>
 import { ref, computed, nextTick, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ApiService } from '@/services/api.js'
+import remoteApiService from '@/services/remoteApi.js'
 import HtmlPreview from '@/components/HtmlPreview.vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
@@ -450,10 +450,13 @@ export default {
     // 加载对话列表
     const loadConversations = async () => {
       try {
-        const res = await ApiService.getAIConversations(20, 0) // 获取最近20个对话
-        const payload = res?.data
-        if (payload?.success && Array.isArray(payload.data)) {
-          chatHistoryList.value = payload.data.map(conv => ({
+        const res = await remoteApiService.userMe.getAIConversations(20, 0) // 获取最近20个对话
+        const payload = res?.data ?? res
+        const list = payload?.success && Array.isArray(payload.data)
+          ? payload.data
+          : (Array.isArray(payload) ? payload : [])
+        if (Array.isArray(list)) {
+          chatHistoryList.value = list.map(conv => ({
             id: conv.id,
             title: conv.title || '未命名对话',
             time: formatRelativeTime(conv.last_updated || conv.created_at),
@@ -609,11 +612,12 @@ export default {
     // 加载指定对话的消息历史
     const loadConversationMessages = async (conversationId) => {
       try {
-        const res = await ApiService.getAIConversationMessages(conversationId, 100, 0) // 获取最近100条消息
-        const payload = res?.data
-        if (payload?.success && Array.isArray(payload.data)) {
+        const res = await remoteApiService.userMe.getAIConversationMessages(conversationId, 100, 0) // 获取最近100条消息
+        const payload = res?.data ?? res
+        const raw = payload?.success && Array.isArray(payload.data) ? payload.data : (Array.isArray(payload) ? payload : [])
+        if (Array.isArray(raw)) {
           // 确保消息按时间排序（升序，旧消息在前）
-          const sortedMessages = payload.data.sort((a, b) => {
+          const sortedMessages = raw.sort((a, b) => {
             const timeA = new Date(a.sent_at || 0).getTime()
             const timeB = new Date(b.sent_at || 0).getTime()
             return timeA - timeB
@@ -665,11 +669,11 @@ export default {
     })
 
     // 加载用户信息和默认模型
-    const loadUserInfo = async () => {
+  const loadUserInfo = async () => {
       try {
-        const res = await ApiService.getMe()
+    const res = await remoteApiService.users.getMe()
         console.log('用户信息API响应:', res) // 调试信息
-        const payload = res?.data
+    const payload = res?.data ?? res
         if (payload?.success && payload.data) {
           const userData = payload.data
           console.log('用户数据:', userData) // 调试信息
@@ -833,7 +837,7 @@ export default {
         try {
           // 删除所有对话
           const deletePromises = chatHistoryList.value.map(chat => 
-            ApiService.deleteAIConversation(chat.id)
+            remoteApiService.userMe.deleteAIConversation(chat.id)
           )
           await Promise.all(deletePromises)
           
@@ -852,7 +856,7 @@ export default {
     const deleteIndividualChat = async (chatId) => {
       if (confirm('确定要删除此对话吗？')) {
         try {
-          await ApiService.deleteAIConversation(chatId)
+          await remoteApiService.userMe.deleteAIConversation(chatId)
           
           const index = chatHistoryList.value.findIndex(chat => chat.id === chatId)
           if (index > -1) {
@@ -1027,7 +1031,7 @@ export default {
       const llmModelId = null
 
       try {
-        const res = await ApiService.aiQA(userMessage, {
+        const res = await remoteApiService.ai.qa(userMessage, {
           conversationId: currentChatId.value || null, // 传递对话ID用于上下文
           kbIds: null, // 可后续在界面添加选择后传入数组
           noteIds: null,
@@ -1037,7 +1041,7 @@ export default {
           uploadedFile: uploadedFile.value // 传递上传的文件
         })
 
-        const payload = res?.data
+        const payload = res?.data ?? res
         if (!payload?.success) {
           const errMsg = payload?.message || 'AI 服务暂不可用，请稍后重试。'
           chatHistory.value.push({

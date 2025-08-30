@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
+import { STORAGE_KEYS } from '@/utils/storageKeys.js'
 
 export const useGlobalStore = defineStore('global', () => {
   // 认证状态
   const isAuthenticated = ref(false)
-  const token = ref(localStorage.getItem('auth_token') || '')
+  const token = ref(localStorage.getItem(STORAGE_KEYS.token) || localStorage.getItem(STORAGE_KEYS.legacyToken) || '')
   
   // 用户信息
   const user = ref({
@@ -39,13 +40,20 @@ export const useGlobalStore = defineStore('global', () => {
 
   // 初始化认证状态
   const initAuth = () => {
-    const savedToken = localStorage.getItem('auth_token')
-    const savedUser = localStorage.getItem('user_info')
+  const savedToken = localStorage.getItem(STORAGE_KEYS.token) || localStorage.getItem(STORAGE_KEYS.legacyToken)
+  const savedUser = localStorage.getItem(STORAGE_KEYS.user) || localStorage.getItem(STORAGE_KEYS.legacyUser)
     
     if (savedToken && savedUser) {
       token.value = savedToken
-      user.value = JSON.parse(savedUser)
+      try { user.value = JSON.parse(savedUser) } catch { user.value = {} }
       isAuthenticated.value = true
+      // 迁移键名
+      try {
+        localStorage.setItem(STORAGE_KEYS.token, savedToken)
+        localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user.value))
+        localStorage.removeItem(STORAGE_KEYS.legacyToken)
+        localStorage.removeItem(STORAGE_KEYS.legacyUser)
+      } catch {}
     }
   }
 
@@ -61,14 +69,17 @@ export const useGlobalStore = defineStore('global', () => {
       interests: userData.interests || []
     }
     
-    // 生成模拟token
-    const mockToken = 'token_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9)
-    token.value = mockToken
+  // 若后端未写入 token，这里仍生成本地 token 以保持路由守卫能工作
+  const existing = localStorage.getItem(STORAGE_KEYS.token)
+  const mockToken = existing || ('token_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9))
+  token.value = mockToken
     isAuthenticated.value = true
     
     // 保存到localStorage
-    localStorage.setItem('auth_token', mockToken)
-    localStorage.setItem('user_info', JSON.stringify(user.value))
+  localStorage.setItem(STORAGE_KEYS.token, mockToken)
+  localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user.value))
+  // 兼容旧代码读取 userId 的做法
+  try { localStorage.setItem('userId', String(user.value.id || '')) } catch {}
   }
 
   // 登出
@@ -85,9 +96,13 @@ export const useGlobalStore = defineStore('global', () => {
     token.value = ''
     isAuthenticated.value = false
     
-    // 清除localStorage
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('user_info')
+    // 清除localStorage（含历史键名）
+    localStorage.removeItem(STORAGE_KEYS.token)
+    localStorage.removeItem(STORAGE_KEYS.user)
+    try {
+      localStorage.removeItem(STORAGE_KEYS.legacyToken)
+      localStorage.removeItem(STORAGE_KEYS.legacyUser)
+    } catch {}
   }
 
   // 更新用户信息
@@ -107,8 +122,8 @@ export const useGlobalStore = defineStore('global', () => {
     Object.assign(llmConfig.value, configData)
     llmConfig.value.isConfigured = !!(configData.llm_api_key && configData.llm_api_base_url)
     
-    // 保存到localStorage作为备份
-    localStorage.setItem('llm_config', JSON.stringify(llmConfig.value))
+  // 保存到localStorage作为备份
+  localStorage.setItem(STORAGE_KEYS.llmConfig, JSON.stringify(llmConfig.value))
   }
 
   // 加载LLM配置（从localStorage或服务器）
@@ -133,7 +148,7 @@ export const useGlobalStore = defineStore('global', () => {
       }
     } else {
       // 从localStorage加载
-      const savedConfig = localStorage.getItem('llm_config')
+  const savedConfig = localStorage.getItem(STORAGE_KEYS.llmConfig)
       if (savedConfig) {
         try {
           const parsed = JSON.parse(savedConfig)

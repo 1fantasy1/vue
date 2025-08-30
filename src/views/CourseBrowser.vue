@@ -136,7 +136,7 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import apiService from '@/services/api.js'
+import remoteApiService from '@/services/remoteApi.js'
 
 export default {
   name: 'CourseBrowser',
@@ -215,10 +215,10 @@ export default {
     const loadCourses = async () => {
       try {
         loading.value = true
-        const response = await apiService.getPublicCourses()
-        
-        if (response.data.success) {
-          const list = Array.isArray(response.data.data) ? response.data.data : []
+  const response = await remoteApiService.courses.getAvailableCourses()
+  const unwrap = (res) => (res && res.data !== undefined ? res.data : res)
+  const data = unwrap(response)
+  const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
           // 规范化字段，兼容不同后端返回
           courses.value = list.map(c => ({
             id: c.id ?? c.course_id ?? c.pk ?? c.uuid ?? c._id,
@@ -236,9 +236,6 @@ export default {
             status: c.status || 'active',
             enrolled: Boolean(c.enrolled)
           })).filter(x => x.id)
-        } else {
-          console.error('加载课程失败:', response.data.message)
-        }
       } catch (error) {
         console.error('加载课程出错:', error)
       } finally {
@@ -253,17 +250,16 @@ export default {
     const enrollCourse = async (courseId) => {
       try {
         // 检查用户是否已登录
-        const token = localStorage.getItem('access_token')
+  const token = localStorage.getItem('access_token')
         if (!token) {
           alert('请先登录后再报名课程')
           router.push('/login')
           return
         }
 
-        const response = await apiService.enrollCourse(courseId)
-        console.log('报名响应:', response)
-        
-        if (response.data.success) {
+  const resp = await remoteApiService.courses.enrollCourse(courseId)
+  const ok = !!resp // 若无异常即视为成功；后端多返回 200/201
+  if (ok) {
           // 更新本地状态
           const course = courses.value.find(c => c.id === courseId)
           if (course) {
@@ -272,10 +268,6 @@ export default {
           }
           
           alert('报名成功！')
-        } else {
-          const errorMsg = response.data.message || '报名失败，请稍后重试'
-          console.error('报名失败:', response.data)
-          alert('报名失败: ' + errorMsg)
         }
       } catch (error) {
         console.error('报名出错:', error)

@@ -204,7 +204,7 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ApiService } from '@/services/api.js'
+import remoteApiService from '@/services/remoteApi.js'
 import CollectionModal from '@/components/CollectionModal.vue'
 import ProjectForm from '@/components/ProjectForm.vue'
 import ProjectApplications from '@/components/ProjectApplications.vue'
@@ -290,9 +290,8 @@ export default {
     const checkProjectRole = async () => {
       if (!project.value?.id || !currentUserId.value) return
       try {
-        const res = await ApiService.getProjectMembers(project.value.id)
-        if (res?.data?.success) {
-          const members = res.data.data || []
+  const members = await remoteApiService.projects.getProjectMembers(project.value.id)
+  if (Array.isArray(members)) {
           const myId = currentUserId.value.toString()
           const myEmail = currentUserEmail.value.toLowerCase()
           
@@ -305,7 +304,7 @@ export default {
           if (me && me.role === 'admin') {
             isProjectAdmin.value = true
           }
-        }
+  }
       } catch (e) {
         console.warn('检查项目角色失败:', e)
       }
@@ -380,14 +379,14 @@ export default {
       loading.value = true
       try {
         const id = route.params.id
-        const res = await ApiService.getProject(id)
-        if (res?.data?.success && res.data.data) {
-          project.value = res.data.data
+        const data = await remoteApiService.projects.getProjectById(id)
+        if (data) {
+          project.value = data
           deriveFromProject(project.value)
           // 检查项目角色
           await checkProjectRole()
         } else {
-          error.value = res?.data?.message || '加载失败'
+          error.value = '加载失败'
         }
       } catch (e) {
         error.value = e.message || '加载失败'
@@ -408,8 +407,7 @@ export default {
     const fetchExistingCollection = async () => {
       if (!project.value?.id) return
       try {
-  const res = await ApiService.getCollections({ typeFilter: 'project' })
-        const list = res?.data?.data || res?.data || []
+  const list = await remoteApiService.collections.getAllCollections({ typeFilter: 'project' })
         const found = Array.isArray(list) ? list.find(c => (c.source_type === 'project' && c.source_id === project.value.id) || c.title === project.value.title) : null
         existingCollectionId.value = found?.id || null
       } catch {
@@ -438,8 +436,7 @@ export default {
     const openEditCollection = async () => {
       if (!existingCollectionId.value) return
       try {
-        const res = await ApiService.getCollection(existingCollectionId.value)
-        const c = res?.data?.data || res?.data
+  const c = await remoteApiService.collections.getCollectionById(existingCollectionId.value)
         collectionForm.value = {
           id: c.id,
           title: c.title || project.value?.title || '',
@@ -464,12 +461,10 @@ export default {
   payload = { ...payload, type: 'project', source_type: 'project', source_id: project.value?.id }
       try {
         if (isEditingCollection.value && collectionForm.value.id) {
-          const res = await ApiService.updateCollection(collectionForm.value.id, payload)
-          if (res?.data?.success === false) throw new Error(res.data.message || '保存失败')
+          await remoteApiService.collections.updateCollection(collectionForm.value.id, payload)
           existingCollectionId.value = collectionForm.value.id
         } else {
-          const res = await ApiService.createCollection(payload)
-          const created = res?.data?.data || res?.data
+          const created = await remoteApiService.collections.createCollection(payload)
           existingCollectionId.value = created?.id || null
         }
         collectionModalVisible.value = false
@@ -508,12 +503,8 @@ export default {
       recLoading.value = true
       matchedStudents.value = []
       try {
-        const res = await ApiService.matchStudents(project.value.id, { initialK: initialK.value, finalK: finalK.value })
-        if (res?.data?.success) {
-          matchedStudents.value = res.data.data || []
-        } else {
-          recError.value = res?.data?.message || '获取推荐失败'
-        }
+  const list = await remoteApiService.projects.matchStudents(project.value.id, initialK.value, finalK.value)
+  matchedStudents.value = Array.isArray(list) ? list : []
       } catch (e) {
         recError.value = e.message || '获取推荐失败'
       } finally {
