@@ -11,8 +11,8 @@
       <div 
         class="sidebar" 
         :class="{ 'mobile-open': sidebarOpen }"
-        @touchstart="handleTouchStart"
-        @touchmove="handleTouchMove"
+  @touchstart.passive="handleTouchStart"
+  @touchmove.passive="handleTouchMove"
       >
         <!-- 移动端关闭按钮 -->
         <button class="mobile-close-btn" @click="closeSidebar">×</button>
@@ -127,11 +127,6 @@
             </div>
           </div>
           <div class="chat-actions">
-            <button class="action-btn" @click="viewMembers" title="成员列表">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M16,4C18.11,4 19.99,5.89 19.99,8C19.99,10.11 18.11,12 16,12C13.89,12 12,10.11 12,8C12,5.89 13.89,4 16,4M16,14C20.42,14 24,15.79 24,18V20H8V18C8,15.79 11.58,14 16,14Z" />
-              </svg>
-            </button>
             <button 
               class="action-btn" 
               @click="openApplyModal" 
@@ -142,34 +137,18 @@
                 <path d="M10,17L15,12L10,7V17Z" />
               </svg>
             </button>
+            <!-- 更多（群聊详情） -->
             <button 
               class="action-btn" 
-              @click="openJoinRequestsModal" 
-              title="入群申请"
-              v-if="canManageMembers"
+              @click="openDetailsDrawer" 
+              title="群聊详情"
+              v-if="selectedRoom"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12,2A10,10 0 1,0 22,12A10,10 0 0,0 12,2M7,9H17V11H7V9M7,13H14V15H7V13Z" />
-              </svg>
-            </button>
-            <button 
-              class="action-btn" 
-              @click="openUpdateRoomModal" 
-              title="房间设置"
-              v-if="canManageRoom"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z" />
-              </svg>
-            </button>
-            <button 
-              class="action-btn" 
-              @click="deleteRoom" 
-              title="删除聊天室"
-              v-if="canDeleteRoom"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6Z" />
+              <!-- 三个点图标 -->
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <circle cx="6" cy="12" r="1.8" />
+                <circle cx="12" cy="12" r="1.8" />
+                <circle cx="18" cy="12" r="1.8" />
               </svg>
             </button>
           </div>
@@ -336,7 +315,7 @@
           <el-input v-model="createForm.name" placeholder="请输入聊天室名称" />
         </el-form-item>
         <el-form-item label="类型">
-          <el-select v-model="createForm.type" placeholder="请选择类型" style="width:100%">
+          <el-select v-model="createForm.type" placeholder="请选择类型" style="width:100%" popper-class="chatrooms-popper">
             <el-option label="普通群" value="general" />
             <el-option label="项目群" value="project_group" />
             <el-option label="课程群" value="course_group" />
@@ -366,85 +345,6 @@
       <template #footer>
         <el-button @click="closeCreateRoomModal">取消</el-button>
         <el-button type="primary" :loading="creating" @click="submitRoom">{{ editMode ? '保存' : '创建' }}</el-button>
-      </template>
-      <div class="error" v-if="modalError">{{ modalError }}</div>
-    </el-dialog>
-
-    <!-- 成员列表 Modal -->
-    <el-dialog v-model="showMembersModal" title="成员列表" width="720px">
-      <div class="members-list">
-        <div class="member-item" v-for="m in members" :key="m.id">
-          <div class="member-left">
-            <el-avatar :style="{ background: '#8aa1ff', color: '#fff' }">{{ (m.member_name || String(m.member_id)).charAt(0) }}</el-avatar>
-            <div>
-              <div class="name">{{ m.member_name || '用户' + m.member_id }}</div>
-              <div class="desc">
-                角色：<el-tag size="small" :type="getRoleTagType(m.role)">{{ getRoleLabel(m.role) }}</el-tag> 
-                · 状态：{{ m.status }} · 加入：{{ formatTime(m.joined_at) }}
-              </div>
-            </div>
-          </div>
-          <div class="member-actions">
-            <el-select 
-              v-model="memberRoleEdit[m.member_id]" 
-              size="small" 
-              @change="changeMemberRole(m)"
-              :disabled="!canManageMembers || m.member_id === currentUserId || m.role === 'king'"
-            >
-              <el-option label="member" value="member" />
-              <el-option label="admin" value="admin" />
-              <el-option label="king" value="king" v-if="isRoomKing" />
-            </el-select>
-            <el-button 
-              type="danger" 
-              size="small" 
-              @click="removeMember(m)"
-              :disabled="!canManageMembers || m.member_id === currentUserId || m.role === 'king'"
-            >
-              移除
-            </el-button>
-          </div>
-        </div>
-      </div>
-      <template #footer>
-        <el-button @click="closeMembersModal">关闭</el-button>
-      </template>
-      <div class="error" v-if="modalError">{{ modalError }}</div>
-    </el-dialog>
-
-    <!-- 入群申请 Modal -->
-    <el-dialog v-model="showJoinModal" title="入群申请" width="720px">
-      <div class="filter-row">
-        <span>状态筛选</span>
-        <el-select v-model="joinStatusFilter" size="small" style="width:160px" @change="loadJoinRequests">
-          <el-option label="全部" value="" />
-          <el-option label="待处理" value="pending" />
-          <el-option label="已通过" value="approved" />
-          <el-option label="已拒绝" value="rejected" />
-        </el-select>
-      </div>
-      <div class="members-list">
-        <div class="member-item" v-for="jr in joinRequests" :key="jr.id">
-          <div class="member-left">
-            <el-avatar>{{ String(jr.requester_id).charAt(0) }}</el-avatar>
-            <div>
-              <div class="name">申请人：{{ jr.requester_id }}</div>
-              <div class="desc">
-                理由：{{ jr.reason || '无' }} · 状态：<el-tag size="small" :type="getStatusTagType(jr.status)">{{ jr.status }}</el-tag> 
-                · 时间：{{ formatTime(jr.requested_at) }}
-              </div>
-            </div>
-          </div>
-          <div class="member-actions" v-if="jr.status === 'pending' && canManageMembers">
-            <el-button type="primary" size="small" @click="processJoin(jr, 'approved')">通过</el-button>
-            <el-button type="danger" size="small" @click="processJoin(jr, 'rejected')">拒绝</el-button>
-          </div>
-        </div>
-        <el-empty description="暂无申请" v-if="!joinLoading && joinRequests.length === 0" />
-        <el-skeleton :rows="3" animated v-if="joinLoading" />
-      </div>
-      <template #footer>
-        <el-button @click="closeJoinRequestsModal">关闭</el-button>
       </template>
       <div class="error" v-if="modalError">{{ modalError }}</div>
     </el-dialog>
@@ -482,20 +382,194 @@
       </template>
       <div class="error" v-if="modalError">{{ modalError }}</div>
     </el-dialog>
+
+    <!-- 群聊详情 Drawer -->
+    <el-drawer
+      v-model="showDetailsDrawer"
+      title="群聊详情"
+      direction="rtl"
+      size="420px"
+  :append-to-body="true"
+  :z-index="3000"
+      :with-header="true"
+    >
+      <div class="room-details" v-if="selectedRoom">
+        <div class="detail-row">
+          <span class="label">名称</span>
+          <span class="value">{{ selectedRoom.name || '-' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">群聊ID</span>
+          <span class="value id">
+            {{ selectedRoom.id }}
+            <el-button size="small" text type="primary" @click="copyRoomId" title="复制群聊ID">
+              <el-icon><DocumentCopy /></el-icon>
+            </el-button>
+          </span>
+        </div>
+        <div class="detail-row">
+          <span class="label">类型</span>
+          <span class="value">{{ typeLabel(selectedRoom.type) }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">人数</span>
+          <span class="value">{{ selectedRoom.members_count || 0 }}</span>
+        </div>
+        <div class="detail-row" v-if="selectedRoom.online_members_count != null">
+          <span class="label">在线</span>
+          <span class="value">{{ selectedRoom.online_members_count }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">主题色</span>
+          <span class="value">
+            <span class="color-dot" :style="{ background: selectedRoom.color || '#4facfe' }"></span>
+            <span>{{ selectedRoom.color || '#4facfe' }}</span>
+          </span>
+        </div>
+        <div class="detail-row" v-if="selectedRoom.created_at">
+          <span class="label">创建时间</span>
+          <span class="value">{{ formatTime(selectedRoom.created_at) }}</span>
+        </div>
+        <div class="detail-row" v-if="selectedRoom.description">
+          <span class="label">简介</span>
+          <span class="value">{{ selectedRoom.description }}</span>
+        </div>
+
+        <!-- 详情功能区：将原先的按钮改为直接在抽屉内展示内容 -->
+        <div class="detail-section" style="margin-top:16px;">
+          <el-tabs v-model="detailsTab">
+            <el-tab-pane label="成员" name="members">
+              <div class="members-list">
+                <div class="member-item" v-for="m in members" :key="m.id || m.member_id">
+                  <div class="member-left">
+                    <el-avatar :size="36" :style="{ background: '#8aa1ff', color: '#fff' }">{{ (m.member_name || String(m.member_id)).charAt(0) }}</el-avatar>
+                    <div>
+                      <div class="name">{{ m.member_name || '用户' + m.member_id }}</div>
+                      <div class="desc">
+                        角色：<el-tag size="small" :type="getRoleTagType(m.role)">{{ getRoleLabel(m.role) }}</el-tag>
+                        · 状态：{{ m.status }} · 加入：{{ formatTime(m.joined_at) }}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="member-actions">
+                    <el-select
+                      popper-class="chatrooms-popper"
+                      v-model="memberRoleEdit[m.member_id]"
+                      size="small"
+                      @change="changeMemberRole(m)"
+                      :disabled="!canManageMembers || m.member_id === currentUserId || m.role === 'king'"
+                    >
+                      <el-option label="member" value="member" />
+                      <el-option label="admin" value="admin" />
+                      <el-option label="king" value="king" v-if="isRoomKing" />
+                    </el-select>
+                    <el-button
+                      type="danger"
+                      size="small"
+                      @click="removeMember(m)"
+                      :disabled="!canManageMembers || m.member_id === currentUserId || m.role === 'king'"
+                    >
+                      移除
+                    </el-button>
+                  </div>
+                </div>
+                <el-empty description="暂无成员" v-if="members && members.length === 0" />
+              </div>
+            </el-tab-pane>
+
+            <el-tab-pane label="入群申请" name="joins" v-if="canManageMembers">
+              <div class="filter-row" style="margin-bottom:8px;">
+                <span>状态筛选</span>
+                <el-select v-model="joinStatusFilter" size="small" style="width:160px" @change="loadJoinRequests" popper-class="chatrooms-popper">
+                  <el-option label="全部" value="" />
+                  <el-option label="待处理" value="pending" />
+                  <el-option label="已通过" value="approved" />
+                  <el-option label="已拒绝" value="rejected" />
+                </el-select>
+              </div>
+              <div class="members-list">
+                <div class="member-item" v-for="jr in joinRequests" :key="jr.id">
+                  <div class="member-left">
+                    <el-avatar :size="36">{{ String(jr.requester_id).charAt(0) }}</el-avatar>
+                    <div>
+                      <div class="name">申请人：{{ jr.requester_id }}</div>
+                      <div class="desc">
+                        理由：{{ jr.reason || '无' }} · 状态：<el-tag size="small" :type="getStatusTagType(jr.status)">{{ jr.status }}</el-tag>
+                        · 时间：{{ formatTime(jr.requested_at) }}
+                      </div>
+                    </div>
+                  </div>
+                  <div class="member-actions" v-if="jr.status === 'pending' && canManageMembers">
+                    <el-button type="primary" size="small" @click="processJoin(jr, 'approved')">通过</el-button>
+                    <el-button type="danger" size="small" @click="processJoin(jr, 'rejected')">拒绝</el-button>
+                  </div>
+                </div>
+                <el-empty description="暂无申请" v-if="!joinLoading && joinRequests.length === 0" />
+                <el-skeleton :rows="3" animated v-if="joinLoading" />
+              </div>
+            </el-tab-pane>
+
+            <el-tab-pane label="房间设置" name="settings" v-if="canManageRoom">
+              <el-form label-width="80px">
+                <el-form-item label="名称">
+                  <el-input v-model="createForm.name" placeholder="请输入聊天室名称" />
+                </el-form-item>
+                <el-form-item label="类型">
+                  <el-select v-model="createForm.type" placeholder="请选择类型" style="width:100%" popper-class="chatrooms-popper">
+                    <el-option label="普通群" value="general" />
+                    <el-option label="项目群" value="project_group" />
+                    <el-option label="课程群" value="course_group" />
+                    <el-option label="私密群" value="private" />
+                  </el-select>
+                </el-form-item>
+                <div class="form-two">
+                  <el-form-item label="项目ID">
+                    <el-input v-model.number="createForm.project_id" placeholder="可选" />
+                  </el-form-item>
+                  <el-form-item label="课程ID">
+                    <el-input v-model.number="createForm.course_id" placeholder="可选" />
+                  </el-form-item>
+                </div>
+                <el-form-item label="颜色">
+                  <div style="display:flex;align-items:center;gap:12px;">
+                    <el-color-picker
+                      v-model="createForm.color"
+                      :predefine="predefinedColors"
+                      :show-alpha="false"
+                    />
+                    <el-button size="small" @click="createForm.color = '#4facfe'">重置默认色</el-button>
+                    <span style="font-size:12px;color:#6c757d;">用于头像、我方气泡等主题色</span>
+                  </div>
+                </el-form-item>
+              </el-form>
+              <div style="text-align:right;">
+                <el-button type="primary" :loading="creating" @click="submitRoom">保存</el-button>
+              </div>
+              <div class="error" v-if="modalError">{{ modalError }}</div>
+            </el-tab-pane>
+
+            <el-tab-pane label="危险操作" name="danger" v-if="canDeleteRoom">
+              <el-alert type="warning" title="此操作不可恢复，请谨慎" show-icon style="margin-bottom:8px;" />
+              <el-button type="danger" plain @click="deleteRoom">删除聊天室</el-button>
+            </el-tab-pane>
+          </el-tabs>
+        </div>
+      </div>
+    </el-drawer>
   </div>
 </template>
 
 <script>
 import { useRouter, useRoute } from 'vue-router'
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
-import { Search, Paperclip, Position, DocumentCopy } from '@element-plus/icons-vue'
+import { Search, DocumentCopy } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import remoteApiService from '@/services/remoteApi.js'
 import CollectButton from '@/components/CollectButton.vue'
 
 export default {
   name: 'ChatRooms',
-  components: { Search, Paperclip, Position, DocumentCopy, CollectButton },
+  components: { Search, DocumentCopy, CollectButton },
   setup() {
   const router = useRouter()
   const route = useRoute()
@@ -512,6 +586,8 @@ export default {
     const rooms = ref([])
   const messages = ref([])
   const messagesContainer = ref(null)
+  const showDetailsDrawer = ref(false)
+  const detailsTab = ref('members')
     const currentUser = ref(null)
     const currentUserId = ref(null)
     // 权限标记（若外层或模板存在引用，避免未定义告警）
@@ -529,8 +605,6 @@ export default {
 
     // Modals state
   const showCreateModal = ref(false)
-    const showMembersModal = ref(false)
-    const showJoinModal = ref(false)
     const creating = ref(false)
   const editMode = ref(false)
   const createForm = ref({ name: '', type: 'general', project_id: null, course_id: null, color: '#4facfe' })
@@ -624,6 +698,15 @@ export default {
     const closeSidebar = () => {
       sidebarOpen.value = false
     }
+
+      // 打开群聊详情抽屉（在移动端确保先关闭侧边栏以避免遮罩干扰）
+      const openDetailsDrawer = async () => {
+        sidebarOpen.value = false
+        showDetailsDrawer.value = true
+        detailsTab.value = 'members'
+        // 初次打开加载成员列表
+        await fetchMembers()
+      }
 
     // 触摸滑动控制
     let touchStartX = 0
@@ -735,22 +818,22 @@ export default {
       }
     }
 
-    const viewMembers = async () => {
+    const fetchMembers = async () => {
       if (!selectedRoom.value) return
       modalError.value = ''
-      showMembersModal.value = true
       try {
         const resp = await remoteApiService.chatRooms.getMembers(selectedRoom.value.id)
         const payload = resp?.data ?? resp
         const data = payload?.data || (Array.isArray(payload) ? payload : [])
         members.value = data
-        // 初始化可编辑role
         memberRoleEdit.value = {}
         data.forEach(m => { memberRoleEdit.value[m.member_id] = m.role })
       } catch (e) {
         modalError.value = e.message || '加载成员失败'
       }
     }
+
+  // 旧成员弹窗逻辑已移除，改为抽屉内成员 Tab
 
     const openUpdateRoomModal = () => {
       // 简化处理：沿用创建表单作为编辑，预填
@@ -764,6 +847,18 @@ export default {
       }
       editMode.value = true
       showCreateModal.value = true
+    }
+
+    const populateFormFromRoom = () => {
+      if (!selectedRoom.value) return
+      createForm.value = {
+        name: selectedRoom.value.name || '',
+        type: selectedRoom.value.type || 'general',
+        project_id: selectedRoom.value.project_id || null,
+        course_id: selectedRoom.value.course_id || null,
+        color: selectedRoom.value.color || '#4facfe'
+      }
+      editMode.value = true
     }
 
     const changeMemberRole = async (m) => {
@@ -804,12 +899,12 @@ export default {
     }
 
     const getRoleTagType = (role) => {
+      // 仅在需要高亮时返回合法类型；普通成员不传 type（undefined），避免 Element Plus 警告
       const map = {
         king: 'danger',    // 红色 - 最高权限
-        admin: 'warning',  // 橙色 - 管理权限
-        member: ''         // 默认灰色 - 普通成员
+        admin: 'warning'   // 橙色 - 管理权限
       }
-      return map[role] || ''
+      return map[role] // 未匹配时为 undefined，不会绑定到 <el-tag type>
     }
 
     const getStatusTagType = (status) => {
@@ -818,7 +913,7 @@ export default {
         approved: 'success',  // 绿色 - 已通过
         rejected: 'danger'    // 红色 - 已拒绝
       }
-      return map[status] || ''
+      return map[status] // 未匹配时为 undefined，不会绑定到 <el-tag type>
     }
 
     const copyRoomId = async () => {
@@ -1028,12 +1123,7 @@ export default {
       }
     }
 
-    const openJoinRequestsModal = async () => {
-      if (!selectedRoom.value) return
-      showJoinModal.value = true
-      await loadJoinRequests()
-    }
-    const closeJoinRequestsModal = () => { showJoinModal.value = false }
+  // 旧入群申请弹窗逻辑已移除，改为抽屉内申请 Tab
 
     const loadJoinRequests = async () => {
       if (!selectedRoom.value) return
@@ -1093,7 +1183,7 @@ export default {
       }
     }
 
-    const closeMembersModal = () => { showMembersModal.value = false }
+  // 旧成员弹窗关闭函数已移除
 
     // 文件选择/预览
     const selectedFile = ref(null)
@@ -1231,6 +1321,16 @@ export default {
   watch(activeTab, async () => { await loadRooms() })
   // 监听消息变化滚动到底部
   watch(messages, () => { scrollToBottom() })
+  // 切换详情抽屉内的 Tab 时，按需加载数据
+  watch(detailsTab, async (tab) => {
+    if (tab === 'members') {
+      await fetchMembers()
+    } else if (tab === 'joins') {
+      await loadJoinRequests()
+    } else if (tab === 'settings') {
+      populateFormFromRoom()
+    }
+  })
 
     return {
       activeTab,
@@ -1250,7 +1350,7 @@ export default {
       sendMessage,
       onMessageCollected,
       showMessage,
-      viewMembers,
+  // 旧 viewMembers 已移除
       openCreateRoomModal,
       closeCreateRoomModal,
   createForm,
@@ -1274,6 +1374,7 @@ export default {
   fileNameFromUrl,
   isAudioUrl,
       // 权限相关
+  currentUserId,
   currentUserRole,
   roleLoading,
       isRoomCreator,
@@ -1295,22 +1396,23 @@ export default {
   redoRecording,
   sendRecordedAudio,
       // members
-      showMembersModal,
+  // 旧 showMembersModal 已移除
       members,
       memberRoleEdit,
+    fetchMembers,
       changeMemberRole,
       removeMember,
-      closeMembersModal,
+  // 旧 closeMembersModal 已移除
       // join requests
-      showJoinModal,
-      openJoinRequestsModal,
-      closeJoinRequestsModal,
+  // 旧入群申请弹窗字段与方法已移除
       joinRequests,
       joinStatusFilter,
+  joinLoading,
       loadJoinRequests,
       processJoin,
       changeTab,
   openUpdateRoomModal,
+  populateFormFromRoom,
   deleteRoom,
   predefinedColors,
   // 权限
@@ -1337,8 +1439,14 @@ export default {
   handleTouchStart,
   handleTouchMove,
   handleEditorKeydown,
-  goHome
-    }
+  goHome,
+  // layout
+  isFullScreen,
+  // details drawer
+  showDetailsDrawer,
+  openDetailsDrawer,
+  detailsTab
+  }
   }
 }
 </script>
@@ -1516,6 +1624,15 @@ export default {
 .room-list {
   flex: 1;
   overflow-y: auto;
+  /* 隐藏滚动条（仍可滚动），与消息列表保持一致 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ / Edge Legacy */
+}
+
+/* WebKit/Blink 隐藏滚动条 */
+.room-list::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .empty-rooms { color: #6c757d; text-align: center; padding: 12px; }
@@ -1732,6 +1849,43 @@ export default {
   color: #4facfe;
 }
 
+/* 群聊详情 Drawer 样式 */
+.room-details {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px dashed #edf2f7;
+}
+.detail-row:last-child { border-bottom: none; }
+.detail-row .label {
+  color: #6c757d;
+  font-size: 12px;
+}
+.detail-row .value {
+  color: #2c3e50;
+  font-weight: 500;
+}
+.detail-row .value.id {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.color-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+  border: 1px solid #e9ecef;
+}
+.detail-section .el-button + .el-button { margin-left: 8px; }
+
 .messages-container {
   flex: 1;
   padding: 20px;
@@ -1739,6 +1893,15 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  /* 隐藏滚动条（仍可滚动） */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ / Edge Legacy */
+}
+
+/* WebKit/Blink 隐藏滚动条 */
+.messages-container::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .message {
@@ -1896,6 +2059,7 @@ export default {
   line-height: 1.6;
   min-height: 70px;
   background: transparent;
+
 }
 
 .send-row {
@@ -2066,6 +2230,24 @@ export default {
 .member-left { display: flex; align-items: center; gap: 10px; }
 .member-left .avatar { width: 36px; height: 36px; border-radius: 50%; background: #8aa1ff; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 600; }
 .member-actions { display: flex; align-items: center; gap: 8px; }
+
+/* 防止 el-avatar 在 Flex 布局中被挤压变形 */
+.member-left :deep(.el-avatar) {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px;
+  min-height: 36px;
+  max-width: 36px;
+  max-height: 36px;
+  border-radius: 50%;
+  flex: 0 0 36px; /* 不允许收缩 */
+  overflow: hidden;
+}
+.member-left :deep(.el-avatar) img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 
 @media (max-width: 768px) {
   .page {
@@ -2324,6 +2506,12 @@ export default {
     padding: 16px;
   }
 
+  /* Element Plus Drawer 移动端适配：抽屉占满宽度 */
+  :global(.el-drawer) {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
   :global(.el-dialog) {
     width: calc(100vw - 32px) !important; /* 覆盖内联宽度 520/720px */
     max-width: none !important;
@@ -2355,5 +2543,11 @@ export default {
   .mobile-sidebar-toggle {
     display: none !important;
   }
+}
+</style>
+<style>
+/* 聊天室页面内选择器的下拉层级提升，确保在抽屉/对话框(通常 2000-3000)/模态上可见 */
+.chatrooms-popper {
+  z-index: 4000 !important;
 }
 </style>

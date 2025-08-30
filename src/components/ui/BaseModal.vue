@@ -56,14 +56,25 @@ export default {
       }
     }
   },
+  mounted() {
+    // 处理组件初始即为显示状态的情况
+    if (this.show) {
+      document.body.style.overflow = 'hidden'
+      document.body.classList.add('modal-open')
+      window.addEventListener('keydown', this.onKeydown)
+    }
+  },
   watch: {
     show(newVal) {
       // 防止背景滚动
       if (newVal) {
         document.body.style.overflow = 'hidden'
+    // 提示：为 body 添加标记类，用于提升第三方弹层（如 Element Plus popper）z-index
+    document.body.classList.add('modal-open')
         window.addEventListener('keydown', this.onKeydown)
       } else {
         document.body.style.overflow = ''
+    document.body.classList.remove('modal-open')
         window.removeEventListener('keydown', this.onKeydown)
       }
     }
@@ -71,6 +82,7 @@ export default {
   beforeUnmount() {
     // 清理样式
     document.body.style.overflow = ''
+  document.body.classList.remove('modal-open')
     window.removeEventListener('keydown', this.onKeydown)
   }
 }
@@ -186,5 +198,15 @@ export default {
     padding-left: 20px;
     padding-right: 20px;
   }
+}
+</style>
+<style>
+/* 当模态打开时，提升 Element Plus 弹层（select 下拉、tooltip、dropdown 等）层级以盖过模态遮罩 */
+body.modal-open .el-popper,
+body.modal-open .el-select__popper,
+body.modal-open .el-dropdown__popper,
+body.modal-open .el-tooltip__popper,
+body.modal-open .el-picker__popper {
+  z-index: 20000 !important;
 }
 </style>
