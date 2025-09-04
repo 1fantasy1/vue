@@ -3,37 +3,8 @@
     <div class="header">
       <div class="title-section">
         <h1 class="page-title">我的课程</h1>
-        <div class="header-actions">
-          <button @click="browseCourses" class="btn-secondary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M15,7A5,5 0 0,1 20,12A5,5 0 0,1 15,17A5,5 0 0,1 10,12A5,5 0 0,1 15,7M15,9A3,3 0 0,0 12,12A3,3 0 0,0 15,15A3,3 0 0,0 18,12A3,3 0 0,0 15,9Z"/>
-            </svg>
-            浏览课程
-          </button>
-          <button v-if="isAdmin" @click="manageCourses" class="btn-primary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
-            </svg>
-            创建课程
-          </button>
-        </div>
       </div>
       <div class="header-subtitle">持续学习，持续成长</div>
-    </div>
-
-    <div class="stats-bar">
-      <div class="stat-card">
-        <div class="stat-number">{{ filteredCourses.length }}</div>
-        <div class="stat-label">{{ debouncedSearchQuery ? '搜索结果' : '总课程数' }}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number">{{ learningCount }}</div>
-        <div class="stat-label">学习中</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number">{{ completedCount }}</div>
-        <div class="stat-label">已完成</div>
-      </div>
     </div>
 
     <!-- 搜索框 -->
@@ -62,27 +33,29 @@
     </div>
 
     <div class="filter-tabs">
-      <button 
-        class="tab-btn" 
-        :class="{ active: activeTab === 'all' }"
-        @click="activeTab = 'all'"
-      >
-        全部课程
-      </button>
-      <button 
-        class="tab-btn" 
-        :class="{ active: activeTab === 'learning' }"
-        @click="activeTab = 'learning'"
-      >
-        学习中
-      </button>
-      <button 
-        class="tab-btn" 
-        :class="{ active: activeTab === 'completed' }"
-        @click="activeTab = 'completed'"
-      >
-        已完成
-      </button>
+      <div class="tabs-left">
+        <button 
+          class="tab-btn" 
+          :class="{ active: activeTab === 'all' }"
+          @click="activeTab = 'all'"
+        >
+          全部课程
+        </button>
+        <button 
+          class="tab-btn" 
+          :class="{ active: activeTab === 'learning' }"
+          @click="activeTab = 'learning'"
+        >
+          学习中
+        </button>
+        <button 
+          class="tab-btn" 
+          :class="{ active: activeTab === 'completed' }"
+          @click="activeTab = 'completed'"
+        >
+          已完成
+        </button>
+      </div>
     </div>
 
     <div class="courses-container">
@@ -174,9 +147,23 @@
       </div>
     </div>
 
-    <div class="floating-actions">
-      <button class="fab" @click="browseCourses" title="浏览更多课程">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <div class="floating-actions" :class="{ expanded: fabExpanded }">
+      <div class="fab-menu">
+        <button class="fab-item" @click="browseCourses" title="浏览课程">
+          浏览课程
+        </button>
+        <button v-if="isAdmin" class="fab-item" @click="manageCourses" title="创建课程">
+          创建课程
+        </button>
+      </div>
+      <button 
+        class="fab" 
+        @click="toggleFab" 
+        @mouseenter="showFab"
+        @mouseleave="hideFab"
+        title="更多操作"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" class="fab-icon">
           <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
         </svg>
       </button>
@@ -200,6 +187,8 @@ export default {
     const debouncedSearchQuery = ref('')
     const loading = ref(true)
     const courses = ref([])
+    const fabExpanded = ref(false)
+    let fabTimeout = null
 
     // 防抖搜索
     let searchTimeout = null
@@ -310,15 +299,6 @@ export default {
       return filtered
     })
 
-    // 统计数据
-    const learningCount = computed(() => {
-      return filteredCourses.value.filter(course => course.status === 'learning').length
-    })
-
-    const completedCount = computed(() => {
-      return filteredCourses.value.filter(course => course.status === 'completed').length
-    })
-
     const getLevelText = (level) => {
       const levelMap = {
         beginner: '初级',
@@ -372,6 +352,22 @@ export default {
       debouncedSearchQuery.value = ''
     }
 
+    // FAB按钮交互
+    const toggleFab = () => {
+      fabExpanded.value = !fabExpanded.value
+    }
+
+    const showFab = () => {
+      clearTimeout(fabTimeout)
+      fabExpanded.value = true
+    }
+
+    const hideFab = () => {
+      fabTimeout = setTimeout(() => {
+        fabExpanded.value = false
+      }, 5000)
+    }
+
     // 组件挂载时加载数据
     onMounted(() => {
       loadCourses()
@@ -384,16 +380,18 @@ export default {
       loading,
       courses,
       filteredCourses,
-      learningCount,
-      completedCount,
       isAdmin,
+      fabExpanded,
       getLevelText,
       getStatusText,
       continueLearning,
       viewNotes,
       browseCourses,
       manageCourses,
-      clearSearch
+      clearSearch,
+      toggleFab,
+      showFab,
+      hideFab
     }
   }
 }
@@ -425,13 +423,7 @@ export default {
   flex: 1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-}
-
-.header-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
+  justify-content: center;
 }
 
 .btn-primary, .btn-secondary {
@@ -486,18 +478,6 @@ export default {
   transition: all 0.3s ease;
 }
 
-.page-title::before {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 0;
-  width: 60px;
-  height: 3px;
-  background: linear-gradient(90deg, #667eea, #764ba2);
-  border-radius: 2px;
-  opacity: 0.8;
-}
-
 .page-title:hover {
   transform: translateY(-1px);
   text-shadow: 0 4px 8px rgba(102, 126, 234, 0.15);
@@ -532,44 +512,6 @@ export default {
 .back-btn:hover {
   border-color: #667eea;
   color: #667eea;
-}
-
-.stats-bar {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 16px;
-  margin-bottom: 32px;
-}
-
-.stat-card {
-  background: white;
-  padding: 12px 16px;
-  border-radius: 16px;
-  text-align: center;
-  border: 1px solid #f0f0f0;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  border-color: #667eea;
-}
-
-.stat-number {
-  font-size: 1.8rem;
-  font-weight: 800;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 2px;
-}
-
-.stat-label {
-  color: #6c757d;
-  font-size: 13px;
 }
 
 /* 搜索框样式 */
@@ -642,7 +584,7 @@ export default {
 
 .filter-tabs {
   display: flex;
-  gap: 12px;
+  align-items: center;
   margin-bottom: 32px;
   background: white;
   padding: 12px;
@@ -651,8 +593,13 @@ export default {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
+.tabs-left {
+  display: flex;
+  gap: 12px;
+}
+
 .tab-btn {
-  padding: 12px 20px;
+  padding: 12px 24px;
   border: none;
   background: transparent;
   color: #6c757d;
@@ -662,6 +609,7 @@ export default {
   font-size: 15px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  white-space: nowrap;
 }
 
 .tab-btn.active {
@@ -999,8 +947,73 @@ export default {
 
 .floating-actions {
   position: fixed;
-  bottom: 32px;
+  bottom: 100px;
   right: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.fab-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  opacity: 0;
+  transform: translateY(20px) scale(0.8);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+.floating-actions.expanded .fab-menu {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.fab-item {
+  width: auto;
+  min-width: 80px;
+  height: 36px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #667eea;
+  border: 2px solid #667eea;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 12px rgba(102, 126, 234, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+  position: relative;
+  overflow: hidden;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.fab-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.fab-item:hover::before {
+  left: 100%;
+}
+
+.fab-item:hover {
+  background: #667eea;
+  color: white;
+  transform: translateY(-2px) scale(1.1);
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
 }
 
 .fab {
@@ -1018,6 +1031,15 @@ export default {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+  z-index: 10;
+}
+
+.fab-icon {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.floating-actions.expanded .fab-icon {
+  transform: rotate(45deg);
 }
 
 .fab::before {
@@ -1040,6 +1062,11 @@ export default {
   box-shadow: 0 8px 30px rgba(102, 126, 234, 0.5);
 }
 
+.floating-actions.expanded .fab {
+  transform: scale(1.1);
+  box-shadow: 0 8px 30px rgba(102, 126, 234, 0.6);
+}
+
 @media (max-width: 768px) {
   .page {
     padding: 16px;
@@ -1051,30 +1078,9 @@ export default {
     min-height: 100px;
   }
 
-  .stats-bar {
-    gap: 12px;
-  }
-
-  .stat-card {
-    padding: 10px 12px;
-  }
-
-  .stat-number {
-    font-size: 1.6rem;
-  }
-
-  .stat-label {
-    font-size: 12px;
-  }
-
   .page-title {
     font-size: 2rem;
     font-weight: 600;
-  }
-
-  .page-title::before {
-    width: 50px;
-    height: 2px;
   }
 
   .header-subtitle {
@@ -1084,13 +1090,18 @@ export default {
   }
 
   .filter-tabs {
-    padding: 8px;
-    gap: 8px;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .tabs-left {
+    gap: 12px;
   }
 
   .tab-btn {
-    padding: 10px 16px;
+    padding: 10px 20px;
     font-size: 14px;
+    white-space: nowrap;
   }
 
   .courses-container {
@@ -1137,11 +1148,22 @@ export default {
     text-align: center;
   }
 
-  .fab {
-    bottom: 20px;
+  .floating-actions {
+    bottom: 80px;
     right: 20px;
+  }
+
+  .fab {
     width: 56px;
     height: 56px;
+  }
+
+  .fab-item {
+    min-width: 70px;
+    height: 32px;
+    padding: 0 12px;
+    font-size: 12px;
+    border-radius: 16px;
   }
 }
 
@@ -1151,30 +1173,9 @@ export default {
     min-height: 90px;
   }
 
-  .stats-bar {
-    gap: 8px;
-  }
-
-  .stat-card {
-    padding: 8px 10px;
-  }
-
-  .stat-number {
-    font-size: 1.4rem;
-  }
-
-  .stat-label {
-    font-size: 11px;
-  }
-
   .page-title {
     font-size: 1.8rem;
     font-weight: 600;
-  }
-
-  .page-title::before {
-    width: 40px;
-    height: 2px;
   }
 
   .header-subtitle {
@@ -1184,15 +1185,22 @@ export default {
   }
 
   .filter-tabs {
-    flex-wrap: wrap;
-    gap: 6px;
+    gap: 20px;
+    padding: 16px;
+  }
+
+  .tabs-left {
+    flex-wrap: nowrap;
+    gap: 10px;
   }
 
   .tab-btn {
     flex: 1;
-    min-width: 0;
-    padding: 8px 12px;
+    min-width: 80px;
+    padding: 10px 16px;
     font-size: 13px;
+    text-align: center;
+    white-space: nowrap;
   }
 
   .courses-container {
@@ -1219,5 +1227,27 @@ export default {
   .stat-item {
     font-size: 13px;
   }
+
+  .floating-actions {
+    bottom: 90px;
+    right: 20px;
+  }
+
+  .fab {
+    width: 56px;
+    height: 56px;
+  }
+
+  .fab-item {
+    min-width: 65px;
+    height: 30px;
+    padding: 0 10px;
+    font-size: 11px;
+    border-radius: 15px;
+  }
+}
+
+@media (max-width: 400px) {
+  /* 400px以下的特殊样式可以在这里添加 */
 }
 </style>
