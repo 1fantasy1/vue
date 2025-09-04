@@ -1,33 +1,12 @@
 <template>
-  <div class="knowledge-base">
+  <div class="knowledge-base" @click="openActionMenuId = null">
     <!-- 头部搜索区域 -->
     <div class="header-section">
       <div class="header-content">
         <h1 class="page-title">📚 知识库</h1>
         <p class="page-subtitle">浏览和搜索项目知识资源</p>
 
-        <!-- 知识库选择与状态过滤 -->
-        <div class="kb-toolbar">
-          <div class="kb-select">
-            <label for="kb">知识库：</label>
-            <select id="kb" v-model="selectedKbId" @change="onKbChange">
-              <option v-for="kb in knowledgeBases" :key="kb.id" :value="kb.id">
-                {{ kb.name }} ({{ kb.access_type === 'private' ? '私有' : '公开' }})
-              </option>
-            </select>
-            <BaseButton variant="primary" @click="openKbModal">新建知识库</BaseButton>
-            <BaseButton variant="secondary" @click="editCurrentKb" v-if="selectedKbId">编辑</BaseButton>
-          </div>
-          <div class="kb-status-filter">
-            <label for="status">状态：</label>
-            <select id="status" v-model="statusFilter" @change="loadDocuments">
-              <option value="">全部</option>
-              <option value="processing">processing</option>
-              <option value="completed">completed</option>
-              <option value="failed">failed</option>
-            </select>
-          </div>
-        </div>
+        
         
         <!-- 搜索框 -->
         <div class="search-container">
@@ -58,186 +37,156 @@
       </div>
     </div>
 
-    <!-- 顶部页签：文档 / 文章 -->
-    <div class="tabs">
-      <button class="tab" :class="{ active: activeTab === 'documents' }" @click="switchTab('documents')">文档</button>
-      <button class="tab" :class="{ active: activeTab === 'articles' }" @click="switchTab('articles')">文章</button>
-    </div>
-
-    <!-- 分类导航 -->
-    <div v-if="activeTab === 'documents'" class="categories-section">
-      <h3 class="section-title">知识分类</h3>
-      <div class="categories-grid">
-        <div 
-          v-for="category in categoriesWithCount" 
-          :key="category.id"
-          class="category-card"
-          @click="selectCategory(category)"
-          :class="{ active: selectedCategory?.id === category.id }"
-        >
-          <div class="category-icon" :style="{ background: category.color }">
-            {{ category.icon }}
+    <!-- 主体双栏布局：左侧知识库侧栏 + 右侧内容 -->
+    <div class="content-layout">
+      <!-- 左侧：知识库侧栏 -->
+      <aside class="kb-sidebar">
+        <div class="kb-sidebar-header">
+          <div class="kb-sidebar-title">知识库</div>
+          <BaseButton variant="primary" @click="openKbModal">新建</BaseButton>
+        </div>
+        <div class="kb-list" v-if="knowledgeBases && knowledgeBases.length">
+          <div
+            v-for="kb in knowledgeBases"
+            :key="kb.id"
+            class="kb-item"
+            :class="{ active: kb.id === selectedKbId }"
+            @click="selectKb(kb.id)"
+          >
+            <div class="kb-item-name">{{ kb.name }}</div>
+            <div class="kb-item-meta">{{ kb.access_type === 'private' ? '私有' : '公开' }}</div>
           </div>
-          <h4 class="category-name">{{ category.name }}</h4>
-          <p class="category-count">{{ category.count }} 个文档</p>
         </div>
-      </div>
-    </div>
-
-  <!-- 文档列表 -->
-  <div v-if="activeTab === 'documents'" class="documents-section">
-      <div class="section-header">
-        <h3 class="section-title">
-          {{ selectedCategory ? selectedCategory.name : '全部文档' }}
-        </h3>
-        <div class="view-controls">
-          <button 
-            class="view-btn"
-            :class="{ active: viewMode === 'grid' }"
-            @click="viewMode = 'grid'"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/>
-            </svg>
-          </button>
-          <button 
-            class="view-btn"
-            :class="{ active: viewMode === 'list' }"
-            @click="viewMode = 'list'"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M3 5h18v2H3V5zm0 6h18v2H3v-2zm0 6h18v2H3v-2z"/>
-            </svg>
-          </button>
+        <div v-else class="kb-empty">暂无知识库，请新建</div>
+        <div class="kb-sidebar-actions">
+          <BaseButton variant="secondary" @click="editCurrentKb" :disabled="!selectedKbId">编辑当前</BaseButton>
         </div>
-      </div>
+      </aside>
 
-      <div class="documents-container" :class="viewMode">
-        <div 
-          v-for="document in filteredDocuments" 
-          :key="document.id"
-          class="document-card"
-          @click="openDocument(document)"
-        >
-          <div class="document-icon">
+      <!-- 右侧：主内容区 -->
+      <section class="kb-main">
+        <!-- 顶部页签：文档 / 文章 -->
+        <div class="tabs">
+          <button class="tab" :class="{ active: activeTab === 'documents' }" @click="switchTab('documents')">文档</button>
+          <button class="tab" :class="{ active: activeTab === 'articles' }" @click="switchTab('articles')">文章</button>
+        </div>
+
+        
+
+        <!-- 文档列表 -->
+        <div v-if="activeTab === 'documents'" class="documents-section">
+          <div class="section-header">
+            <h3 class="section-title">知识库文档</h3>
+            <div class="section-actions">
+        <div class="kb-status-filter inline">
+                <label for="status-inline">状态：</label>
+                <select id="status-inline" v-model="statusFilter" @change="loadDocuments">
+          <option value="">全部</option>
+          <option value="processing">处理中</option>
+          <option value="completed">已完成</option>
+          <option value="failed">失败</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="documents-container list">
+            <div 
+              v-for="document in filteredDocuments" 
+              :key="document.id"
+              class="document-card"
+              :class="{ 'menu-open': openActionMenuId === document.id }"
+              @click="openDocument(document)"
+            >
+              <div class="document-info">
+                <h4 class="document-title">{{ document.title }}</h4>
+              </div>
+              <div class="document-actions">
+                <!-- 更多菜单（包含全部操作） -->
+                <div class="more-actions">
+                  <button class="action-btn" title="更多" @click.stop="toggleActionMenu(document.id)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12,8A2,2 0 1,1 12,12A2,2 0 1,1 12,8M4,8A2,2 0 1,1 4,12A2,2 0 1,1 4,8M20,8A2,2 0 1,1 20,12A2,2 0 1,1 20,8"/>
+                    </svg>
+                  </button>
+                  <div v-if="openActionMenuId === document.id" class="action-menu" @click.stop>
+                    <div class="menu-item-embed">
+                      <CollectButton
+                        content-type="knowledge_document"
+                        :content-id="document.id"
+                        :initial-collected="document.isInCollection"
+                        :show-text="true"
+                        collected-text="取消收藏"
+                        not-collected-text="添加到收藏"
+                        :show-icon="false"
+                        :show-spinner="false"
+                        @collected="onDocumentCollected"
+                        @message="showMessage"
+                      />
+                    </div>
+                    <button v-if="document.status === 'completed'" class="menu-item" @click.stop="openActionMenuId = null; viewDocumentContent(document)">查看内容</button>
+                    <button class="menu-item" @click.stop="openActionMenuId = null; shareDocument(document)">分享</button>
+                    <button class="menu-item danger" @click.stop="openActionMenuId = null; deleteDocument(document)">删除</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 空状态 -->
+          <div v-if="filteredDocuments.length === 0" class="empty-state">
+            <div class="empty-icon">📄</div>
+            <h3>暂无相关文档</h3>
+            <p>尝试调整搜索条件或浏览其他分类</p>
+          </div>
+        </div>
+
+        <!-- 文章列表 -->
+        <div v-if="activeTab === 'articles'" class="articles-section">
+          <div class="section-header">
+            <h3 class="section-title">知识文章</h3>
+            <div class="actions">
+              <BaseButton variant="primary" @click="openCreateArticle">新建文章</BaseButton>
+            </div>
+          </div>
+
+          <div class="articles-list">
+            <div v-for="a in articles" :key="a.id" class="article-item">
+              <div class="article-main" @click="previewArticle(a)">
+                <div class="article-title">{{ a.title }}</div>
+                <div class="article-meta">
+                  <span>{{ a.version || 'v1' }}</span>
+                  <span>{{ formatDate(a.updated_at || a.created_at) }}</span>
+                  <span v-if="a.tags" class="article-tags">{{ a.tags }}</span>
+                </div>
+              </div>
+              <div class="article-actions">
+                <button class="action-btn" title="编辑" @click.stop="openEditArticle(a)">✏️</button>
+                <button class="action-btn danger" title="删除" @click.stop="deleteArticle(a)">🗑️</button>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="articles.length === 0" class="empty-state">
+            <div class="empty-icon">📝</div>
+            <h3>暂无文章</h3>
+            <p>点击“新建文章”开始创作</p>
+          </div>
+        </div>
+
+        <!-- 浮动操作按钮 -->
+        <div v-if="activeTab === 'documents'" class="fab-container">
+          <button class="fab" @click="triggerUpload">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+              <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
             </svg>
-          </div>
-          <div class="document-info">
-            <h4 class="document-title">{{ document.title }}</h4>
-            <p class="document-description">{{ document.description }}</p>
-            <div class="document-meta">
-              <span class="document-type">{{ document.type }}</span>
-              <span class="document-date">{{ document.updatedAt }}</span>
-              <span class="document-size">{{ document.size }}</span>
-              <span class="document-status" :class="`status-${document.status}`">{{ document.status }}</span>
-              <span v-if="document.totalChunks" class="document-chunks">{{ document.totalChunks }} 块</span>
-            </div>
-            <div class="document-tags">
-              <span 
-                v-for="tag in (document.tags || [])" 
-                :key="tag"
-                class="document-tag"
-              >
-                {{ tag }}
-              </span>
-            </div>
-          </div>
-          <div class="document-actions">
-            <CollectButton
-              content-type="knowledge_document"
-              :content-id="document.id"
-              :initial-collected="document.isInCollection"
-              @collected="onDocumentCollected"
-              @message="showMessage"
-            />
-            <button class="action-btn" @click.stop="openCollectionModal(document)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12,21.35L10.55,20.03C5.4,15.36 2,12.28 2,8.5 2,5.42 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.09C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.42 22,8.5C22,12.28 18.6,15.36 13.45,20.04L12,21.35Z"/>
-              </svg>
-            </button>
-            <button class="action-btn" @click.stop="shareDocument(document)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18,16.08C17.24,16.08 16.56,16.38 16.04,16.85L8.91,12.7C8.96,12.47 9,12.24 9,12C9,11.76 8.96,11.53 8.91,11.3L15.96,7.19C16.5,7.69 17.21,8 18,8A3,3 0 0,0 21,5A3,3 0 0,0 18,2A3,3 0 0,0 15,5C15,5.24 15.04,5.47 15.09,5.7L8.04,9.81C7.5,9.31 6.79,9 6,9A3,3 0 0,0 3,12A3,3 0 0,0 6,15C6.79,15 7.5,14.69 8.04,14.19L15.16,18.34C15.11,18.55 15.08,18.77 15.08,19C15.08,20.61 16.39,21.91 18,21.91C19.61,21.91 20.92,20.61 20.92,19A2.92,2.92 0 0,0 18,16.08Z"/>
-              </svg>
-            </button>
-            <button class="action-btn danger" title="删除" @click.stop="deleteDocument(document)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6Z"/>
-              </svg>
-            </button>
-            <button v-if="document.status === 'completed'" class="action-btn info" title="查看内容" @click.stop="viewDocumentContent(document)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z"/>
-              </svg>
-            </button>
-          </div>
+          </button>
+          <input ref="fileInput" type="file" class="hidden-file-input" @change="onFileSelected" />
         </div>
-      </div>
-
-      <!-- 空状态 -->
-      <div v-if="filteredDocuments.length === 0" class="empty-state">
-        <div class="empty-icon">📄</div>
-        <h3>暂无相关文档</h3>
-        <p>尝试调整搜索条件或浏览其他分类</p>
-      </div>
+      </section>
     </div>
 
-    <!-- 文章列表 -->
-    <div v-if="activeTab === 'articles'" class="articles-section">
-      <div class="section-header">
-        <h3 class="section-title">知识文章</h3>
-        <div class="actions">
-          <BaseButton variant="primary" @click="openCreateArticle">新建文章</BaseButton>
-        </div>
-      </div>
-
-      <div class="articles-list">
-        <div v-for="a in articles" :key="a.id" class="article-item">
-          <div class="article-main" @click="previewArticle(a)">
-            <div class="article-title">{{ a.title }}</div>
-            <div class="article-meta">
-              <span>{{ a.version || 'v1' }}</span>
-              <span>{{ formatDate(a.updated_at || a.created_at) }}</span>
-              <span v-if="a.tags" class="article-tags">{{ a.tags }}</span>
-            </div>
-          </div>
-          <div class="article-actions">
-            <button class="action-btn" title="编辑" @click.stop="openEditArticle(a)">✏️</button>
-            <button class="action-btn danger" title="删除" @click.stop="deleteArticle(a)">🗑️</button>
-          </div>
-        </div>
-      </div>
-
-      <div v-if="articles.length === 0" class="empty-state">
-        <div class="empty-icon">📝</div>
-        <h3>暂无文章</h3>
-        <p>点击“新建文章”开始创作</p>
-      </div>
-    </div>
-
-    <!-- 浮动操作按钮 -->
-    <div v-if="activeTab === 'documents'" class="fab-container">
-      <button class="fab" @click="triggerUpload">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
-        </svg>
-      </button>
-      <input ref="fileInput" type="file" class="hidden-file-input" @change="onFileSelected" />
-    </div>
-
-    <!-- 收藏弹窗 -->
-    <CollectionModal
-      :model-value="collectionModalVisible"
-      @update:modelValue="v => (collectionModalVisible = v)"
-      :is-editing="isEditingCollection"
-      :initial="collectionForm"
-      :show-folder="false"
-      :types="['knowledge_article']"
-      title-text="收藏知识文档"
-      @submit="onCollectionSubmit"
-    />
+    
 
     <!-- 文章编辑弹窗（简单实现） -->
     <BaseModal :show="articleModalVisible" :title="isEditingArticle ? '编辑文章' : '新建文章'" @close="closeArticleModal">
@@ -329,7 +278,6 @@
 </template>
 
 <script>
-import CollectionModal from '@/components/CollectionModal.vue'
 import CollectButton from '@/components/CollectButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -337,12 +285,10 @@ import remoteApiService from '@/services/remoteApi.js'
 
 export default {
   name: 'KnowledgeBase',
-  components: { CollectionModal, CollectButton, BaseModal, BaseButton },
+  components: { CollectButton, BaseModal, BaseButton },
   data() {
     return {
       searchQuery: '',
-      viewMode: 'grid',
-      selectedCategory: null,
       knowledgeBases: [],
       selectedKbId: null,
       statusFilter: '',
@@ -361,62 +307,17 @@ export default {
       loadingChunks: false,
       documentContent: '',
       documentChunks: [],
+  openActionMenuId: null,
       filterTags: [
         { id: 1, name: '全部', active: true },
         { id: 2, name: '最新', active: false },
         { id: 3, name: '热门', active: false },
         { id: 4, name: '我的收藏', active: false }
       ],
-      categories: [
-        {
-          id: 1,
-          name: '技术文档',
-          icon: '💻',
-          color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          count: 45
-        },
-        {
-          id: 2,
-          name: '项目指南',
-          icon: '📋',
-          color: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-          count: 32
-        },
-        {
-          id: 3,
-          name: '设计规范',
-          icon: '🎨',
-          color: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-          count: 28
-        },
-        {
-          id: 4,
-          name: 'API文档',
-          icon: '🔗',
-          color: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-          count: 23
-        },
-        {
-          id: 5,
-          name: '教程视频',
-          icon: '🎥',
-          color: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-          count: 18
-        },
-        {
-          id: 6,
-          name: '工具资源',
-          icon: '🛠️',
-          color: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-          count: 15
-        }
-  ],
+  
   documents: [],
   currentDocument: null,
-      // 收藏弹窗
-      collectionModalVisible: false,
-      isEditingCollection: false,
-  collectionForm: { id: null, title: '', type: 'knowledge_article', url: '', content: '', tags: '', folder_id: null },
+      
   // 文章弹窗
   articleModalVisible: false,
   isEditingArticle: false,
@@ -427,20 +328,8 @@ export default {
     await this.init()
   },
   computed: {
-    // 动态计算每个分类的文档数量
-    categoriesWithCount() {
-      return this.categories.map(category => ({
-        ...category,
-        count: this.documents.filter(doc => doc.categoryId === category.id).length
-      }))
-    },
     filteredDocuments() {
       let result = this.documents
-
-      // 按分类筛选
-      if (this.selectedCategory) {
-        result = result.filter(doc => doc.categoryId === this.selectedCategory.id)
-      }
 
       // 按搜索词筛选
       if (this.searchQuery) {
@@ -472,6 +361,19 @@ export default {
     }
   },
   methods: {
+    toggleActionMenu(id) {
+      this.openActionMenuId = this.openActionMenuId === id ? null : id
+    },
+    statusLabel(status) {
+      const map = { processing: '处理中', completed: '已完成', failed: '失败' }
+      return map[status] || status || '-'
+    },
+    // 从侧栏切换知识库
+    async selectKb(kbId) {
+      if (kbId === this.selectedKbId) return
+      this.selectedKbId = kbId
+      await this.onKbChange()
+    },
     switchTab(tab) {
       this.activeTab = tab
       if (tab === 'articles' && !this.articlesLoaded) {
@@ -526,8 +428,6 @@ export default {
           size: d.file_size || d.fileSize || d.size || '-',
           updatedAt: this.formatDate(d.updated_at || d.created_at || d.upload_time),
           tags: d.tags || [],
-          // 临时方案：根据文档类型分配分类ID，让分类功能可以工作
-          categoryId: this.getCategoryIdByFileType(d.file_type || d.fileType || d.type),
           favorite: d.favorite || false,
           status: d.status || 'processing',
           totalChunks: d.total_chunks || d.chunks || 0
@@ -541,27 +441,7 @@ export default {
         this.loadingDocs = false
       }
     },
-    getCategoryIdByFileType(fileType) {
-      // 根据文件类型映射到分类ID，让分类功能可以工作
-      if (!fileType || fileType === '-') {
-        return Math.floor(Math.random() * 6) + 1 // 随机分配
-      }
-      
-      const type = fileType.toLowerCase()
-      if (type.includes('doc') || type.includes('pdf') || type.includes('txt')) {
-        return 1 // 技术文档
-      } else if (type.includes('ppt') || type.includes('slide')) {
-        return 2 // 项目指南
-      } else if (type.includes('img') || type.includes('png') || type.includes('jpg')) {
-        return 3 // 设计规范
-      } else if (type.includes('json') || type.includes('xml')) {
-        return 4 // API文档
-      } else if (type.includes('mp4') || type.includes('avi')) {
-        return 5 // 教程视频
-      } else {
-        return 6 // 工具资源
-      }
-    },
+    
     async loadArticles() {
       if (!this.selectedKbId) return
       try {
@@ -581,40 +461,11 @@ export default {
       this.filterTags.forEach(t => t.active = false)
       tag.active = true
     },
-    selectCategory(category) {
-      this.selectedCategory = this.selectedCategory?.id === category.id ? null : category
-    },
     openDocument(document) {
       if (!this.selectedKbId) return
       this.$router.push({ name: 'DocumentDetail', params: { kbId: this.selectedKbId, docId: document.id } })
     },
-    openCollectionModal(document) {
-      this.isEditingCollection = false
-      this.currentDocument = document
-      this.collectionForm = {
-        id: null,
-        title: document.title,
-        type: 'knowledge_article',
-        url: '',
-        content: document.description,
-        tags: Array.isArray(document.tags) ? document.tags.join(',') : ''
-      }
-      this.collectionModalVisible = true
-    },
-    async onCollectionSubmit(payload) {
-      try {
-        const toTagsString = (val) => Array.isArray(val) ? val.join(',') : (typeof val === 'string' ? val : undefined)
-        await remoteApiService.collections.createCollection({
-          ...payload,
-          type: 'knowledge_article',
-          tags: toTagsString(payload.tags)
-        })
-        this.collectionModalVisible = false
-        if (this.currentDocument) this.currentDocument.favorite = true
-      } catch (e) {
-        alert(e.message || '收藏失败')
-      }
-    },
+    
     shareDocument(document) {
       alert(`分享文档: ${document.title}`)
     },
@@ -860,6 +711,21 @@ export default {
   min-height: calc(100vh - 48px);
 }
 
+/* 双栏布局 */
+.content-layout { display: grid; grid-template-columns: 260px 1fr; gap: 16px; align-items: start; }
+.kb-sidebar { position: sticky; top: 16px; align-self: start; background: #fff; border: 2px solid #e9ecef; border-radius: 12px; padding: 12px; max-height: calc(100vh - 80px); overflow: hidden; display: flex; flex-direction: column; }
+.kb-sidebar-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 12px; border-bottom: 1px solid #f1f3f5; }
+.kb-sidebar-title { font-weight: 700; color: #334155; }
+.kb-list { overflow: auto; padding: 8px 4px; display: flex; flex-direction: column; gap: 6px; }
+.kb-item { border: 1px solid #eef1f4; border-radius: 10px; padding: 10px 12px; cursor: pointer; background: #fff; transition: all .2s ease; }
+.kb-item:hover { border-color: #667eea; box-shadow: 0 2px 10px rgba(102,126,234,.12); transform: translateY(-1px); }
+.kb-item.active { border-color: #667eea; background: #eef2ff; }
+.kb-item-name { font-weight: 600; color: #1f2937; }
+.kb-item-meta { font-size: 12px; color: #6b7280; margin-top: 2px; }
+.kb-empty { color: #94a3b8; text-align: center; padding: 16px 8px; }
+.kb-sidebar-actions { margin-top: auto; padding-top: 10px; border-top: 1px solid #f1f3f5; display: flex; gap: 8px; }
+.kb-main { min-width: 0; }
+
 /* KB 工具栏 */
 .kb-toolbar { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 8px 0 0; }
 .kb-select select, .kb-status-filter select { padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; }
@@ -1023,35 +889,14 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+  flex-wrap: nowrap;
 }
 
-.view-controls {
-  display: flex;
-  gap: 8px;
-}
-
-.view-btn {
-  padding: 8px 12px;
-  border: 2px solid #e9ecef;
-  border-radius: 8px;
-  background: white;
-  color: #6c757d;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.view-btn.active,
-.view-btn:hover {
-  border-color: #667eea;
-  background: #667eea;
-  color: white;
-}
-
-.documents-container.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 16px;
-}
+.section-actions { display: flex; align-items: center; gap: 12px; }
+.section-actions { white-space: nowrap; }
+.section-header .section-title { margin: 0; }
+.kb-status-filter.inline label { margin-right: 6px; color: #6b7280; font-size: 14px; }
+.kb-status-filter.inline select { padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; }
 
 .documents-container.list .document-card {
   display: flex;
@@ -1059,12 +904,6 @@ export default {
   padding: 16px;
   margin-bottom: 12px;
 }
-
-.documents-container.list .document-icon {
-  margin-right: 16px;
-  margin-bottom: 0;
-}
-
 .documents-container.list .document-info {
   flex: 1;
   text-align: left;
@@ -1074,29 +913,24 @@ export default {
   background: white;
   border: 2px solid #e9ecef;
   border-radius: 12px;
-  padding: 20px;
+  padding: 14px 16px;
   cursor: pointer;
   transition: all 0.3s ease;
   text-align: center;
+  position: relative;
+  z-index: 1;
 }
 
 .document-card:hover {
   border-color: #667eea;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  z-index: 5;
 }
 
-.document-icon {
-  width: 48px;
-  height: 48px;
-  background: #f8f9ff;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #667eea;
-  margin: 0 auto 16px;
-}
+.document-card.menu-open { z-index: 1500; }
+
+/* 已移除文档图标样式 */
 
 .document-title {
   font-size: 1.1rem;
@@ -1113,50 +947,16 @@ export default {
   margin-bottom: 12px;
 }
 
-.document-meta {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
+/* 元信息已隐藏（日期、状态等），移除相关样式 */
 
-.document-status { padding: 2px 6px; border-radius: 6px; background: #eef2ff; color: #4338ca; font-size: 12px; }
-.document-status.status-processing { background: #fff7ed; color: #c2410c; }
-.document-status.status-completed { background: #ecfdf5; color: #047857; }
-.document-status.status-failed { background: #fef2f2; color: #b91c1c; }
-
-.document-type,
-.document-date,
-.document-size {
-  background: #f8f9ff;
-  color: #667eea;
-  padding: 4px 8px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.document-tags {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-}
-
-.document-tag {
-  background: #e9ecef;
-  color: #6c757d;
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 500;
-}
+/* 已精简卡片信息，移除标签与描述等块的样式 */
 
 .document-actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
   display: flex;
-  justify-content: center;
+  align-items: center;
   gap: 8px;
 }
 
@@ -1184,6 +984,37 @@ export default {
 .action-btn.danger:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
 .action-btn.info { color: #3b82f6; border-color: #dbeafe; }
 .action-btn.info:hover { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+
+/* 更多菜单 */
+.more-actions { position: relative; }
+.action-menu { position: absolute; right: 0; top: 40px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.08); padding: 6px; display: flex; flex-direction: column; min-width: 120px; z-index: 2000; }
+.menu-item { padding: 8px 10px; text-align: left; background: #fff; border: none; cursor: pointer; border-radius: 6px; color: #374151; }
+.menu-item:hover { background: #f3f4f6; }
+.menu-item.danger { color: #b91c1c; }
+.menu-item.danger:hover { background: #fee2e2; }
+.menu-item-embed { padding: 0; display: block; }
+.menu-item-embed :deep(button),
+.menu-item-embed :deep(a),
+.menu-item-embed :deep(.base-button),
+.menu-item-embed :deep(.collect-button),
+.menu-item-embed :deep(.collect-btn) {
+  width: 100%;
+  padding: 8px 10px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: #374151;
+  border-radius: 6px;
+  display: block;
+  cursor: pointer;
+}
+.menu-item-embed :deep(button:hover),
+.menu-item-embed :deep(a:hover),
+.menu-item-embed :deep(.base-button:hover),
+.menu-item-embed :deep(.collect-button:hover),
+.menu-item-embed :deep(.collect-btn:hover) {
+  background: #f3f4f6;
+}
 
 
 
@@ -1263,6 +1094,8 @@ export default {
   .knowledge-base {
     padding: 16px;
   }
+  .content-layout { grid-template-columns: 1fr; }
+  .kb-sidebar { position: relative; top: 0; max-height: none; }
   
   .header-section {
     padding: 24px 20px;
@@ -1281,11 +1114,7 @@ export default {
     grid-template-columns: 1fr;
   }
   
-  .section-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
+  .section-header { flex-direction: row; align-items: center; gap: 12px; }
   
   .fab-container {
     bottom: 100px;

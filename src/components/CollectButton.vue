@@ -5,13 +5,13 @@
     :disabled="loading"
     :title="buttonTitle"
   >
-    <svg v-if="!loading" class="icon" viewBox="0 0 24 24" fill="currentColor">
+  <svg v-if="!loading && showIcon" class="icon" viewBox="0 0 24 24" fill="currentColor">
       <path v-if="!isCollected" d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2zm0 15l-5-2.18L7 18V5h10v13z"/>
       <path v-else d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/>
     </svg>
-    <div v-else class="loading-spinner"></div>
+  <div v-else-if="loading && showSpinner" class="loading-spinner"></div>
     <span v-if="showText" class="collect-text">
-      {{ isCollected ? '已收藏' : '收藏' }}
+      {{ isCollected ? collectedText : notCollectedText }}
     </span>
   </button>
 </template>
@@ -41,10 +41,30 @@ export default {
       type: Boolean,
       default: false
     },
+    // 已收藏时显示的文案
+    collectedText: {
+      type: String,
+      default: '已收藏'
+    },
+    // 未收藏时显示的文案
+    notCollectedText: {
+      type: String,
+      default: '收藏'
+    },
     // 自定义标题
     customTitle: {
       type: String,
       default: ''
+    },
+    // 是否显示图标
+    showIcon: {
+      type: Boolean,
+      default: true
+    },
+    // 是否显示加载动画
+    showSpinner: {
+      type: Boolean,
+      default: true
     },
     // 收藏文件夹ID
     folderId: {
