@@ -327,6 +327,28 @@ export default {
   async created() {
     await this.init()
   },
+  mounted() {
+    // 快速操作：?action=search 聚焦搜索框
+    try {
+      const action = this.$route?.query?.action
+      if ((action || '').toString() === 'search') {
+        this.$nextTick(() => {
+          const input = this.$el.querySelector('.search-input')
+          if (input) input.focus()
+        })
+      }
+    } catch {}
+  },
+  watch: {
+    '$route.query.action'(val) {
+      if ((val || '').toString() === 'search') {
+        this.$nextTick(() => {
+          const input = this.$el.querySelector('.search-input')
+          if (input) input.focus()
+        })
+      }
+    }
+  },
   computed: {
     filteredDocuments() {
       let result = this.documents

@@ -43,10 +43,7 @@
         </div>
         <h3 class="card-title">智库</h3>
         <p class="card-description">AI智能助手和知识问答</p>
-        <div class="card-stats">
-          <span class="stat-item">对话: {{ stats.conversations }}</span>
-          <span class="stat-item">在线助手: 1</span>
-        </div>
+        
       </div>
 
       <!-- 参与的项目卡片 -->
@@ -58,10 +55,7 @@
         </div>
         <h3 class="card-title">参与的项目</h3>
         <p class="card-description">查看和管理您参与的所有项目</p>
-        <div class="card-stats">
-          <span class="stat-item">进行中: {{ stats.activeProjects }}</span>
-          <span class="stat-item">已完成: {{ stats.completedProjects }}</span>
-        </div>
+        
       </div>
 
       <!-- 参与的课程卡片 -->
@@ -73,10 +67,7 @@
         </div>
         <h3 class="card-title">参与的课程</h3>
         <p class="card-description">您正在学习的课程和培训</p>
-        <div class="card-stats">
-          <span class="stat-item">学习中: {{ stats.learningCourses }}</span>
-          <span class="stat-item">已完成: {{ stats.completedCourses }}</span>
-        </div>
+        
       </div>
 
       <!-- 聊天室卡片 -->
@@ -88,10 +79,7 @@
         </div>
         <h3 class="card-title">聊天室</h3>
         <p class="card-description">与团队成员实时交流协作</p>
-        <div class="card-stats">
-          <span class="stat-item">活跃群组: {{ stats.activeGroups }}</span>
-          <span class="stat-item">未读消息: {{ stats.unreadMessages }}</span>
-        </div>
+        
       </div>
 
       <!-- 课程笔记卡片 -->
@@ -103,10 +91,7 @@
         </div>
         <h3 class="card-title">课程笔记</h3>
         <p class="card-description">整理和查看学习笔记</p>
-        <div class="card-stats">
-          <span class="stat-item">笔记数: {{ stats.totalNotes }}</span>
-          <span class="stat-item">最近更新: 今天</span>
-        </div>
+        
       </div>
 
       <!-- 收藏卡片 -->
@@ -118,10 +103,7 @@
         </div>
         <h3 class="card-title">收藏</h3>
         <p class="card-description">收藏的课程资源和项目</p>
-        <div class="card-stats">
-          <span class="stat-item">资源: {{ stats.favoritesCount }}</span>
-          <span class="stat-item">项目: 7</span>
-        </div>
+        
       </div>
 
       <!-- 随手记录卡片 -->
@@ -133,10 +115,7 @@
         </div>
         <h3 class="card-title">随手记录</h3>
         <p class="card-description">快速记录想法和灵感</p>
-        <div class="card-stats">
-          <span class="stat-item">记录数: {{ stats.quickNotesCount }}</span>
-          <span class="stat-item">今日新增: 3</span>
-        </div>
+        
       </div>
 
       <!-- 知识库卡片 -->
@@ -148,10 +127,7 @@
         </div>
         <h3 class="card-title">知识库</h3>
         <p class="card-description">浏览和搜索项目知识资源</p>
-        <div class="card-stats">
-          <span class="stat-item">文档: {{ stats.knowledgeDocsCount }}</span>
-          <span class="stat-item">分类: 12</span>
-        </div>
+        
       </div>
 
       <!-- 工具箱卡片 -->
@@ -163,10 +139,7 @@
         </div>
         <h3 class="card-title">工具箱</h3>
         <p class="card-description">实用工具和开发辅助功能</p>
-        <div class="card-stats">
-          <span class="stat-item">工具数: {{ stats.toolsCount }}</span>
-          <span class="stat-item">常用: 8</span>
-        </div>
+        
       </div>
     </div>
   </div>
@@ -305,11 +278,15 @@ export default {
   cursor: pointer;
   transition: all 0.3s ease;
   position: relative;
-  text-align: center;
-  min-height: 200px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  /* 改为左右布局：图标在左、文字在右 */
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  grid-auto-rows: min-content;
+  column-gap: 16px;
+  row-gap: 8px;
+  align-items: center;
+  text-align: left;
+  min-height: 140px;
 }
 
 .nav-card:hover {
@@ -326,7 +303,10 @@ export default {
   align-items: center;
   justify-content: center;
   color: white;
-  margin: 0 auto 16px;
+  /* 放在左列，垂直占据内容区域 */
+  grid-column: 1;
+  grid-row: 1 / span 2; /* 只与标题和描述对齐，去除统计后不留空白 */
+  margin: 0; /* 移除居中外边距 */
 }
 
 .projects-icon {
@@ -370,6 +350,7 @@ export default {
   font-weight: 700;
   color: #2c3e50;
   margin: 0 0 8px 0;
+  grid-column: 2;
 }
 
 .card-description {
@@ -377,24 +358,10 @@ export default {
   font-size: 14px;
   margin: 0 0 16px 0;
   line-height: 1.4;
+  grid-column: 2;
 }
 
-.card-stats {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
 
-.stat-item {
-  background: #f8f9ff;
-  color: #667eea;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 500;
-  border: 1px solid #e6edff;
-}
 
 .quick-actions-section {
   margin-bottom: 32px;
@@ -449,8 +416,9 @@ export default {
   }
   
   .nav-card {
-    min-height: 160px;
+    min-height: 120px;
     padding: 20px;
+    grid-template-columns: 48px 1fr; /* 移动端缩小图标列 */
   }
   
   .card-icon {

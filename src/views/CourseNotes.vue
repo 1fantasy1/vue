@@ -211,8 +211,8 @@
 </template>
 
 <script>
-import { useRouter } from 'vue-router'
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import CollectButton from '@/components/CollectButton.vue'
 import NoteModal from '@/components/NoteModal.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
@@ -228,7 +228,8 @@ export default {
     BaseButton
   },
   setup() {
-    const router = useRouter()
+  const router = useRouter()
+  const route = useRoute()
     
     // 状态管理
     const loading = ref(false)
@@ -467,6 +468,19 @@ export default {
         loadCourses(),
         loadFolders()
       ])
+      // 来自首页快速操作：?action=create 打开新建笔记弹窗
+      if ((route?.query?.action || '').toString() === 'create') {
+        editingNote.value = null
+        showNoteModal.value = true
+      }
+    })
+
+    // 监听路由参数变化，支持二次跳转
+    watch(() => route.query.action, (val) => {
+      if ((val || '').toString() === 'create') {
+        editingNote.value = null
+        showNoteModal.value = true
+      }
     })
 
     return {

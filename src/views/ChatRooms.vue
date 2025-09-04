@@ -1315,6 +1315,10 @@ export default {
         currentUserId.value = null
       }
       await loadRooms()
+      // 来自首页快速操作：?action=join 打开“按ID申请加入”对话框
+      if ((route?.query?.action || '').toString() === 'join') {
+        openApplyByIdModal()
+      }
     })
 
   // 监听 activeTab 切换自动刷新
@@ -1329,6 +1333,13 @@ export default {
       await loadJoinRequests()
     } else if (tab === 'settings') {
       populateFormFromRoom()
+    }
+  })
+
+  // 监听路由参数变化，重复进入也可触发
+  watch(() => route.query.action, (val) => {
+    if ((val || '').toString() === 'join') {
+      openApplyByIdModal()
     }
   })
 

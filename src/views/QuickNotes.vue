@@ -20,6 +20,7 @@
       <div class="add-card">
         <h3>快速记录</h3>
         <textarea 
+          ref="quickInputRef"
           v-model="newNote" 
           placeholder="记录你的想法、灵感或待办事项..."
           class="quick-input"
@@ -226,8 +227,8 @@
 </template>
 
 <script>
-import { useRouter } from 'vue-router'
-import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import remoteApiService from '@/services/remoteApi.js'
 import CollectButton from '@/components/CollectButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
@@ -237,7 +238,8 @@ export default {
   name: 'QuickNotes',
   components: { CollectButton, BaseModal, BaseButton },
   setup() {
-    const router = useRouter()
+  const router = useRouter()
+  const route = useRoute()
     const newNote = ref('')
     const newNoteTags = ref('')
     const selectedMood = ref('neutral')
@@ -288,8 +290,25 @@ export default {
     }
 
     // 组件挂载时加载数据
-    onMounted(() => {
-      loadNotes()
+    const quickInputRef = ref(null)
+
+    onMounted(async () => {
+      await loadNotes()
+      // 来自首页快速操作：?action=create 聚焦输入框
+      if ((route?.query?.action || '').toString() === 'create') {
+        nextTick(() => {
+          quickInputRef.value && quickInputRef.value.focus()
+        })
+      }
+    })
+
+    // 监听路由参数变化，重复进入也可触发
+    watch(() => route.query.action, (val) => {
+      if ((val || '').toString() === 'create') {
+        nextTick(() => {
+          quickInputRef.value && quickInputRef.value.focus()
+        })
+      }
     })
 
     const filteredNotes = computed(() => {
@@ -527,6 +546,7 @@ export default {
     }
 
     return {
+  quickInputRef,
       newNote,
       newNoteTags,
       selectedMood,
