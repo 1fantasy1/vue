@@ -31,71 +31,58 @@
       </div>
     </div>
 
-    <!-- 统计卡片 -->
-    <div class="stats-section">
-      <div class="stats-grid">
-        <div class="stat-card" v-for="(stat, index) in statsData" :key="index" :class="stat.type">
-          <div class="stat-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-              <path :d="stat.icon"/>
-            </svg>
-          </div>
-          <div class="stat-content">
-            <div class="stat-number">{{ stat.value }}</div>
-            <div class="stat-label">{{ stat.label }}</div>
-          </div>
-          <div class="stat-trend" v-if="stat.trend">
-            <span class="trend-value" :class="stat.trend.type">{{ stat.trend.value }}</span>
-            <span class="trend-label">{{ stat.trend.label }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- 筛选和搜索 -->
     <div class="filters-section">
-      <div class="search-wrapper">
-        <div class="search-box">
-          <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79L19 20l1-1-4.5-4.5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/>
-          </svg>
-          <input 
-            v-model="searchQuery" 
-            type="text" 
-            placeholder="搜索项目名称、描述或团队成员..."
-            class="search-input"
-          />
-          <button v-if="searchQuery" @click="clearSearch" class="clear-btn">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-            </svg>
-          </button>
+      <div class="filters-row">
+        <div class="filter-dropdown-wrapper">
+          <div class="filter-dropdown" @click="toggleFilterDropdown" ref="filterDropdownRef">
+            <div class="filter-selected">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path :d="getActiveFilterIcon()"/>
+              </svg>
+              <span>{{ getActiveFilterLabel() }}</span>
+              <span class="filter-count">{{ getFilterCount(activeFilter) }}</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="dropdown-arrow" :class="{ 'open': showFilterDropdown }">
+                <path d="M7 10L12 15L17 10H7Z"/>
+              </svg>
+            </div>
+            
+            <div class="filter-options" v-show="showFilterDropdown">
+              <button 
+                v-for="filter in filters" 
+                :key="filter.key"
+                class="filter-option"
+                :class="{ active: activeFilter === filter.key }"
+                @click="selectFilter(filter.key)"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path :d="filter.icon"/>
+                </svg>
+                {{ filter.label }}
+                <span class="filter-count">{{ getFilterCount(filter.key) }}</span>
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-      
-      <div class="filter-tabs">
-        <button 
-          v-for="filter in filters" 
-          :key="filter.key"
-          class="filter-tab"
-          :class="{ active: activeFilter === filter.key }"
-          @click="setActiveFilter(filter.key)"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path :d="filter.icon"/>
-          </svg>
-          {{ filter.label }}
-          <span class="filter-count">{{ getFilterCount(filter.key) }}</span>
-        </button>
-      </div>
-      
-      <div class="sort-dropdown">
-        <select v-model="sortBy" class="sort-select">
-          <option value="lastUpdate">最近更新</option>
-          <option value="progress">项目进度</option>
-          <option value="title">项目名称</option>
-          <option value="priority">优先级</option>
-        </select>
+        
+        <div class="search-wrapper">
+          <div class="search-box">
+            <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79L19 20l1-1-4.5-4.5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/>
+            </svg>
+            <input 
+              v-model="searchQuery" 
+              type="text" 
+              placeholder="搜索项目名称、描述或团队成员..."
+              class="search-input"
+            />
+            <button v-if="searchQuery" @click="clearSearch" class="clear-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -324,7 +311,8 @@ export default {
     // 响应式数据
     const searchQuery = ref('')
     const activeFilter = ref('all')
-    const sortBy = ref('lastUpdate')
+    const showFilterDropdown = ref(false)
+    const filterDropdownRef = ref(null)
     
   // 列表与表单状态
   const projects = ref([])
@@ -394,59 +382,7 @@ export default {
         }
       }
 
-      // 排序
-      filtered.sort((a, b) => {
-        switch (sortBy.value) {
-          case 'progress':
-            return b.progress - a.progress
-          case 'title':
-            return a.title.localeCompare(b.title)
-          case 'priority':
-            const priorityOrder = { high: 3, medium: 2, low: 1 }
-            return priorityOrder[b.priority] - priorityOrder[a.priority]
-      default: // lastUpdate
-            return new Date(b.updated_at || b.lastUpdate || 0) - new Date(a.updated_at || a.lastUpdate || 0)
-        }
-      })
-
       return filtered
-    })
-
-    const statsData = computed(() => {
-      const activeProjects = projects.value.filter(p => p.status === 'active')
-      const completedProjects = projects.value.filter(p => p.status === 'completed')
-      const planningProjects = projects.value.filter(p => p.status === 'planning')
-      const favoriteProjects = projects.value.filter(p => p.isFavorite)
-
-      return [
-        {
-          label: '总项目数',
-          value: projects.value.length,
-          type: 'total',
-          icon: 'M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z',
-          trend: { value: '+2', label: '本月新增', type: 'positive' }
-        },
-        {
-          label: '进行中',
-          value: activeProjects.length,
-          type: 'active',
-          icon: 'M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,17L7,12L10.5,8.5L12,10L17.5,4.5L21,8L12,17Z',
-          trend: { value: '+1', label: '较上周', type: 'positive' }
-        },
-        {
-          label: '已完成',
-          value: completedProjects.length,
-          type: 'completed',
-          icon: 'M12 2C6.5 2 2 6.5 2 12S6.5 22 12 22 22 17.5 22 12 17.5 2 12 2M10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z',
-          trend: { value: '+1', label: '本月完成', type: 'positive' }
-        },
-        {
-          label: '我的收藏',
-          value: favoriteProjects.length,
-          type: 'favorites',
-          icon: 'M12,21.35L10.55,20.03C5.4,15.36 2,12.27 2,8.5 2,5.41 4.42,3 7.5,3C9.24,3 10.91,3.81 12,5.08C13.09,3.81 14.76,3 16.5,3C19.58,3 22,5.41 22,8.5C22,12.27 18.6,15.36 13.45,20.03L12,21.35Z'
-        }
-      ]
     })
 
     const hasActiveFilters = computed(() => {
@@ -462,6 +398,33 @@ export default {
 
     const setActiveFilter = (filter) => {
       activeFilter.value = filter
+    }
+
+    // 下拉菜单相关方法
+    const toggleFilterDropdown = () => {
+      showFilterDropdown.value = !showFilterDropdown.value
+    }
+
+    const selectFilter = (filterKey) => {
+      activeFilter.value = filterKey
+      showFilterDropdown.value = false
+    }
+
+    const getActiveFilterLabel = () => {
+      const filter = filters.value.find(f => f.key === activeFilter.value)
+      return filter ? filter.label : '全部项目'
+    }
+
+    const getActiveFilterIcon = () => {
+      const filter = filters.value.find(f => f.key === activeFilter.value)
+      return filter ? filter.icon : 'M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z'
+    }
+
+    // 点击外部关闭下拉菜单
+    const handleClickOutside = (event) => {
+      if (filterDropdownRef.value && !filterDropdownRef.value.contains(event.target)) {
+        showFilterDropdown.value = false
+      }
     }
 
     const clearSearch = () => {
@@ -576,7 +539,13 @@ export default {
       openMenuId.value = openMenuId.value === projectId ? null : projectId
     }
 
-    const closeMenus = () => { openMenuId.value = null }
+    const closeMenus = (event) => { 
+      openMenuId.value = null
+      // 处理下拉菜单关闭逻辑
+      if (event && filterDropdownRef.value && !filterDropdownRef.value.contains(event.target)) {
+        showFilterDropdown.value = false
+      }
+    }
 
     const viewProject = (project) => {
       router.push(`/projects/${project.id}`)
@@ -977,13 +946,13 @@ export default {
       // 响应式数据
       searchQuery,
       activeFilter,
-      sortBy,
       projects,
       filters,
+      showFilterDropdown,
+      filterDropdownRef,
       
       // 计算属性
       filteredProjects,
-      statsData,
       hasActiveFilters,
       
       // UI状态
@@ -997,6 +966,10 @@ export default {
       // 方法
       getFilterCount,
       setActiveFilter,
+      toggleFilterDropdown,
+      selectFilter,
+      getActiveFilterLabel,
+      getActiveFilterIcon,
       clearSearch,
       clearAllFilters,
       getStatusText,
@@ -1159,117 +1132,26 @@ export default {
   box-shadow: 0 8px 30px rgba(102, 126, 234, 0.2);
 }
 
-/* 统计卡片区域 */
-.stats-section {
-  margin-bottom: 30px;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.stat-card {
-  background: white;
-  border: 1px solid #e9ecef;
-  border-radius: 16px;
-  padding: 24px;
-  color: #333;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, transparent 50%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 40px rgba(102, 126, 234, 0.15);
-  border-color: #667eea;
-}
-
-.stat-card:hover::before {
-  opacity: 1;
-}
-
-.stat-card .stat-icon {
-  background: #f0f2ff;
-  border-radius: 12px;
-  padding: 12px;
-  display: inline-flex;
-  margin-bottom: 16px;
-  color: #667eea;
-}
-
-.stat-card .stat-content {
-  position: relative;
-  z-index: 1;
-}
-
-.stat-number {
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin-bottom: 4px;
-  color: #333;
-}
-
-.stat-label {
-  font-size: 1rem;
-  color: #666;
-  font-weight: 500;
-}
-
-.stat-trend {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-  font-size: 14px;
-}
-
-.trend-value.positive {
-  color: #4ade80;
-}
-
-.trend-value.negative {
-  color: #f87171;
-}
-
-.trend-label {
-  color: #999;
-}
-
 /* 筛选和搜索区域 */
 .filters-section {
   max-width: 1200px;
   margin: 0 auto 30px;
+}
+
+.filters-row {
   display: flex;
-  flex-direction: column;
+  align-items: center;
   gap: 20px;
 }
 
 .search-wrapper {
+  flex: 1;
   display: flex;
-  justify-content: center;
+  justify-content: stretch;
 }
 
 .search-box {
   position: relative;
-  max-width: 500px;
   width: 100%;
 }
 
@@ -1323,18 +1205,65 @@ export default {
   background: #f0f2ff;
 }
 
-.filter-tabs {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
+/* 筛选下拉菜单 */
+.filter-dropdown-wrapper {
+  flex-shrink: 0;
 }
 
-.filter-tab {
+.filter-dropdown {
+  position: relative;
+  min-width: 220px;
+}
+
+.filter-selected {
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: #333;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  justify-content: space-between;
+}
+
+.filter-selected:hover {
+  border-color: #667eea;
+  background: #f0f2ff;
+}
+
+.filter-selected .dropdown-arrow {
+  transition: transform 0.3s ease;
+  margin-left: auto;
+}
+
+.filter-selected .dropdown-arrow.open {
+  transform: rotate(180deg);
+}
+
+.filter-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
   background: white;
   border: 1px solid #e9ecef;
-  border-radius: 10px;
-  padding: 12px 20px;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.filter-option {
+  width: 100%;
+  background: white;
+  border: none;
+  padding: 12px 16px;
   color: #666;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -1343,58 +1272,32 @@ export default {
   gap: 8px;
   font-size: 14px;
   font-weight: 500;
+  text-align: left;
 }
 
-.filter-tab:hover {
+.filter-option:hover {
   background: #f0f2ff;
-  border-color: #667eea;
   color: #667eea;
 }
 
-.filter-tab.active {
+.filter-option.active {
   background: #667eea;
   color: white;
-  border-color: #667eea;
   font-weight: 600;
 }
 
-.filter-count {
+.filter-option .filter-count {
   background: #e9ecef;
   border-radius: 12px;
   padding: 2px 8px;
   font-size: 12px;
   font-weight: 600;
+  margin-left: auto;
 }
 
-.filter-tab.active .filter-count {
+.filter-option.active .filter-count {
   background: rgba(255, 255, 255, 0.2);
   color: white;
-}
-
-.sort-dropdown {
-  display: flex;
-  justify-content: center;
-}
-
-.sort-select {
-  background: white;
-  border: 1px solid #e9ecef;
-  border-radius: 10px;
-  padding: 12px 16px;
-  color: #333;
-  cursor: pointer;
-  font-size: 14px;
-  min-width: 150px;
-}
-
-.sort-select:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
-.sort-select option {
-  background: white;
-  color: #333;
 }
 
 /* 项目列表区域 */
@@ -1997,6 +1900,17 @@ export default {
   transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* 中等屏幕优化 */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .filters-row {
+    gap: 16px;
+  }
+  
+  .filter-dropdown {
+    min-width: 200px;
+  }
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .my-projects-page {
@@ -2035,25 +1949,35 @@ export default {
     font-size: 2rem;
   }
 
-  .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+  /* 移动端垂直布局 */
+  .filters-row {
+    flex-direction: column;
     gap: 16px;
   }
 
-  .stat-card {
-    padding: 20px;
+  .search-wrapper {
+    width: 100%;
+    padding: 0 16px;
   }
 
-  .stat-number {
-    font-size: 2rem;
+  /* 移动端下拉菜单样式 */
+  .filter-dropdown-wrapper {
+    width: 100%;
+    padding: 0 16px;
   }
 
-  .filter-tabs {
-    gap: 8px;
+  .filter-dropdown {
+    min-width: auto;
+    width: 100%;
   }
 
-  .filter-tab {
-    padding: 10px 16px;
+  .filter-selected {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .filter-option {
+    padding: 10px 14px;
     font-size: 13px;
   }
 
@@ -2151,13 +2075,34 @@ export default {
     padding: 12px;
   }
 
-  .stats-grid {
-    grid-template-columns: 1fr;
+  /* 小屏幕下拉菜单样式 */
+  .filters-row {
+    flex-direction: column;
+    gap: 12px;
   }
 
-  .filter-tabs {
-    flex-direction: column;
-    align-items: stretch;
+  .search-wrapper {
+    width: 100%;
+    padding: 0 8px;
+  }
+
+  .filter-dropdown-wrapper {
+    width: 100%;
+    padding: 0 8px;
+  }
+
+  .filter-selected {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .filter-option {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
   }
 
   .search-box {
@@ -2228,7 +2173,6 @@ export default {
   }
   
   .page-header,
-  .stat-card,
   .project-card {
     background: white !important;
     border: 1px solid #ccc !important;
