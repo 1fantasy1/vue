@@ -125,7 +125,7 @@
 
         <!-- 聊天消息区域 -->
         <div class="chat-messages-container" ref="chatMessagesRef">
-          <div class="welcome-section" v-show="chatHistory.length === 0">
+          <div class="welcome-section" v-show="chatHistory.length === 0 && showWelcomeOnEmpty">
             <div class="welcome-avatar">🧠</div>
             <h2>你好！我是智库助手</h2>
             <p>我可以帮助您解答关于科研方法论、创新思维、技术知识等各种问题</p>
@@ -444,8 +444,10 @@ export default {
     // 聊天历史列表 - 将从API加载
     const chatHistoryList = ref([])
 
-    // 当前对话历史 - 将从API加载
+  // 当前对话历史 - 将从API加载
     const chatHistory = ref([])
+  // 控制空对话时是否展示欢迎/默认信息：首次进入显示，点击“新建对话”则不显示
+  const showWelcomeOnEmpty = ref(false)
 
     // 加载对话列表
     const loadConversations = async () => {
@@ -812,6 +814,8 @@ export default {
       chatHistory.value = []
       currentMessage.value = ''
       currentChatId.value = null // 新对话从null开始，让后端创建
+  // 新建对话时，不显示默认欢迎信息/建议卡片
+  showWelcomeOnEmpty.value = false
       if (isMobile.value) {
         sidebarCollapsed.value = true
         showMobileHintWithTimer()
@@ -1290,6 +1294,7 @@ export default {
       dailyUsage,
       isMobile,
       showMobileHint,
+  showWelcomeOnEmpty,
       modelTemperature,
       contextLength,
       showSettingsPanel,
