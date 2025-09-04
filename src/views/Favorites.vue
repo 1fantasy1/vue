@@ -1,28 +1,15 @@
- <template>
+<template>
   <div class="page">
     <div class="header">
       <div class="title-section">
         <h1 class="page-title">收藏</h1>
       </div>
-    </div>
-
-    <div class="stats-bar">
-      <div class="stat-card">
-        <div class="stat-number">{{ filteredFavorites.length }}</div>
-        <div class="stat-label">{{ searchQuery ? '搜索结果' : '总收藏数' }}</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number">{{ coursesCount }}</div>
-        <div class="stat-label">课程资源</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number">{{ projectsCount }}</div>
-        <div class="stat-label">项目案例</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number">{{ articlesCount }}</div>
-        <div class="stat-label">文章资料</div>
-      </div>
+      <!-- 移动端菜单按钮 -->
+      <button class="mobile-menu-btn" @click="mobileSidebarVisible = !mobileSidebarVisible">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M3,6H21V8H3V6M3,11H21V13H3V11M3,16H21V18H3V16Z"/>
+        </svg>
+      </button>
     </div>
 
     <!-- 搜索框 -->
@@ -50,70 +37,213 @@
       </div>
     </div>
 
-    <!-- 文件夹筛选与新建 -->
-    <div class="folder-bar">
-      <div class="folder-left">
-        <label class="folder-label">文件夹</label>
-        <select class="folder-select" v-model.number="currentFolderId">
-          <option :value="-1">全部</option>
-          <option :value="0">根目录</option>
-          <option v-for="f in folders" :key="f.id" :value="f.id">{{ f.name }}</option>
-        </select>
+    <!-- 移动端侧边栏覆盖层 -->
+    <div v-if="mobileSidebarVisible" class="mobile-sidebar-overlay" @click="mobileSidebarVisible = false"></div>
+    
+    <!-- 移动端侧边栏 -->
+    <div class="mobile-sidebar" :class="{ 'mobile-sidebar-open': mobileSidebarVisible }">
+      <div class="mobile-sidebar-header">
+        <h3 class="mobile-sidebar-title">文件夹</h3>
+        <button class="mobile-sidebar-close" @click="mobileSidebarVisible = false">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z"/>
+          </svg>
+        </button>
       </div>
-      <div class="folder-right">
-        <button class="new-folder-btn" @click="openCreateFolder()" title="新建文件夹">新建文件夹</button>
-        <button 
-          class="new-folder-btn light" 
-          :disabled="currentFolderId <= 0" 
-          @click="openEditFolder()"
-          :title="currentFolderId > 0 ? '编辑当前文件夹' : '请选择要编辑的文件夹'"
-        >编辑文件夹</button>
-        <button 
-          class="new-folder-btn danger" 
-          :disabled="currentFolderId <= 0" 
-          @click="deleteCurrentFolder()"
-          :title="currentFolderId > 0 ? '删除当前文件夹' : '请选择要删除的文件夹'"
-        >删除文件夹</button>
-        <button class="new-folder-btn primary" @click="openCreateCollection()" title="新建收藏">新建收藏</button>
+      
+      <!-- 移动端文件夹列表 -->
+      <div class="mobile-folder-list">
+        <div 
+          class="mobile-folder-item" 
+          :class="{ active: currentFolderId === -1 }"
+          @click="currentFolderId = -1; mobileSidebarVisible = false"
+        >
+          <div class="mobile-folder-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19,20H4C2.89,20 2,19.1 2,18V6C2,4.89 2.89,4 4,4H10L12,6H19A2,2 0 0,1 21,8H21L4,8V18L6.14,10H23.21L20.93,18H19Z"/>
+            </svg>
+          </div>
+          <span class="mobile-folder-name">全部收藏</span>
+          <span class="mobile-folder-count">{{ filteredFavorites.length }}</span>
+        </div>
+        
+        <div 
+          class="mobile-folder-item" 
+          :class="{ active: currentFolderId === 0 }"
+          @click="currentFolderId = 0; mobileSidebarVisible = false"
+        >
+          <div class="mobile-folder-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"/>
+            </svg>
+          </div>
+          <span class="mobile-folder-name">根目录</span>
+        </div>
+        
+        <div 
+          v-for="f in folders" 
+          :key="f.id"
+          class="mobile-folder-item" 
+          :class="{ active: currentFolderId === f.id }"
+          @click="currentFolderId = f.id; mobileSidebarVisible = false"
+        >
+          <div class="mobile-folder-icon" :style="{ color: f.color || '#ff7b42' }">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"/>
+            </svg>
+          </div>
+          <span class="mobile-folder-name">{{ f.name }}</span>
+          <div class="mobile-folder-actions">
+            <button class="mobile-folder-action-btn" @click.stop="openEditFolder(f.id)" title="编辑">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M14.06,9L15,9.94L5.92,19H5V18.08L14.06,9M17.66,3C17.41,3 17.15,3.1 16.96,3.29L15.13,5.12L18.88,8.87L20.71,7.04C21.1,6.65 21.1,6 20.71,5.62L18.38,3.29C18.18,3.09 17.92,3 17.66,3M14.06,6.19L3,17.25V21H6.75L17.81,9.94L14.06,6.19Z"/>
+              </svg>
+            </button>
+            <button class="mobile-folder-action-btn danger" @click.stop="deleteFolderById(f.id)" title="删除">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6Z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 移动端文件夹管理 -->
+      <div class="mobile-folder-management">
+        <button class="mobile-management-btn" @click="openCreateFolder(); mobileSidebarVisible = false" title="新建文件夹">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"/>
+          </svg>
+          新建文件夹
+        </button>
+        <button class="mobile-management-btn primary" @click="openCreateCollection(); mobileSidebarVisible = false" title="新建收藏">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+          </svg>
+          新建收藏
+        </button>
       </div>
     </div>
 
-    <!-- 加载与错误提示 -->
-    <div v-if="loading" class="loading">加载中...</div>
-    <div v-if="!loading && errorMsg" class="error">{{ errorMsg }}</div>
+    <!-- 主要内容区域 -->
+    <div class="main-content">
+      <!-- 左侧文件夹栏 -->
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <h3 class="sidebar-title">文件夹</h3>
+          <button class="new-folder-btn primary" @click="openCreateCollection()" title="新建收藏">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z"/>
+            </svg>
+          </button>
+        </div>
+        
+        <!-- 文件夹列表 -->
+        <div class="folder-list">
+          <div 
+            class="folder-item" 
+            :class="{ active: currentFolderId === -1 }"
+            @click="currentFolderId = -1"
+          >
+            <div class="folder-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19,20H4C2.89,20 2,19.1 2,18V6C2,4.89 2.89,4 4,4H10L12,6H19A2,2 0 0,1 21,8H21L4,8V18L6.14,10H23.21L20.93,18H19Z"/>
+              </svg>
+            </div>
+            <span class="folder-name">全部收藏</span>
+            <span class="folder-count">{{ filteredFavorites.length }}</span>
+          </div>
+          
+          <div 
+            class="folder-item" 
+            :class="{ active: currentFolderId === 0 }"
+            @click="currentFolderId = 0"
+          >
+            <div class="folder-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"/>
+              </svg>
+            </div>
+            <span class="folder-name">根目录</span>
+          </div>
+          
+          <div 
+            v-for="f in folders" 
+            :key="f.id"
+            class="folder-item" 
+            :class="{ active: currentFolderId === f.id }"
+            @click="currentFolderId = f.id"
+          >
+            <div class="folder-icon" :style="{ color: f.color || '#ff7b42' }">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"/>
+              </svg>
+            </div>
+            <span class="folder-name">{{ f.name }}</span>
+            <div class="folder-actions">
+              <button class="folder-action-btn" @click.stop="openEditFolder(f.id)" title="编辑">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M14.06,9L15,9.94L5.92,19H5V18.08L14.06,9M17.66,3C17.41,3 17.15,3.1 16.96,3.29L15.13,5.12L18.88,8.87L20.71,7.04C21.1,6.65 21.1,6 20.71,5.62L18.38,3.29C18.18,3.09 17.92,3 17.66,3M14.06,6.19L3,17.25V21H6.75L17.81,9.94L14.06,6.19Z"/>
+                </svg>
+              </button>
+              <button class="folder-action-btn danger" @click.stop="deleteFolderById(f.id)" title="删除">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M7,6H17V19H7V6Z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 文件夹管理按钮 -->
+        <div class="folder-management">
+          <button class="management-btn" @click="openCreateFolder()" title="新建文件夹">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"/>
+            </svg>
+            新建文件夹
+          </button>
+        </div>
+      </div>
 
-    <div class="filter-tabs">
-      <button 
-        class="tab-btn" 
-        :class="{ active: activeTab === 'all' }"
-        @click="activeTab = 'all'"
-      >
-        全部收藏
-      </button>
-      <button 
-        class="tab-btn" 
-        :class="{ active: activeTab === 'courses' }"
-        @click="activeTab = 'courses'"
-      >
-        课程资源
-      </button>
-      <button 
-        class="tab-btn" 
-        :class="{ active: activeTab === 'projects' }"
-        @click="activeTab = 'projects'"
-      >
-        项目案例
-      </button>
-      <button 
-        class="tab-btn" 
-        :class="{ active: activeTab === 'articles' }"
-        @click="activeTab = 'articles'"
-      >
-        文章资料
-      </button>
-    </div>
+      <!-- 右侧内容区域 -->
+      <div class="content-area">
+        <!-- 加载与错误提示 -->
+        <div v-if="loading" class="loading">加载中...</div>
+        <div v-if="!loading && errorMsg" class="error">{{ errorMsg }}</div>
 
-    <div class="favorites-container">
+        <div class="filter-tabs">
+          <button 
+            class="tab-btn" 
+            :class="{ active: activeTab === 'all' }"
+            @click="activeTab = 'all'"
+          >
+            全部收藏
+          </button>
+          <button 
+            class="tab-btn" 
+            :class="{ active: activeTab === 'courses' }"
+            @click="activeTab = 'courses'"
+          >
+            课程资源
+          </button>
+          <button 
+            class="tab-btn" 
+            :class="{ active: activeTab === 'projects' }"
+            @click="activeTab = 'projects'"
+          >
+            项目案例
+          </button>
+          <button 
+            class="tab-btn" 
+            :class="{ active: activeTab === 'articles' }"
+            @click="activeTab = 'articles'"
+          >
+            文章资料
+          </button>
+        </div>
+
+        <div class="favorites-container">
       <!-- 没有搜索结果时显示 -->
       <div v-if="filteredFavorites.length === 0" class="empty-state">
         <div class="empty-icon">
@@ -204,6 +334,9 @@
           </div>
         </div>
       </div>
+        </div>
+      </div>
+    </div>
     </div>
 
     <!-- 新建文件夹弹窗 -->
@@ -327,7 +460,6 @@
         </div>
       </div>
     </div>
-  </div>
 </template>
 
 <script>
@@ -346,6 +478,7 @@ export default {
     // UI state
     const loading = ref(false)
     const errorMsg = ref('')
+    const mobileSidebarVisible = ref(false)
 
     // Folders
   const folders = ref([])
@@ -461,10 +594,6 @@ export default {
       return filtered
     })
 
-  const coursesCount = computed(() => favorites.value.filter(i => i.type === 'course').length)
-  const projectsCount = computed(() => favorites.value.filter(i => i.type === 'project').length)
-  const articlesCount = computed(() => favorites.value.filter(i => i.type === 'knowledge_article').length)
-
   const getTypeText = (type) => ({ course: '课程', project: '项目', knowledge_article: '文章', document: '文档', video: '视频', note: '笔记', link: '链接', file: '文件', forum_topic: '话题', daily_record: '随手记录' }[type] || '其他')
   const getViewButtonText = (type) => ({ course: '开始学习', project: '查看项目', knowledge_article: '阅读文章' }[type] || '查看详情')
 
@@ -540,10 +669,11 @@ export default {
       }
     }
 
-  const openEditFolder = async () => {
-      if (!(currentFolderId.value > 0)) return
+  const openEditFolder = async (folderId = null) => {
+      const targetId = folderId || currentFolderId.value
+      if (!(targetId > 0)) return
       try {
-    const f = await remoteApiService.folders.getFolderById(currentFolderId.value)
+    const f = await remoteApiService.folders.getFolderById(targetId)
         folderForm.value = {
           id: f.id,
           name: f.name || '',
@@ -580,6 +710,35 @@ export default {
         await loadFolders()
       } catch (e) {
         alert(e.message || '保存失败')
+      }
+    }
+
+    const deleteFolderById = async (folderId) => {
+      if (!folderId || folderId <= 0) return
+      if (!confirm('确定要删除该文件夹吗？\n提示：若文件夹非空，可选择"级联删除"一并删除其下内容。')) return
+      try {
+        // 先尝试普通删除
+        await remoteApiService.folders.deleteFolder(folderId)
+        if (currentFolderId.value === folderId) {
+          currentFolderId.value = -1
+        }
+        await loadFolders()
+        await loadCollections()
+        alert('删除成功')
+      } catch (e1) {
+        const ok = confirm('删除失败，可能因为文件夹内仍有内容。\n是否级联删除该文件夹及其所有子内容？此操作不可撤销。')
+        if (!ok) { alert(e1.message || '删除失败'); return }
+        try {
+          await remoteApiService.folders.deleteFolder(folderId, { cascade: true, recursive: true })
+          if (currentFolderId.value === folderId) {
+            currentFolderId.value = -1
+          }
+          await loadFolders()
+          await loadCollections()
+          alert('已级联删除该文件夹及其内容')
+        } catch (e2) {
+          alert(e2.message || '删除失败')
+        }
       }
     }
 
@@ -677,6 +836,7 @@ export default {
       debouncedSearchQuery,
       loading,
       errorMsg,
+      mobileSidebarVisible,
 
       // folders
       folders,
@@ -685,11 +845,12 @@ export default {
       newFolder,
       openCreateFolder,
       submitCreateFolder,
-  editingFolder,
+    editingFolder,
   folderForm,
   openEditFolder,
   submitEditFolder,
   deleteCurrentFolder,
+  deleteFolderById,
 
       // collections
       favorites,
@@ -697,9 +858,6 @@ export default {
   isEditingCollection,
   collectionForm,
       filteredFavorites,
-      coursesCount,
-      projectsCount,
-      articlesCount,
       getTypeText,
       getViewButtonText,
       viewItem,
@@ -722,6 +880,182 @@ export default {
   min-height: calc(100vh - 48px);
 }
 
+/* 主内容布局 */
+.main-content {
+  display: flex;
+  gap: 24px;
+  margin-top: 16px;
+}
+
+/* 左侧文件夹栏 */
+.sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #f0f0f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px 24px;
+  border-bottom: 1px solid #f0f0f0;
+  background: linear-gradient(135deg, #ff7b42 0%, #ff5722 100%);
+  color: white;
+}
+
+.sidebar-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.sidebar-header .new-folder-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.sidebar-header .new-folder-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.folder-list {
+  padding: 8px;
+}
+
+.folder-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  margin-bottom: 4px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.folder-item:hover {
+  background: #f8f9fa;
+}
+
+.folder-item.active {
+  background: linear-gradient(135deg, rgba(255, 123, 66, 0.1) 0%, rgba(255, 87, 34, 0.1) 100%);
+  border: 1px solid rgba(255, 123, 66, 0.2);
+}
+
+.folder-icon {
+  display: flex;
+  align-items: center;
+  margin-right: 12px;
+  color: #6c757d;
+}
+
+.folder-item.active .folder-icon {
+  color: #ff7b42;
+}
+
+.folder-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.folder-count {
+  font-size: 12px;
+  color: #6c757d;
+  background: #f8f9fa;
+  padding: 2px 8px;
+  border-radius: 12px;
+  margin-left: 8px;
+}
+
+.folder-item.active .folder-count {
+  background: rgba(255, 123, 66, 0.1);
+  color: #ff7b42;
+}
+
+.folder-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.folder-item:hover .folder-actions {
+  opacity: 1;
+}
+
+.folder-action-btn {
+  background: none;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: #6c757d;
+}
+
+.folder-action-btn:hover {
+  background: #e9ecef;
+  color: #2c3e50;
+}
+
+.folder-action-btn.danger:hover {
+  background: #ffeaea;
+  color: #dc3545;
+}
+
+.folder-management {
+  padding: 16px 24px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.management-btn {
+  width: 100%;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  color: #6c757d;
+  padding: 12px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.management-btn:hover {
+  background: #e9ecef;
+  color: #ff7b42;
+  border-color: #ff7b42;
+}
+
+/* 右侧内容区域 */
+.content-area {
+  flex: 1;
+  min-width: 0;
+}
+
 .header {
   margin-bottom: 32px;
   background: white;
@@ -741,6 +1075,234 @@ export default {
   flex: 1;
 }
 
+/* 移动端菜单按钮 */
+.mobile-menu-btn {
+  display: none;
+  background: linear-gradient(135deg, #ff7b42 0%, #ff5722 100%);
+  border: none;
+  color: white;
+  padding: 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(255, 123, 66, 0.3);
+}
+
+.mobile-menu-btn:hover {
+  background: linear-gradient(135deg, #e64a19 0%, #d84315 100%);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 123, 66, 0.4);
+}
+
+/* 移动端侧边栏覆盖层 */
+.mobile-sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 998;
+  opacity: 0;
+  animation: fadeIn 0.3s ease forwards;
+}
+
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+
+/* 移动端侧边栏 */
+.mobile-sidebar {
+  position: fixed;
+  top: 0;
+  left: -300px;
+  width: 300px;
+  height: 100vh;
+  background: white;
+  z-index: 999;
+  transition: left 0.3s ease;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.mobile-sidebar-open {
+  left: 0;
+}
+
+.mobile-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f0f0f0;
+  background: linear-gradient(135deg, #ff7b42 0%, #ff5722 100%);
+  color: white;
+}
+
+.mobile-sidebar-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.mobile-sidebar-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.mobile-sidebar-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.mobile-folder-list {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.mobile-folder-item {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.mobile-folder-item:hover {
+  background: #f8f9fa;
+}
+
+.mobile-folder-item.active {
+  background: linear-gradient(135deg, rgba(255, 123, 66, 0.1) 0%, rgba(255, 87, 34, 0.1) 100%);
+  border: 1px solid rgba(255, 123, 66, 0.2);
+}
+
+.mobile-folder-icon {
+  display: flex;
+  align-items: center;
+  margin-right: 12px;
+  color: #6c757d;
+}
+
+.mobile-folder-item.active .mobile-folder-icon {
+  color: #ff7b42;
+}
+
+.mobile-folder-name {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.mobile-folder-count {
+  font-size: 12px;
+  color: #6c757d;
+  background: #f8f9fa;
+  padding: 3px 8px;
+  border-radius: 12px;
+  margin-left: 8px;
+}
+
+.mobile-folder-item.active .mobile-folder-count {
+  background: rgba(255, 123, 66, 0.1);
+  color: #ff7b42;
+}
+
+.mobile-folder-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.mobile-folder-item:hover .mobile-folder-actions {
+  opacity: 1;
+}
+
+.mobile-folder-action-btn {
+  background: none;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: #6c757d;
+}
+
+.mobile-folder-action-btn:hover {
+  background: #e9ecef;
+  color: #2c3e50;
+}
+
+.mobile-folder-action-btn.danger:hover {
+  background: #ffeaea;
+  color: #dc3545;
+}
+
+.mobile-folder-management {
+  padding: 16px 24px calc(80px + env(safe-area-inset-bottom)) 24px;
+  border-top: 1px solid #f0f0f0;
+  background: #f8f9fa;
+}
+
+.mobile-management-btn {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #e9ecef;
+  color: #6c757d;
+  padding: 12px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.mobile-management-btn:last-child {
+  margin-bottom: 0;
+}
+
+.mobile-management-btn:hover {
+  background: #f8f9fa;
+  color: #ff7b42;
+  border-color: #ff7b42;
+}
+
+.mobile-management-btn.primary {
+  background: linear-gradient(135deg, #ff7b42 0%, #ff5722 100%);
+  color: white;
+  border-color: transparent;
+}
+
+.mobile-management-btn.primary:hover {
+  background: linear-gradient(135deg, #e64a19 0%, #d84315 100%);
+  color: white;
+}
+
 .page-title {
   font-size: 2.5rem;
   font-weight: 700;
@@ -757,17 +1319,7 @@ export default {
   transition: all 0.3s ease;
 }
 
-.page-title::before {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 0;
-  width: 60px;
-  height: 3px;
-  background: linear-gradient(90deg, #ff7b42, #ff5722);
-  border-radius: 2px;
-  opacity: 0.8;
-}
+
 
 .page-title:hover {
   transform: translateY(-1px);
@@ -803,44 +1355,6 @@ export default {
 .back-btn:hover {
   border-color: #667eea;
   color: #667eea;
-}
-
-.stats-bar {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 16px;
-  margin-bottom: 32px;
-}
-
-.stat-card {
-  background: white;
-  padding: 12px 16px;
-  border-radius: 16px;
-  text-align: center;
-  border: 1px solid #f0f0f0;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-  border-color: #ff7b42;
-}
-
-.stat-number {
-  font-size: 1.8rem;
-  font-weight: 800;
-  background: linear-gradient(135deg, #ff7b42 0%, #ff5722 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 2px;
-}
-
-.stat-label {
-  color: #6c757d;
-  font-size: 13px;
 }
 
 /* 搜索框样式 */
@@ -921,51 +1435,6 @@ export default {
   border: 1px solid #f0f0f0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
-
-.folder-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  background: #fff;
-  border: 1px solid #f0f0f0;
-  border-radius: 12px;
-  padding: 10px 12px;
-}
-
-.folder-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.folder-label {
-  color: #6c757d;
-  font-size: 13px;
-}
-
-.folder-select {
-  padding: 8px 10px;
-  border: 1px solid #e9ecef;
-  border-radius: 8px;
-  background: #fff;
-  color: #2c3e50;
-}
-
-.new-folder-btn {
-  border: none;
-  background: linear-gradient(135deg, #ff7b42 0%, #ff5722 100%);
-  color: #fff;
-  padding: 8px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 13px;
-}
-.new-folder-btn:disabled { opacity: 0.6; cursor: not-allowed; filter: saturate(0.7); }
-.new-folder-btn.light { background: #f1f3f5; color: #2c3e50; margin-left: 8px; }
-.new-folder-btn.danger { background: #dc3545; margin-left: 8px; }
-.new-folder-btn.primary { margin-left: 8px; }
-.form-row textarea.input { font-family: inherit; }
 
 .loading {
   margin: 12px 0;
@@ -1297,26 +1766,29 @@ export default {
     padding: 16px;
   }
 
+  /* 显示移动端菜单按钮 */
+  .mobile-menu-btn {
+    display: flex;
+  }
+
+  /* 隐藏桌面版侧边栏 */
+  .sidebar {
+    display: none;
+  }
+
+  /* 移动端布局调整 */
+  .main-content {
+    display: block;
+  }
+
+  .content-area {
+    width: 100%;
+  }
+
   .header {
     padding: 20px 24px;
     margin-bottom: 24px;
     min-height: 100px;
-  }
-
-  .stats-bar {
-    gap: 12px;
-  }
-
-  .stat-card {
-    padding: 10px 12px;
-  }
-
-  .stat-number {
-    font-size: 1.6rem;
-  }
-
-  .stat-label {
-    font-size: 12px;
   }
 
   .page-title {
@@ -1385,22 +1857,6 @@ export default {
   .header {
     padding: 16px 20px;
     min-height: 90px;
-  }
-
-  .stats-bar {
-    gap: 8px;
-  }
-
-  .stat-card {
-    padding: 8px 10px;
-  }
-
-  .stat-number {
-    font-size: 1.4rem;
-  }
-
-  .stat-label {
-    font-size: 11px;
   }
 
   .page-title {

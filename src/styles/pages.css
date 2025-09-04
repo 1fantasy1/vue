@@ -186,3 +186,31 @@
   font-size: var(--font-size-xs);
   font-weight: 500;
 }
+
+/* 移动端底部导航优化 - 减少空间占用 */
+@media (max-width: 768px) {
+  :root {
+    --bottom-nav-height: 48px; /* 移动端减少高度 */
+  }
+  
+  .bottom-nav {
+    padding: var(--spacing-sm) 0; /* 从12px减少到8px */
+  }
+  
+  .nav-item {
+    padding: var(--spacing-xs); /* 从8px减少到4px */
+    min-width: 50px; /* 从60px减少到50px */
+  }
+  
+  .nav-icon {
+    width: 20px; /* 从24px减少到20px */
+    height: 20px;
+    font-size: 16px; /* 从18px减少到16px */
+    margin-bottom: 2px; /* 从4px减少到2px */
+  }
+  
+  .nav-text {
+    font-size: 11px; /* 从12px减少到11px */
+    line-height: 1.2; /* 减少行高 */
+  }
+}

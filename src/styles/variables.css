@@ -46,6 +46,9 @@
   --spacing-2xl: 24px;
   --spacing-3xl: 32px;
   
+  /* 底部导航高度 */
+  --bottom-nav-height: 64px; /* 桌面端默认高度 */
+  
   /* 字体大小 */
   --font-size-xs: 12px;
   --font-size-sm: 14px;
