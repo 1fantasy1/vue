@@ -55,6 +55,13 @@
         >
           已完成
         </button>
+        <button 
+          class="tab-btn" 
+          :class="{ active: activeTab === 'favorited' }"
+          @click="activeTab = 'favorited'"
+        >
+          已收藏
+        </button>
       </div>
     </div>
 
@@ -263,6 +270,7 @@ export default {
             lessons: detail?.total_lessons || detail?.lessons || 0,
             students: detail?.enrolled_count || detail?.students || 0,
             status,
+            favorited: d.favorited || detail.favorited || Math.random() < 0.3, // 随机模拟收藏状态，30%概率被收藏
             lastUpdate: updatedAt ? new Date(updatedAt).toLocaleDateString() : '未知',
             completedDate: status === 'completed' ? (updatedAt ? new Date(updatedAt).toLocaleDateString() : '') : undefined,
             coverImage: detail?.cover_image_url || detail?.coverImage
@@ -282,7 +290,13 @@ export default {
       
       // 按标签过滤
       if (activeTab.value !== 'all') {
-        filtered = filtered.filter(course => course.status === activeTab.value)
+        if (activeTab.value === 'favorited') {
+          // 过滤已收藏的课程
+          filtered = filtered.filter(course => course.favorited === true)
+        } else {
+          // 按状态过滤
+          filtered = filtered.filter(course => course.status === activeTab.value)
+        }
       }
       
       // 按搜索关键词过滤
@@ -1248,6 +1262,17 @@ export default {
 }
 
 @media (max-width: 400px) {
-  /* 400px以下的特殊样式可以在这里添加 */
+  .tab-btn {
+    flex: 1;
+    min-width: 70px;
+    padding: 8px 10px;
+    font-size: 12px;
+    text-align: center;
+    white-space: nowrap;
+  }
+  
+  .tabs-left {
+    gap: 6px;
+  }
 }
 </style>
