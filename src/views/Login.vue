@@ -314,7 +314,8 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useGlobalStore } from '../stores/global'
-import remoteApiService from '@/services/remoteApi.js'
+import { usersAdapter } from '@/api/openapi/adapters/usersAdapter.js'
+import { authAdapter } from '@/api/openapi/adapters/authAdapter.js'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -403,10 +404,10 @@ export default {
           loginData.phone_number = loginForm.username  // 修正字段名为 phone_number
         }
         
-  // 调用真正的登录API（remoteApiService.auth.login 返回 { access_token, token_type, ... }）
-  const authData = await remoteApiService.auth.login(loginData)
+  // 调用真正的登录API（authAdapter.login 返回 { access_token, token_type, ... }）
+  const authData = await authAdapter.login(loginData)
   // 登陆后获取用户信息
-  const loggedUser = await remoteApiService.users.getMe()
+  const loggedUser = await usersAdapter.getMe()
   // 更新全局状态
   globalStore.login(loggedUser)
 
@@ -555,7 +556,7 @@ export default {
         console.log('请求数据中的真实姓名:', requestData.name)
         
   // 调用真正的注册API（直接抛错或返回数据）
-  const resp = await remoteApiService.auth.register(requestData)
+  const resp = await authAdapter.register(requestData)
   console.log('注册API响应:', resp)
         
   if (resp) {
@@ -679,7 +680,7 @@ export default {
       
       try {
   // 调用发送短信验证码API
-  const response = await remoteApiService.auth.sendSmsCode({ phone_number: registerForm.phone_number })
+  const response = await authAdapter.sendSmsCode({ phone_number: registerForm.phone_number })
         
   if (response && (response.success === undefined || response.success === true)) {
           alert('验证码已发送，请注意查收')

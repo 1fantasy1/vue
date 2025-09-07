@@ -363,7 +363,7 @@
 <script>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import remoteApiService from '@/services/remoteApi.js'
+import { coursesAdapter } from '@/api/openapi/adapters/coursesAdapter.js'
 import CollectButton from '@/components/CollectButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -454,7 +454,7 @@ export default {
   const loadCourses = async () => {
       try {
         loading.value = true
-    const resp = await remoteApiService.courses.getAllCourses()
+  const resp = await coursesAdapter.getAllCourses()
     const unwrap = (r) => (r && r.data !== undefined ? r.data : r)
     const data = unwrap(resp)
     courses.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
@@ -548,9 +548,9 @@ export default {
         }
 
         if (showEditModal.value) {
-          response = await remoteApiService.courses.updateCourse(editingCourse.value.id, courseData)
+          response = await coursesAdapter.updateCourse(editingCourse.value.id, courseData)
         } else {
-          response = await remoteApiService.courses.createCourse(courseData)
+          response = await coursesAdapter.createCourse(courseData)
         }
 
         if (response) {

@@ -576,7 +576,7 @@
 <script>
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import remoteApiService from '@/services/remoteApi.js'
+import { forumAdapter } from '@/api/openapi/adapters/forumAdapter.js'
 
 export default {
   name: 'Plaza',
@@ -710,7 +710,7 @@ export default {
         }
         const options = { limit: pageSize.value, offset: offset.value }
         if (selectedTopic.value?.name) options.tag = selectedTopic.value.name
-  const resp = await remoteApiService.forum.getTopics(options)
+  const resp = await forumAdapter.getTopics(options)
         const list = Array.isArray(pickData(resp)) ? pickData(resp) : []
         const mapped = list.map(mapTopicToPost)
         posts.value = reset ? mapped : posts.value.concat(mapped)
@@ -861,7 +861,7 @@ export default {
           payload.file = newPostFile.value
           payload.media_type = newPostMediaType.value
         }
-  const resp = await remoteApiService.forum.createTopic(payload)
+  const resp = await forumAdapter.createTopic(payload)
         const data = pickData(resp)
         const post = mapTopicToPost(data)
         posts.value.unshift(post)
@@ -883,9 +883,9 @@ export default {
         post.isLiked = !post.isLiked
         post.likes += post.isLiked ? 1 : -1
         if (post.isLiked) {
-          await remoteApiService.forum.likeTopic(post.id)
+          await forumAdapter.likeTopic(post.id)
         } else {
-          await remoteApiService.forum.unlikeTopic(post.id)
+          await forumAdapter.unlikeTopic(post.id)
         }
       } catch (e) {
         // revert
@@ -899,7 +899,7 @@ export default {
       post.showComments = !post.showComments
       if (post.showComments && post.comments.length === 0) {
         try {
-          const resp = await remoteApiService.forum.getComments(post.id, null, 50, 0)
+          const resp = await forumAdapter.getComments(post.id, null, 50, 0)
           const list = Array.isArray(pickData(resp)) ? pickData(resp) : []
           post.comments = list.map(mapComment)
         } catch (e) {
@@ -929,7 +929,7 @@ export default {
           payload.file = post.newCommentFile
           payload.media_type = post.newCommentMediaType
         }
-  const resp = await remoteApiService.forum.addComment(post.id, payload)
+  const resp = await forumAdapter.addComment(post.id, payload)
         const data = pickData(resp)
         post.comments.push(mapComment(data))
         post.commentsCount = (post.commentsCount || 0) + 1
@@ -991,7 +991,7 @@ export default {
           payload.file = parentComment.replyFile
           payload.media_type = parentComment.replyMediaType
         }
-  const resp = await remoteApiService.forum.addComment(post.id, payload)
+  const resp = await forumAdapter.addComment(post.id, payload)
         const data = mapComment(pickData(resp))
         parentComment.replies = parentComment.replies || []
         parentComment.replies.push(data)
@@ -1009,9 +1009,9 @@ export default {
         comment.isLiked = !comment.isLiked
         comment.likesCount += comment.isLiked ? 1 : -1
         if (comment.isLiked) {
-          await remoteApiService.forum.likeComment(comment.id)
+          await forumAdapter.likeComment(comment.id)
         } else {
-          await remoteApiService.forum.unlikeComment(comment.id)
+          await forumAdapter.unlikeComment(comment.id)
         }
       } catch (e) {
         comment.isLiked = prev
@@ -1034,7 +1034,7 @@ export default {
       const text = (comment.editContent || '').trim()
       if (!text) return
       try {
-  await remoteApiService.forum.updateComment(comment.id, { content: text })
+  await forumAdapter.updateComment(comment.id, { content: text })
         comment.content = text
         comment.isEditing = false
         ElMessage.success('已更新评论')
@@ -1045,7 +1045,7 @@ export default {
 
     const deleteComment = async (post, comment) => {
       try {
-  await remoteApiService.forum.deleteComment(comment.id)
+  await forumAdapter.deleteComment(comment.id)
         post.comments = post.comments.filter(c => c.id !== comment.id)
         post.commentsCount = Math.max(0, (post.commentsCount || 0) - 1)
         ElMessage.success('已删除评论')
@@ -1062,7 +1062,7 @@ export default {
           content: text,
           tags: post.editTopic || undefined
         }
-  await remoteApiService.forum.updateTopic(post.id, payload)
+  await forumAdapter.updateTopic(post.id, payload)
         post.content = text
         
         // 更新话题标签
@@ -1101,7 +1101,7 @@ export default {
 
     const deletePost = async (post) => {
       try {
-  await remoteApiService.forum.deleteTopic(post.id)
+  await forumAdapter.deleteTopic(post.id)
         posts.value = posts.value.filter(p => p.id !== post.id)
         ElMessage.success('已删除动态')
       } catch (e) {
@@ -1135,10 +1135,10 @@ export default {
       try {
         updateFollowStateForUser(userId, !prev)
         if (!prev) {
-          await remoteApiService.forum.followUser(userId)
+          await forumAdapter.followUser(userId)
           ElMessage.success('已关注')
         } else {
-          await remoteApiService.forum.unfollowUser(userId)
+          await forumAdapter.unfollowUser(userId)
           ElMessage.success('已取消关注')
         }
       } catch (e) {

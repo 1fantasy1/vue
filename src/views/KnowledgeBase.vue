@@ -281,7 +281,8 @@
 import CollectButton from '@/components/CollectButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
-import remoteApiService from '@/services/remoteApi.js'
+import { knowledgeBasesAdapter } from '@/api/openapi/adapters/knowledgeBasesAdapter.js'
+import { articlesAdapter } from '@/api/openapi/adapters/articlesAdapter.js'
 
 export default {
   name: 'KnowledgeBase',
@@ -404,7 +405,7 @@ export default {
     },
     async init() {
       try {
-  const resp = await remoteApiService.knowledgeBases.getAllKnowledgeBases()
+  const resp = await knowledgeBasesAdapter.getAllKnowledgeBases()
   const list = Array.isArray(resp) ? resp : (resp?.data || [])
         this.knowledgeBases = Array.isArray(list) ? list : []
         if (this.knowledgeBases.length > 0) {
@@ -424,7 +425,7 @@ export default {
       if (!this.selectedKbId) return
       this.loadingDocs = true
       try {
-        const resp = await remoteApiService.knowledgeBases.getDocuments(this.selectedKbId, this.statusFilter || null)
+  const resp = await knowledgeBasesAdapter.getDocuments(this.selectedKbId, this.statusFilter || null)
         console.log('Documents API response:', resp) // 调试日志
         
         // 更灵活地处理响应数据结构
@@ -467,7 +468,7 @@ export default {
     async loadArticles() {
       if (!this.selectedKbId) return
       try {
-  const resp = await remoteApiService.knowledgeBases.getArticles(this.selectedKbId)
+  const resp = await knowledgeBasesAdapter.getArticles(this.selectedKbId)
   const list = Array.isArray(resp) ? resp : (resp?.data || [])
         this.articles = Array.isArray(list) ? list : []
         this.articlesLoaded = true
@@ -521,7 +522,7 @@ export default {
       }
       try {
         console.log('Uploading file:', file.name, 'to KB:', this.selectedKbId) // 调试日志
-  const resp = await remoteApiService.knowledgeBases.uploadDocument(this.selectedKbId, file)
+  const resp = await knowledgeBasesAdapter.uploadDocument(this.selectedKbId, file)
   console.log('Upload response:', resp) // 调试日志
         alert('上传成功，后台正在处理...')
         
@@ -541,7 +542,7 @@ export default {
       if (!this.selectedKbId) return
       if (!confirm(`确认删除文档：${document.title}？该操作不可恢复`)) return
       try {
-  await remoteApiService.knowledgeBases.deleteDocument(this.selectedKbId, document.id)
+  await knowledgeBasesAdapter.deleteDocument(this.selectedKbId, document.id)
         this.documents = this.documents.filter(d => d.id !== document.id)
       } catch (e) {
         console.error(e)
@@ -577,9 +578,9 @@ export default {
           tags: this.articleForm.tags || undefined
         }
         if (this.isEditingArticle && this.articleForm.id) {
-          await remoteApiService.articles.updateArticle(this.articleForm.id, payload)
+          await articlesAdapter.updateArticle(this.articleForm.id, payload)
         } else {
-          await remoteApiService.knowledgeBases.createArticle(this.selectedKbId, payload)
+          await knowledgeBasesAdapter.createArticle(this.selectedKbId, payload)
         }
         this.articleModalVisible = false
         await this.loadArticles()
@@ -594,7 +595,7 @@ export default {
     async deleteArticle(article) {
       if (!confirm(`确认删除文章：${article.title}？`)) return
       try {
-  await remoteApiService.articles.deleteArticle(article.id)
+  await articlesAdapter.deleteArticle(article.id)
         this.articles = this.articles.filter(a => a.id !== article.id)
       } catch (e) {
         console.error(e)
@@ -609,7 +610,7 @@ export default {
     async editCurrentKb() {
       if (!this.selectedKbId) return
       try {
-        const resp = await remoteApiService.knowledgeBases.getKnowledgeBaseById(this.selectedKbId)
+  const resp = await knowledgeBasesAdapter.getKnowledgeBaseById(this.selectedKbId)
         const kb = resp?.data ?? resp
         if (!kb) throw new Error('知识库不存在')
         this.isEditingKb = true
@@ -636,9 +637,9 @@ export default {
           access_type: this.kbForm.access_type
         }
         if (this.isEditingKb && this.kbForm.id) {
-          await remoteApiService.knowledgeBases.updateKnowledgeBase(this.kbForm.id, payload)
+          await knowledgeBasesAdapter.updateKnowledgeBase(this.kbForm.id, payload)
         } else {
-          await remoteApiService.knowledgeBases.createKnowledgeBase(payload)
+          await knowledgeBasesAdapter.createKnowledgeBase(payload)
         }
         this.kbModalVisible = false
         await this.init()
@@ -651,7 +652,7 @@ export default {
       if (!this.kbForm.id) return
       if (!confirm(`确认删除知识库："${this.kbForm.name}"？此操作将删除其中的所有文章和文档，不可恢复`)) return
       try {
-        await remoteApiService.knowledgeBases.deleteKnowledgeBase(this.kbForm.id)
+  await knowledgeBasesAdapter.deleteKnowledgeBase(this.kbForm.id)
         this.kbModalVisible = false
         await this.init()
       } catch (e) {
@@ -667,7 +668,7 @@ export default {
       this.documentContent = ''
       
       try {
-        const resp = await remoteApiService.knowledgeBases.getDocumentContent(this.selectedKbId, document.id)
+  const resp = await knowledgeBasesAdapter.getDocumentContent(this.selectedKbId, document.id)
         const body = resp?.data ?? resp
         this.documentContent = body?.content || '无内容'
       } catch (e) {
@@ -688,7 +689,7 @@ export default {
       this.documentChunks = []
       
       try {
-  const resp = await remoteApiService.knowledgeBases.getDocumentChunks(this.selectedKbId, this.currentDocument.id)
+  const resp = await knowledgeBasesAdapter.getDocumentChunks(this.selectedKbId, this.currentDocument.id)
   this.documentChunks = resp?.data?.data || resp?.data || resp || []
       } catch (e) {
         console.error(e)
@@ -704,7 +705,7 @@ export default {
       const name = prompt('请输入知识库名称')
       if (!name) return
       try {
-  const resp = await remoteApiService.knowledgeBases.createKnowledgeBase({ name })
+  const resp = await knowledgeBasesAdapter.createKnowledgeBase({ name })
   if (resp?.data?.success === false) throw new Error(resp.data.message || '创建失败')
         await this.init()
       } catch (e) {

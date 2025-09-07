@@ -150,7 +150,7 @@
 
 <script>
 import { ref, computed, watch } from 'vue'
-import remoteApiService from '@/services/remoteApi.js'
+import { projectsAdapter } from '@/api/openapi/adapters/projectsAdapter.js'
 
 export default {
 	name: 'ProjectForm',
@@ -358,9 +358,9 @@ export default {
 				const payload = buildPayload()
 				let project
 				if (isEdit.value) {
-					project = await remoteApiService.projects.updateProject(props.project.id, payload)
+					project = await projectsAdapter.updateProject(props.project.id, payload)
 				} else {
-					project = await remoteApiService.projects.createProject(payload)
+					project = await projectsAdapter.createProject(payload)
 				}
 				if (project && project.id) {
 					emit('success', project)

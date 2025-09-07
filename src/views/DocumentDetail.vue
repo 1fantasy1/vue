@@ -75,7 +75,7 @@
 </template>
 
 <script>
-import remoteApiService from '@/services/remoteApi.js'
+import { knowledgeBasesAdapter } from '@/api/openapi/adapters/knowledgeBasesAdapter.js'
 
 export default {
   name: 'DocumentDetail',
@@ -111,7 +111,7 @@ export default {
       if (!this.kbId || !this.docId) return
       this.loadingDetail = true
       try {
-  const resp = await remoteApiService.knowledgeBases.getDocumentDetail(this.kbId, this.docId)
+  const resp = await knowledgeBasesAdapter.getDocumentDetail(this.kbId, this.docId)
   const d = resp?.data ?? resp
   this.detail = d?.data || d?.document || d
       } catch (e) {
@@ -125,7 +125,7 @@ export default {
       this.loadingContent = true
       this.content = ''
       try {
-  const resp = await remoteApiService.knowledgeBases.getDocumentContent(this.kbId, this.docId)
+  const resp = await knowledgeBasesAdapter.getDocumentContent(this.kbId, this.docId)
   const body = resp?.data ?? resp ?? {}
         this.content = body?.content || body?.text || ''
       } catch (e) {
@@ -140,7 +140,7 @@ export default {
       this.loadingChunks = true
       this.chunks = []
       try {
-  const resp = await remoteApiService.knowledgeBases.getDocumentChunks(this.kbId, this.docId)
+  const resp = await knowledgeBasesAdapter.getDocumentChunks(this.kbId, this.docId)
   const list = resp?.data ?? resp ?? []
         this.chunks = Array.isArray(list) ? list : []
       } catch (e) {

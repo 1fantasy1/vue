@@ -1092,7 +1092,10 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useGlobalStore } from '@/stores/global'
-import remoteApiService from '@/services/remoteApi.js'
+import { searchEngineConfigsAdapter } from '@/api/openapi/adapters/searchEngineConfigsAdapter.js'
+import { ttsConfigsAdapter } from '@/api/openapi/adapters/ttsConfigsAdapter.js'
+import { mcpConfigsAdapter } from '@/api/openapi/adapters/mcpConfigsAdapter.js'
+import { usersAdapter } from '@/api/openapi/adapters/usersAdapter.js'
 
 import { useUserData, useDashboardData, useProjectsData } from '@/composables/useApiData.js'
 import BaseModal from '@/components/ui/BaseModal.vue'
@@ -1544,7 +1547,7 @@ export default {
           ElMessage.info('加载搜索引擎配置...')
         }
         
-        const configs = await remoteApiService.searchEngineConfigs.getAllConfigs()
+  const configs = await searchEngineConfigsAdapter.getAllConfigs()
         searchEngineConfigs.value = configs || []
         
         if (showMessage) {
@@ -1617,14 +1620,14 @@ export default {
         let result
         if (editingConfig.value) {
           // 更新配置
-          result = await remoteApiService.searchEngineConfigs.updateConfig(
+          result = await searchEngineConfigsAdapter.updateConfig(
             editingConfig.value.id, 
             configData
           )
           ElMessage.success('搜索引擎配置更新成功！')
         } else {
           // 创建新配置
-          result = await remoteApiService.searchEngineConfigs.createConfig(configData)
+          result = await searchEngineConfigsAdapter.createConfig(configData)
           ElMessage.success('搜索引擎配置创建成功！')
         }
 
@@ -1648,7 +1651,7 @@ export default {
         activatingConfigs.value.add(configId)
         ElMessage.info('正在设为激活配置...')
 
-        await remoteApiService.searchEngineConfigs.updateConfig(configId, { is_active: true })
+  await searchEngineConfigsAdapter.updateConfig(configId, { is_active: true })
         ElMessage.success('已设为激活配置')
 
         // 重新加载配置，确保唯一激活状态正确
@@ -1673,7 +1676,7 @@ export default {
         deactivatingConfigs.value.add(configId)
         ElMessage.info('正在取消激活...')
 
-        await remoteApiService.searchEngineConfigs.updateConfig(configId, { is_active: false })
+  await searchEngineConfigsAdapter.updateConfig(configId, { is_active: false })
         ElMessage.success('已取消激活')
 
         await loadSearchEngineConfigs(false)
@@ -1691,7 +1694,7 @@ export default {
         testingConfigs.value.add(configId)
         ElMessage.info('正在测试连接...')
         
-        const result = await remoteApiService.searchEngineConfigs.checkStatus(configId)
+  const result = await searchEngineConfigsAdapter.checkStatus(configId)
         
         if (result.status === 'success') {
           ElMessage.success(`连接测试成功！${result.message || ''}`)
@@ -1732,7 +1735,7 @@ export default {
       try {
         ElMessage.info('正在删除配置...')
         
-        await remoteApiService.searchEngineConfigs.deleteConfig(configId)
+  await searchEngineConfigsAdapter.deleteConfig(configId)
         ElMessage.success('搜索引擎配置删除成功！')
         
         // 重新加载配置列表
@@ -1756,7 +1759,7 @@ export default {
           ElMessage.info('加载TTS配置...')
         }
         
-        const configs = await remoteApiService.ttsConfigs.getAllConfigs()
+  const configs = await ttsConfigsAdapter.getAllConfigs()
         ttsConfigs.value = configs || []
         
         if (showMessage) {
@@ -1802,11 +1805,11 @@ export default {
             delete updateData.api_key
           }
           
-          await remoteApiService.ttsConfigs.updateConfig(editingTTSConfig.value.id, updateData)
+          await ttsConfigsAdapter.updateConfig(editingTTSConfig.value.id, updateData)
           ElMessage.success('TTS配置更新成功！')
         } else {
           // 创建新配置
-          await remoteApiService.ttsConfigs.createConfig(ttsConfigForm.value)
+          await ttsConfigsAdapter.createConfig(ttsConfigForm.value)
           ElMessage.success('TTS配置创建成功！')
         }
         
@@ -1827,8 +1830,7 @@ export default {
         testingTTSConfigs.value.add(configId)
         ElMessage.info('正在测试TTS配置...')
         
-        // 这里可以调用实际的TTS测试API
-        // const result = await remoteApiService.ttsConfigs.testConfig(configId)
+  // 这里可以调用实际的TTS测试API（例如通过 ttsConfigsAdapter 的测试接口）
         
         // 模拟测试延迟
         await new Promise(resolve => setTimeout(resolve, 2000))
@@ -1849,7 +1851,7 @@ export default {
         activatingTTSConfigs.value.add(configId)
         ElMessage.info('正在激活TTS配置...')
         
-        await remoteApiService.ttsConfigs.setActive(configId)
+  await ttsConfigsAdapter.setActive(configId)
         ElMessage.success('TTS配置已激活！')
         
         // 重新加载配置列表
@@ -1871,7 +1873,7 @@ export default {
       try {
         ElMessage.info('正在删除TTS配置...')
         
-        await remoteApiService.ttsConfigs.deleteConfig(configId)
+  await ttsConfigsAdapter.deleteConfig(configId)
         ElMessage.success('TTS配置删除成功！')
         
         // 重新加载配置列表
@@ -2206,7 +2208,7 @@ export default {
         console.log('保存LLM配置:', llmConfig)
         
         // 调用API保存配置
-        await remoteApiService.users.updateLLMConfig(llmConfig)
+  await usersAdapter.updateLLMConfig(llmConfig)
         
         // 同步更新全局store
         globalStore.updateLLMConfig({
@@ -2303,7 +2305,7 @@ export default {
           ElMessage.info('加载MCP配置...')
         }
         
-        const configs = await remoteApiService.mcpConfigs.getAllConfigs()
+  const configs = await mcpConfigsAdapter.getAllConfigs()
         mcpConfigs.value = configs || []
         
         if (showMessage) {
@@ -2380,11 +2382,11 @@ export default {
         let result
         if (editingMcpConfig.value) {
           // 编辑现有配置
-          result = await remoteApiService.mcpConfigs.updateConfig(editingMcpConfig.value.id, configData)
+          result = await mcpConfigsAdapter.updateConfig(editingMcpConfig.value.id, configData)
           ElMessage.success('MCP配置更新成功！')
         } else {
           // 创建新配置
-          result = await remoteApiService.mcpConfigs.createConfig(configData)
+          result = await mcpConfigsAdapter.createConfig(configData)
           ElMessage.success('MCP配置创建成功！')
         }
         
@@ -2410,7 +2412,7 @@ export default {
         testingMcpConfigs.value.add(configId)
         ElMessage.info('正在测试MCP连接...')
         
-        const result = await remoteApiService.mcpConfigs.checkStatus(configId)
+  const result = await mcpConfigsAdapter.checkStatus(configId)
         
         // 更新本地测试状态
         mcpTestedStatus.value[configId] = result.status
@@ -2437,7 +2439,7 @@ export default {
         activatingMcpConfigs.value.add(configId)
         ElMessage.info('正在激活MCP配置...')
         
-        await remoteApiService.mcpConfigs.updateConfig(configId, { is_active: true })
+  await mcpConfigsAdapter.updateConfig(configId, { is_active: true })
         ElMessage.success('MCP配置已激活！')
         
         // 重新加载配置列表
@@ -2459,7 +2461,7 @@ export default {
       try {
         ElMessage.info('正在删除配置...')
         
-        await remoteApiService.mcpConfigs.deleteConfig(configId)
+  await mcpConfigsAdapter.deleteConfig(configId)
         ElMessage.success('MCP配置删除成功！')
         
         // 重新加载配置列表

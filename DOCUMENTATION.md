@@ -174,10 +174,10 @@ API 请求被精心封装在 `src/services` 目录中，采用了一种灵活的
 - **混合数据源策略**:
     - 项目为 **课程 (Courses)** 功能实现了一套本地数据模拟。通过 `api.js` 文件顶部的 `COURSES_USE_LOCAL` 常量开关，可以方便地切换课程数据源。
     - 当 `COURSES_USE_LOCAL` 为 `true` 时，所有课程相关的操作（增删改查）将使用 `localStorage` 中存储的数据，这对于前端独立开发和测试非常有用。
-    - 当 `COURSES_USE_LOCAL` 为 `false` 时，操作将委托给 `remoteApiService`。
-    - 其他非课程功能（如项目、知识库等）则直接调用 `remoteApiService`。
+    - 当 `COURSES_USE_LOCAL` 为 `false` 时，操作将委托给 OpenAPI 适配器层（如 `coursesAdapter`）。
+    - 其他非课程功能（如项目、知识库等）则直接调用对应的适配器（如 `projectsAdapter`、`knowledgeBasesAdapter` 等）。
 
-- **`remoteApi.js` (远程API层)**: 这个文件（或其依赖的 `httpClient.js`）真正负责与后端服务器进行 HTTP 通信。它可能封装了 `axios`，并配置了基础 URL、拦截器（用于注入认证 Token、处理全局错误等）。
+- **OpenAPI 适配层**: 通过 `src/api/openapi/adapters/*` 对生成的 SDK 做一层轻量封装，负责请求参数适配、表单/上传格式细节、返回结构规整等；底层仍使用 `httpClient.js` 保持一致的基础配置。
 
 - **`cache.js`**: 可能实现了一套前端缓存机制，用于缓存不经常变动的 API 请求结果，以减少网络请求，提升用户体验。
 

@@ -251,7 +251,7 @@
 <script>
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import remoteApiService from '@/services/remoteApi.js'
+import { projectsAdapter } from '@/api/openapi/adapters/projectsAdapter.js'
 import ProjectForm from '@/components/ProjectForm.vue'
 
 export default {
@@ -506,8 +506,8 @@ export default {
 
   const openEditForm = async (project) => {
       try {
-    const data = await remoteApiService.projects.getProjectById(project.id)
-    // remoteApi 返回真实对象
+    const data = await projectsAdapter.getProjectById(project.id)
+  // 适配器通常直接返回实体对象（或 data 字段）
     editingProject.value = data?.data || data || project
       } catch {
         editingProject.value = project
@@ -524,7 +524,7 @@ export default {
       } catch {}
   applyingIds.add(project.id)
       try {
-    await remoteApiService.projects.applyToProject(project.id, message ? { message } : {})
+    await projectsAdapter.applyToProject(project.id, message ? { message } : {})
     alert('申请已提交，等待处理。')
     // 本地更新计数与状态，避免重复点击
     project.applications_count = (project.applications_count || 0) + 1
@@ -554,7 +554,7 @@ export default {
   const loadProjects = async () => {
       loading.value = true
       try {
-    const data = await remoteApiService.projects.getAllProjects()
+    const data = await projectsAdapter.getAllProjects()
     projects.value = data?.data || data || []
       } catch (error) {
         console.error('获取项目失败:', error)

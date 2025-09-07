@@ -111,7 +111,7 @@
 
 <script>
 import { ref, onMounted, watch, computed } from 'vue'
-import remoteApiService from '@/services/remoteApi.js'
+import { coursesAdapter } from '@/api/openapi/adapters/coursesAdapter.js'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
 
@@ -152,8 +152,8 @@ export default {
       errorMsg.value = ''
       try {
         loading.value = true
-        const data = await remoteApiService.courses.getMaterialById(props.courseId, props.materialId)
-        // remoteApiService 直接返回实体对象
+  const data = await coursesAdapter.getMaterialById(props.courseId, props.materialId)
+  // 适配器直接返回实体对象
         material.value = data || null
         if (!material.value) {
           errorMsg.value = '未找到材料详情'

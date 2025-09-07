@@ -229,7 +229,7 @@
 <script>
 import { useRouter, useRoute } from 'vue-router'
 import { ref, computed, onMounted, nextTick, watch } from 'vue'
-import remoteApiService from '@/services/remoteApi.js'
+import { dailyRecordsAdapter } from '@/api/openapi/adapters/dailyRecordsAdapter.js'
 import CollectButton from '@/components/CollectButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
@@ -274,7 +274,7 @@ export default {
       error.value = ''
       try {
         // 仅将心情作为后端筛选参数；文本搜索在前端完成
-  const resp = await remoteApiService.dailyRecords.getAllRecords(filterMood.value || null, null)
+  const resp = await dailyRecordsAdapter.getAllRecords(filterMood.value || null, null)
   const { success, data, message } = ok(resp)
         if (success) {
           notes.value = Array.isArray(data) ? data : (data ? [data] : [])
@@ -397,7 +397,7 @@ export default {
                 null
         }
         
-  const apiResp = await remoteApiService.dailyRecords.createRecord(recordData)
+  const apiResp = await dailyRecordsAdapter.createRecord(recordData)
   const { success, data: created, message } = ok(apiResp)
         if (success) {
           // 优先使用后端返回的记录插入到顶部；否则回退为刷新列表
@@ -462,7 +462,7 @@ export default {
         }
         
         try {
-          await remoteApiService.dailyRecords.updateRecord(editingNote.value.id, updateData)
+          await dailyRecordsAdapter.updateRecord(editingNote.value.id, updateData)
           const { success, message } = ok(true)
           if (success) {
             await loadNotes()
@@ -491,7 +491,7 @@ export default {
       
       try {
         try {
-          await remoteApiService.dailyRecords.deleteRecord(noteId)
+          await dailyRecordsAdapter.deleteRecord(noteId)
           await loadNotes()
         } catch (e) {
           error.value = e?.message || '删除记录失败'

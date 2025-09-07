@@ -373,7 +373,9 @@
 <script>
 import { ref, computed, nextTick, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import remoteApiService from '@/services/remoteApi.js'
+import { usersAdapter } from '@/api/openapi/adapters/usersAdapter.js'
+import { userMeConversationsAdapter } from '@/api/openapi/adapters/userMeConversationsAdapter.js'
+import { aiAdapter } from '@/api/openapi/adapters/aiAdapter.js'
 import HtmlPreview from '@/components/HtmlPreview.vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
@@ -452,7 +454,7 @@ export default {
     // 加载对话列表
     const loadConversations = async () => {
       try {
-        const res = await remoteApiService.userMe.getAIConversations(20, 0) // 获取最近20个对话
+  const res = await userMeConversationsAdapter.list(20, 0) // 获取最近20个对话
         const payload = res?.data ?? res
         const list = payload?.success && Array.isArray(payload.data)
           ? payload.data
@@ -614,7 +616,7 @@ export default {
     // 加载指定对话的消息历史
     const loadConversationMessages = async (conversationId) => {
       try {
-        const res = await remoteApiService.userMe.getAIConversationMessages(conversationId, 100, 0) // 获取最近100条消息
+  const res = await userMeConversationsAdapter.messages(conversationId, 100, 0) // 获取最近100条消息
         const payload = res?.data ?? res
         const raw = payload?.success && Array.isArray(payload.data) ? payload.data : (Array.isArray(payload) ? payload : [])
         if (Array.isArray(raw)) {
@@ -673,7 +675,7 @@ export default {
     // 加载用户信息和默认模型
   const loadUserInfo = async () => {
       try {
-    const res = await remoteApiService.users.getMe()
+  const res = await usersAdapter.getMe()
         console.log('用户信息API响应:', res) // 调试信息
     const payload = res?.data ?? res
         if (payload?.success && payload.data) {
@@ -841,7 +843,7 @@ export default {
         try {
           // 删除所有对话
           const deletePromises = chatHistoryList.value.map(chat => 
-            remoteApiService.userMe.deleteAIConversation(chat.id)
+            userMeConversationsAdapter.remove(chat.id)
           )
           await Promise.all(deletePromises)
           
@@ -860,7 +862,7 @@ export default {
     const deleteIndividualChat = async (chatId) => {
       if (confirm('确定要删除此对话吗？')) {
         try {
-          await remoteApiService.userMe.deleteAIConversation(chatId)
+          await userMeConversationsAdapter.remove(chatId)
           
           const index = chatHistoryList.value.findIndex(chat => chat.id === chatId)
           if (index > -1) {
@@ -1035,7 +1037,7 @@ export default {
       const llmModelId = null
 
       try {
-        const res = await remoteApiService.ai.qa(userMessage, {
+  const res = await aiAdapter.qa(userMessage, {
           conversationId: currentChatId.value || null, // 传递对话ID用于上下文
           kbIds: null, // 可后续在界面添加选择后传入数组
           noteIds: null,

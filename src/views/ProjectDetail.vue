@@ -204,7 +204,8 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import remoteApiService from '@/services/remoteApi.js'
+import { collectionsAdapter } from '@/api/openapi/adapters/collectionsAdapter.js'
+import { projectsAdapter } from '@/api/openapi/adapters/projectsAdapter.js'
 import CollectionModal from '@/components/CollectionModal.vue'
 import ProjectForm from '@/components/ProjectForm.vue'
 import ProjectApplications from '@/components/ProjectApplications.vue'
@@ -290,7 +291,7 @@ export default {
     const checkProjectRole = async () => {
       if (!project.value?.id || !currentUserId.value) return
       try {
-  const members = await remoteApiService.projects.getProjectMembers(project.value.id)
+  const members = await projectsAdapter.getProjectMembers(project.value.id)
   if (Array.isArray(members)) {
           const myId = currentUserId.value.toString()
           const myEmail = currentUserEmail.value.toLowerCase()
@@ -379,7 +380,7 @@ export default {
       loading.value = true
       try {
         const id = route.params.id
-        const data = await remoteApiService.projects.getProjectById(id)
+  const data = await projectsAdapter.getProjectById(id)
         if (data) {
           project.value = data
           deriveFromProject(project.value)
@@ -407,7 +408,7 @@ export default {
     const fetchExistingCollection = async () => {
       if (!project.value?.id) return
       try {
-  const list = await remoteApiService.collections.getAllCollections({ typeFilter: 'project' })
+  const list = await collectionsAdapter.getAllCollections({ typeFilter: 'project' })
         const found = Array.isArray(list) ? list.find(c => (c.source_type === 'project' && c.source_id === project.value.id) || c.title === project.value.title) : null
         existingCollectionId.value = found?.id || null
       } catch {
@@ -436,7 +437,7 @@ export default {
     const openEditCollection = async () => {
       if (!existingCollectionId.value) return
       try {
-  const c = await remoteApiService.collections.getCollectionById(existingCollectionId.value)
+  const c = await collectionsAdapter.getCollectionById(existingCollectionId.value)
         collectionForm.value = {
           id: c.id,
           title: c.title || project.value?.title || '',
@@ -461,10 +462,10 @@ export default {
   payload = { ...payload, type: 'project', source_type: 'project', source_id: project.value?.id }
       try {
         if (isEditingCollection.value && collectionForm.value.id) {
-          await remoteApiService.collections.updateCollection(collectionForm.value.id, payload)
+          await collectionsAdapter.updateCollection(collectionForm.value.id, payload)
           existingCollectionId.value = collectionForm.value.id
         } else {
-          const created = await remoteApiService.collections.createCollection(payload)
+          const created = await collectionsAdapter.createCollection(payload)
           existingCollectionId.value = created?.id || null
         }
         collectionModalVisible.value = false
@@ -503,7 +504,7 @@ export default {
       recLoading.value = true
       matchedStudents.value = []
       try {
-  const list = await remoteApiService.projects.matchStudents(project.value.id, initialK.value, finalK.value)
+  const list = await projectsAdapter.matchStudents(project.value.id, initialK.value, finalK.value)
   matchedStudents.value = Array.isArray(list) ? list : []
       } catch (e) {
         recError.value = e.message || '获取推荐失败'

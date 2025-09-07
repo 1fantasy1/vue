@@ -182,7 +182,8 @@
 import { useRouter } from 'vue-router'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useGlobalStore } from '@/stores/global'
-import remoteApiService from '@/services/remoteApi.js'
+import { dashboardAdapter } from '@/api/openapi/adapters/dashboardAdapter.js'
+import { coursesAdapter } from '@/api/openapi/adapters/coursesAdapter.js'
 
 export default {
   name: 'MyCourses',
@@ -211,15 +212,15 @@ export default {
       courses.value = []
     }
 
-  // 从API加载课程数据：必要信息来自 /dashboard/courses，详情来自 /courses/，按 id 合并（统一到 remoteApiService）
+  // 从API加载课程数据：必要信息来自 /dashboard/courses，详情来自 /courses/，按 id 合并（统一到 OpenAPI 适配器）
     const loadCourses = async () => {
       try {
         loading.value = true
 
         // 并行获取工作台课程卡片与课程详情列表
         const [dashResp, listResp] = await Promise.all([
-      remoteApiService.dashboard.getCourses(),
-      remoteApiService.courses.getAllCourses()
+          dashboardAdapter.getCourses(),
+          coursesAdapter.getAllCourses()
         ])
 
         const statusMap = {

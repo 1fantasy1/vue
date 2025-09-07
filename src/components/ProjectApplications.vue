@@ -159,7 +159,7 @@
 
 <script>
 import { ref, computed, onMounted, watch } from 'vue'
-import remoteApiService from '@/services/remoteApi.js'
+import { projectsAdapter } from '@/api/openapi/adapters/projectsAdapter.js'
 
 export default {
   name: 'ProjectApplications',
@@ -296,7 +296,7 @@ export default {
   const submitApplication = async () => {
       submitting.value = true
       try {
-    const data = await remoteApiService.projects.applyToProject(props.projectId, applicationData.value)
+    const data = await projectsAdapter.applyToProject(props.projectId, applicationData.value)
     emit('applicationSubmitted', data?.data || data)
     closeApplyModal()
       } catch (error) {
@@ -306,12 +306,12 @@ export default {
       }
     }
 
-    const loadApplications = async (statusFilter = null) => {
+  const loadApplications = async (statusFilter = null) => {
     if (!(canManage.value || serverAllowsApplications.value)) return
       if (!hasViewApplicationsPermission.value) return
       
       try {
-    const data = await remoteApiService.projects.getProjectApplications(props.projectId, statusFilter)
+  const data = await projectsAdapter.getProjectApplications(props.projectId, statusFilter)
         applications.value = data?.data || data || []
         hasViewApplicationsPermission.value = true
         noAccessMessage.value = ''
@@ -336,7 +336,7 @@ export default {
       if (!props.showMembers) return
       
       try {
-        const data = await remoteApiService.projects.getProjectMembers(props.projectId)
+        const data = await projectsAdapter.getProjectMembers(props.projectId)
         members.value = data?.data || data || []
         // 成员加载后，如具备管理员权限则尝试加载申请
         if (canManage.value) {
@@ -347,7 +347,7 @@ export default {
       }
     }
 
-    const processApplication = async (applicationId, status) => {
+  const processApplication = async (applicationId, status) => {
       processing.value = true
       try {
         // 可选：在处理时填写附言，拒绝时提示填写原因
@@ -358,7 +358,7 @@ export default {
           // 可选：也允许填写通过附言
           // process_message = window.prompt('通过申请，可填写附言（可选）：') || undefined
         }
-        const data = await remoteApiService.projects.processProjectApplication(applicationId, { status, process_message })
+    const data = await projectsAdapter.processProjectApplication(applicationId, { status, process_message })
         // 更新本地申请状态
         const app = applications.value.find(a => a.id === applicationId)
         if (app) {
@@ -384,10 +384,10 @@ export default {
       hasViewApplicationsPermission.value = true
       noAccessMessage.value = ''
       // 先拉成员（以便本地匹配），再进行一次服务端探测
-      loadMembers().then(async () => {
+  loadMembers().then(async () => {
         if (!accessChecked.value) {
           try {
-            const data = await remoteApiService.projects.getProjectApplications(props.projectId, currentStatusFilter.value)
+    const data = await projectsAdapter.getProjectApplications(props.projectId, currentStatusFilter.value)
             applications.value = data?.data || data || []
             serverAllowsApplications.value = true
             accessChecked.value = true

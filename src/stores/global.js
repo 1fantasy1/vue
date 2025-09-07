@@ -130,8 +130,7 @@ export const useGlobalStore = defineStore('global', () => {
   const loadLLMConfig = async (fromServer = false) => {
     if (fromServer) {
       try {
-        const remoteApiService = await import('@/services/remoteApi.js')
-        const userData = await remoteApiService.default.users.getMe()
+  const userData = await (await import('@/api/openapi/adapters/usersAdapter.js')).usersAdapter.getMe()
         
         if (userData) {
           const serverConfig = {

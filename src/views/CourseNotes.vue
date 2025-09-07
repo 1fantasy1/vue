@@ -217,7 +217,9 @@ import CollectButton from '@/components/CollectButton.vue'
 import NoteModal from '@/components/NoteModal.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
-import remoteApiService from '@/services/remoteApi.js'
+import { coursesAdapter } from '@/api/openapi/adapters/coursesAdapter.js'
+import { foldersAdapter } from '@/api/openapi/adapters/foldersAdapter.js'
+import { notesAdapter } from '@/api/openapi/adapters/notesAdapter.js'
 
 export default {
   name: 'CourseNotes',
@@ -268,7 +270,7 @@ export default {
         if (selectedCourse.value) params.course_id = selectedCourse.value
         if (selectedFolder.value !== '') params.folder_id = selectedFolder.value
         
-  const response = await remoteApiService.notes.getAllNotes(params)
+  const response = await notesAdapter.getAllNotes(params)
   const unwrap = (r) => (r && r.data !== undefined ? r.data : r)
   const data = unwrap(response)
   notes.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
@@ -285,7 +287,7 @@ export default {
     // 获取课程列表
     const loadCourses = async () => {
       try {
-  const response = await remoteApiService.courses.getAllCourses()
+  const response = await coursesAdapter.getAllCourses()
   const unwrap = (r) => (r && r.data !== undefined ? r.data : r)
   const data = unwrap(response)
   courses.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
@@ -298,7 +300,7 @@ export default {
     // 获取文件夹列表
     const loadFolders = async () => {
       try {
-  const response = await remoteApiService.folders.getAllFolders()
+  const response = await foldersAdapter.getAllFolders()
   const unwrap = (r) => (r && r.data !== undefined ? r.data : r)
   const data = unwrap(response)
   folders.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
@@ -409,7 +411,7 @@ export default {
       if (!confirm('确定要删除这条笔记吗？')) return
       
       try {
-        const response = await remoteApiService.notes.deleteNote(noteId)
+  const response = await notesAdapter.deleteNote(noteId)
         if (response) {
           await loadNotes() // 重新加载列表
           showMessage({ type: 'success', text: '笔记删除成功' })

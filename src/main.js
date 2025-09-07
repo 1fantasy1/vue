@@ -6,8 +6,9 @@ import router from './router'
 import { createPinia } from 'pinia'
 
 import { registerElementIcons } from '@/plugins/elementIcons.js'
+import { setupOpenAPI } from '@/api/openapi/setupOpenAPI.js'
 
-// 统一使用 remoteApiService，移除旧 ApiService 初始化
+// 统一使用 OpenAPI 适配器，旧的 RemoteApiService 已移除
 
 // 创建应用实例
 const app = createApp(App)
@@ -21,6 +22,9 @@ registerElementIcons(app)
 
 // 挂载应用
 app.mount('#app')
+
+// 初始化 OpenAPI SDK（如果已生成）
+setupOpenAPI()
 
 // 确保在 Electron 环境中路由正确初始化
 if (window.navigator.userAgent.indexOf('Electron') !== -1) {

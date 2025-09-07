@@ -465,7 +465,8 @@
 <script>
 import { useRouter } from 'vue-router'
 import { ref, computed, watch, onMounted } from 'vue'
-import remoteApiService from '@/services/remoteApi.js'
+import { collectionsAdapter } from '@/api/openapi/adapters/collectionsAdapter.js'
+import { foldersAdapter } from '@/api/openapi/adapters/foldersAdapter.js'
 
 export default {
   name: 'Favorites',
@@ -506,7 +507,7 @@ export default {
     // 远程加载
     const loadFolders = async () => {
       try {
-        const data = await remoteApiService.folders.getAllFolders()
+        const data = await foldersAdapter.getAllFolders()
         // 兼容后端直接返回数组或包含 data 字段的对象
         folders.value = Array.isArray(data) ? data : (data?.data || [])
       } catch (e) {
@@ -519,10 +520,11 @@ export default {
       errorMsg.value = ''
       try {
         const mapTabToBackendType = (tab) => tab === 'projects' ? 'project' : tab === 'courses' ? 'course' : tab === 'articles' ? 'knowledge_article' : undefined
-        const result = await remoteApiService.collections.getAllCollections({
-          folderId: currentFolderId.value === -1 ? undefined : currentFolderId.value,
-          typeFilter: activeTab.value === 'all' ? undefined : mapTabToBackendType(activeTab.value),
-          tagFilter: debouncedSearchQuery.value || undefined
+        const result = await collectionsAdapter.getAllCollections({
+          folderId: currentFolderId.value,
+          typeFilter: selectedType.value,
+          tagFilter: selectedTag.value,
+          isStarred: showStarredOnly.value
         })
         const items = result?.data ?? result
         favorites.value = (items || []).map(mapCollectionToView)
@@ -597,10 +599,10 @@ export default {
   const getTypeText = (type) => ({ course: '课程', project: '项目', knowledge_article: '文章', document: '文档', video: '视频', note: '笔记', link: '链接', file: '文件', forum_topic: '话题', daily_record: '随手记录' }[type] || '其他')
   const getViewButtonText = (type) => ({ course: '开始学习', project: '查看项目', knowledge_article: '阅读文章' }[type] || '查看详情')
 
-    const viewItem = async (item) => {
+  const viewItem = async (item) => {
       try {
         // 调用详情接口以增加访问计数
-        await remoteApiService.collections.getCollectionById(item.id)
+    await collectionsAdapter.getCollectionById(item.id)
       } catch (e) {
         // 忽略计数失败
       }
@@ -618,7 +620,7 @@ export default {
   const removeFavorite = async (itemId) => {
       if (!confirm('确定要取消收藏吗？')) return
       try {
-    await remoteApiService.collections.deleteCollection(itemId)
+    await collectionsAdapter.deleteCollection(itemId)
         favorites.value = favorites.value.filter(i => i.id !== itemId)
       } catch (e) {
         alert(e.message || '删除失败')
@@ -655,7 +657,7 @@ export default {
         return
       }
       try {
-    await remoteApiService.folders.createFolder({
+    await foldersAdapter.createFolder({
           name: newFolder.value.name.trim(),
           description: newFolder.value.description || undefined,
           color: newFolder.value.color || undefined,
@@ -673,7 +675,7 @@ export default {
       const targetId = folderId || currentFolderId.value
       if (!(targetId > 0)) return
       try {
-    const f = await remoteApiService.folders.getFolderById(targetId)
+    const f = await foldersAdapter.getFolderById(targetId)
         folderForm.value = {
           id: f.id,
           name: f.name || '',
@@ -705,7 +707,7 @@ export default {
           icon: folderForm.value.icon || undefined,
           parent_id: folderForm.value.parent_id ?? undefined
         }
-        await remoteApiService.folders.updateFolder(folderForm.value.id, payload)
+        await foldersAdapter.updateFolder(folderForm.value.id, payload)
         editingFolder.value = false
         await loadFolders()
       } catch (e) {
@@ -718,7 +720,7 @@ export default {
       if (!confirm('确定要删除该文件夹吗？\n提示：若文件夹非空，可选择"级联删除"一并删除其下内容。')) return
       try {
         // 先尝试普通删除
-        await remoteApiService.folders.deleteFolder(folderId)
+        await foldersAdapter.deleteFolder(folderId)
         if (currentFolderId.value === folderId) {
           currentFolderId.value = -1
         }
@@ -729,7 +731,7 @@ export default {
         const ok = confirm('删除失败，可能因为文件夹内仍有内容。\n是否级联删除该文件夹及其所有子内容？此操作不可撤销。')
         if (!ok) { alert(e1.message || '删除失败'); return }
         try {
-          await remoteApiService.folders.deleteFolder(folderId, { cascade: true, recursive: true })
+          await foldersAdapter.deleteFolder(folderId, { cascade: true, recursive: true })
           if (currentFolderId.value === folderId) {
             currentFolderId.value = -1
           }
@@ -747,7 +749,7 @@ export default {
       if (!confirm('确定要删除该文件夹吗？\n提示：若文件夹非空，可选择“级联删除”一并删除其下内容。')) return
       try {
         // 先尝试普通删除
-        await remoteApiService.folders.deleteFolder(currentFolderId.value)
+        await foldersAdapter.deleteFolder(currentFolderId.value)
         currentFolderId.value = -1
         await loadFolders()
         await loadCollections()
@@ -756,7 +758,7 @@ export default {
         const ok = confirm('删除失败，可能因为文件夹内仍有内容。\n是否级联删除该文件夹及其所有子内容？此操作不可撤销。')
         if (!ok) { alert(e1.message || '删除失败'); return }
         try {
-          await remoteApiService.folders.deleteFolder(currentFolderId.value, { cascade: true, recursive: true })
+          await foldersAdapter.deleteFolder(currentFolderId.value, { cascade: true, recursive: true })
           currentFolderId.value = -1
           await loadFolders()
           await loadCollections()
@@ -785,7 +787,7 @@ export default {
 
   const openEditCollection = async (item) => {
       try {
-    const c = await remoteApiService.collections.getCollectionById(item.id)
+    const c = await collectionsAdapter.getCollectionById(item.id)
         isEditingCollection.value = true
         collectionForm.value = {
           id: c.id,
@@ -818,9 +820,9 @@ export default {
       }
       try {
         if (isEditingCollection.value) {
-          await remoteApiService.collections.updateCollection(collectionForm.value.id, payload)
+          await collectionsAdapter.updateCollection(collectionForm.value.id, payload)
         } else {
-          await remoteApiService.collections.createCollection(payload)
+          await collectionsAdapter.createCollection(payload)
         }
         collectionModalVisible.value = false
         await loadCollections()

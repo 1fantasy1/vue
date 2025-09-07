@@ -183,7 +183,6 @@
 <script>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import remoteApiService from '@/services/remoteApi.js'
 
 export default {
   name: 'ProjectRecommendations',
@@ -226,7 +225,8 @@ export default {
       error.value = ''
       
       try {
-        const data = await remoteApiService.recommend.recommendProjects(
+        const { recommendAdapter } = await import('@/api/openapi/adapters/recommendAdapter.js')
+        const data = await recommendAdapter.recommendProjects(
           currentUserId.value,
           settings.value.initialK,
           settings.value.finalK

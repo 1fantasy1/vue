@@ -342,11 +342,11 @@ docker run -p 8080:80 hongqing-shuyun
     │   ├── 🎯 index.js          # 当前路由配置
     │   ├── 💾 index_backup.js   # 路由配置备份
     │   └── 🆕 index_new.js      # 新路由配置
-    ├── 🔗 services/             # 服务层
-    │   ├── 🌐 api.js            # 统一API接口
-    │   ├── 💾 cache.js          # 缓存服务
-    │   ├── 📡 httpClient.js     # HTTP客户端
-    │   └── 🌍 remoteApi.js      # 远程API服务
+  ├── 🔗 services/             # 服务层
+  │   ├── 🌐 api.js            # 统一API接口（如需）
+  │   ├── 💾 cache.js          # 缓存服务
+  │   ├── 📡 httpClient.js     # HTTP客户端
+  │   └── （已移除）remoteApi.js
     ├── 🗃️ stores/               # 状态管理 (Pinia)
     │   └── 🌍 global.js         # 全局状态管理
     ├── 🔧 utils/                # 工具函数库

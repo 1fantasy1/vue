@@ -289,7 +289,7 @@ import { useGlobalStore } from '@/stores/global'
 import MaterialDetailModal from '@/components/MaterialDetailModal.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
-import remoteApiService from '@/services/remoteApi.js'
+import { coursesAdapter } from '@/api/openapi/adapters/coursesAdapter.js'
 import appConfig from '@/config/index.js'
 
 export default {
@@ -344,7 +344,7 @@ export default {
         const courseId = route.params.id
         
         // 获取课程基本信息
-        const courseResponse = await remoteApiService.courses.getCourseById(courseId)
+  const courseResponse = await coursesAdapter.getCourseById(courseId)
         const unwrap = (res) => (res && res.data !== undefined ? res.data : res)
         const data = unwrap(courseResponse)
         const courseData = data?.data ?? data
@@ -378,7 +378,7 @@ export default {
     const loadCourseMaterials = async (courseId) => {
       try {
         loadingMaterials.value = true
-  const response = await remoteApiService.courses.getMaterials(courseId)
+  const response = await coursesAdapter.getMaterials(courseId)
   const unwrap = (res) => (res && res.data !== undefined ? res.data : res)
   const data = unwrap(response)
   materials.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
@@ -392,7 +392,7 @@ export default {
     // 加载课程统计
     const loadCourseStatistics = async (courseId) => {
       try {
-  const response = await remoteApiService.courses.getCompletionCount(courseId)
+  const response = await coursesAdapter.getCompletionCount(courseId)
   const unwrap = (res) => (res && res.data !== undefined ? res.data : res)
   const data = unwrap(response)
   const count = data?.data?.count ?? data?.count
@@ -408,7 +408,8 @@ export default {
       try {
         loadingRecommendations.value = true
   // 使用推荐服务：基于当前用户（后端从 token 识别），无需显式 userId
-  const response = await remoteApiService.recommend.recommendCourses('me', 50, 5)
+  const { recommendAdapter } = await import('@/api/openapi/adapters/recommendAdapter.js')
+  const response = await recommendAdapter.recommendCourses('me', 50, 5)
   const unwrap = (res) => (res && res.data !== undefined ? res.data : res)
   const data = unwrap(response)
   recommendedCourses.value = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
@@ -424,7 +425,7 @@ export default {
       try {
         enrolling.value = true
         const courseId = route.params.id
-  const response = await remoteApiService.courses.enrollCourse(courseId)
+  const response = await coursesAdapter.enrollCourse(courseId)
   if (response) {
           // 重新加载课程信息获取用户进度
           await loadCourseDetail()
@@ -530,7 +531,7 @@ export default {
           return
         }
 
-        const resp = await remoteApiService.courses.updateMaterial(
+  const resp = await coursesAdapter.updateMaterial(
           courseId.value,
           editingMaterial.value.id,
           {
@@ -561,7 +562,7 @@ export default {
       if (!isAdmin.value) return
       if (!confirm(`确定要删除材料"${material.title}"吗？此操作不可撤销。`)) return
       try {
-        const resp = await remoteApiService.courses.deleteMaterial(courseId.value, material.id)
+  const resp = await coursesAdapter.deleteMaterial(courseId.value, material.id)
         if (resp) {
           alert('删除成功!')
           await loadCourseMaterials(courseId.value)

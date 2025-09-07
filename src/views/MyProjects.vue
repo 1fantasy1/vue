@@ -296,7 +296,8 @@
 <script>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import remoteApiService from '@/services/remoteApi.js'
+import { dashboardAdapter } from '@/api/openapi/adapters/dashboardAdapter.js'
+import { projectsAdapter } from '@/api/openapi/adapters/projectsAdapter.js'
 import ProjectForm from '@/components/ProjectForm.vue'
 import CollectButton from '@/components/CollectButton.vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
@@ -703,14 +704,14 @@ export default {
     const loadProjects = async () => {
       loading.value = true
       try {
-  const res = await remoteApiService.dashboard.getProjects()
+  const res = await dashboardAdapter.getProjects()
         let filled = false
         // 兼容多种返回结构，提取项目数组
         const rawList = extractList(res?.data ?? res)
         if (rawList.length > 0) {
           // 追加：尝试获取全部项目以补全字段
           try {
-            const allRes = await remoteApiService.projects.getAllProjects()
+            const allRes = await projectsAdapter.getAllProjects()
             {
               const allList = extractList(allRes?.data ?? allRes)
               const fullMap = new Map(allList.map(item => [String(item.id), item]))
@@ -729,7 +730,7 @@ export default {
         // 兜底：如果我的项目为空，则拉取全部项目
         if (!filled || projects.value.length === 0) {
           try {
-            const allRes = await remoteApiService.projects.getAllProjects()
+            const allRes = await projectsAdapter.getAllProjects()
             const list = extractList(allRes?.data ?? allRes)
             projects.value = list.map(mapProject)
             console.info('[MyProjects] 使用全部项目数据作为兜底展示')
@@ -748,7 +749,7 @@ export default {
         console.error('获取我的项目失败', e)
         // 发生异常也尝试兜底
         try {
-          const allRes = await remoteApiService.projects.getAllProjects()
+          const allRes = await projectsAdapter.getAllProjects()
           const list = extractList(allRes?.data ?? allRes)
           projects.value = list.map(mapProject)
           console.info('[MyProjects] 异常后使用全部项目数据作为兜底展示')
@@ -791,7 +792,7 @@ export default {
             // 命中缓存直接复用
             let appsData = applicationsCache.get(proj.id)
             if (!appsData) {
-              appsData = await remoteApiService.projects.getProjectApplications(proj.id, 'approved')
+              appsData = await projectsAdapter.getProjectApplications(proj.id, 'approved')
               applicationsCache.set(proj.id, appsData)
             }
             {
@@ -862,7 +863,7 @@ export default {
             // 命中缓存直接复用
             let members = membersCache.get(proj.id)
             if (!members) {
-              members = await remoteApiService.projects.getProjectMembers(proj.id)
+              members = await projectsAdapter.getProjectMembers(proj.id)
               membersCache.set(proj.id, members)
             }
             {
@@ -899,7 +900,7 @@ export default {
     const openEditForm = async (project) => {
       closeMenus()
       try {
-        const data = await remoteApiService.projects.getProjectById(project.id)
+  const data = await projectsAdapter.getProjectById(project.id)
         editingProject.value = data?.data ?? data ?? project
       } catch {
         editingProject.value = project
@@ -925,7 +926,7 @@ export default {
       
       deleting.value = true
       try {
-        await remoteApiService.projects.deleteProject(deletingProject.value.id)
+  await projectsAdapter.deleteProject(deletingProject.value.id)
         // 从列表中移除项目
         projects.value = projects.value.filter(p => p.id !== deletingProject.value.id)
         cancelDelete()

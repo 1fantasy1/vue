@@ -564,7 +564,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { Search, DocumentCopy } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import remoteApiService from '@/services/remoteApi.js'
+import { chatRoomsAdapter } from '@/api/openapi/adapters/chatRoomsAdapter.js'
 import CollectButton from '@/components/CollectButton.vue'
 
 export default {
@@ -756,7 +756,7 @@ export default {
       }
 
       try {
-        const resp = await remoteApiService.chatRooms.getMembers(roomId)
+  const resp = await chatRoomsAdapter.getMembers(roomId)
         const payload = resp?.data ?? resp
         const data = payload?.data || (Array.isArray(payload) ? payload : [])
         const currentMember = data.find(m => m.member_id === currentUserId.value)
@@ -787,7 +787,7 @@ export default {
         } else {
           payload.message_type = 'text'
         }
-  const resp = await remoteApiService.chatRooms.sendMessage(selectedRoom.value.id, payload)
+  const resp = await chatRoomsAdapter.sendMessage(selectedRoom.value.id, payload)
   const data = resp?.data?.data || resp?.data || resp
         // 追加本地展示
         messages.value.push(mapMessageToView(data))
@@ -822,7 +822,7 @@ export default {
       if (!selectedRoom.value) return
       modalError.value = ''
       try {
-        const resp = await remoteApiService.chatRooms.getMembers(selectedRoom.value.id)
+  const resp = await chatRoomsAdapter.getMembers(selectedRoom.value.id)
         const payload = resp?.data ?? resp
         const data = payload?.data || (Array.isArray(payload) ? payload : [])
         members.value = data
@@ -864,7 +864,7 @@ export default {
     const changeMemberRole = async (m) => {
       try {
         const newRole = memberRoleEdit.value[m.member_id]
-        await remoteApiService.chatRooms.setMemberRole(selectedRoom.value.id, m.member_id, newRole)
+  await chatRoomsAdapter.setMemberRole(selectedRoom.value.id, m.member_id, newRole)
       } catch (e) {
         modalError.value = e.message || '更新角色失败'
       }
@@ -872,7 +872,7 @@ export default {
 
     const removeMember = async (m) => {
       try {
-        await remoteApiService.chatRooms.removeMember(selectedRoom.value.id, m.member_id)
+  await chatRoomsAdapter.removeMember(selectedRoom.value.id, m.member_id)
         members.value = members.value.filter(x => x.member_id !== m.member_id)
       } catch (e) {
         modalError.value = e.message || '移除失败'
@@ -1000,7 +1000,7 @@ export default {
       loading.value = true
       try {
   roomsError.value = ''
-  const resp = await remoteApiService.chatRooms.getAllChatRooms(activeTab.value === 'all' ? null : activeTab.value)
+  const resp = await chatRoomsAdapter.getAllChatRooms(activeTab.value === 'all' ? null : activeTab.value)
     const payload = resp?.data ?? resp
     const data = payload?.data || (Array.isArray(payload) ? payload : [])
         rooms.value = data
@@ -1042,7 +1042,7 @@ export default {
   const loadMessages = async (roomId) => {
       messagesLoading.value = true
       try {
-    const resp = await remoteApiService.chatRooms.getMessages(roomId, 50, 0)
+  const resp = await chatRoomsAdapter.getMessages(roomId, 50, 0)
     const payload = resp?.data ?? resp
     const data = payload?.data || (Array.isArray(payload) ? payload : [])
         messages.value = data.map(mapMessageToView)
@@ -1081,7 +1081,7 @@ export default {
         if (!payload.project_id) delete payload.project_id
         if (!payload.course_id) delete payload.course_id
         if (editMode.value && selectedRoom.value) {
-          const resp = await remoteApiService.chatRooms.updateChatRoom(selectedRoom.value.id, payload)
+          const resp = await chatRoomsAdapter.updateChatRoom(selectedRoom.value.id, payload)
           const data = resp?.data?.data || resp?.data || resp
           // 更新本地列表与选择
           const idx = rooms.value.findIndex(r => r.id === selectedRoom.value.id)
@@ -1089,7 +1089,7 @@ export default {
           selectedRoom.value = { ...selectedRoom.value, ...data }
           showCreateModal.value = false
         } else {
-          const resp = await remoteApiService.chatRooms.createChatRoom(payload)
+          const resp = await chatRoomsAdapter.createChatRoom(payload)
           const data = resp?.data?.data || resp?.data || resp
           rooms.value.unshift(data)
           showCreateModal.value = false
@@ -1114,7 +1114,7 @@ export default {
       if (!selectedRoom.value) return
       if (!confirm('确认删除该聊天室及其数据？')) return
       try {
-        await remoteApiService.chatRooms.deleteChatRoom(selectedRoom.value.id)
+  await chatRoomsAdapter.deleteChatRoom(selectedRoom.value.id)
         rooms.value = rooms.value.filter(r => r.id !== selectedRoom.value.id)
         selectedRoom.value = null
         messages.value = []
@@ -1130,7 +1130,7 @@ export default {
       joinLoading.value = true
       modalError.value = ''
       try {
-        const resp = await remoteApiService.chatRooms.getJoinRequests(selectedRoom.value.id, joinStatusFilter.value || null)
+  const resp = await chatRoomsAdapter.getJoinRequests(selectedRoom.value.id, joinStatusFilter.value || null)
         joinRequests.value = resp?.data?.data || []
       } catch (e) {
         modalError.value = e.message || '获取申请失败'
@@ -1141,7 +1141,7 @@ export default {
 
     const processJoin = async (jr, status) => {
       try {
-        await remoteApiService.chatRooms.processJoinRequest(jr.id, status)
+  await chatRoomsAdapter.processJoinRequest(jr.id, status)
         // 更新本地状态
         jr.status = status
       } catch (e) {
@@ -1157,7 +1157,7 @@ export default {
       applying.value = true
       try {
         const payload = { room_id: selectedRoom.value.id, reason: applyReason.value || null }
-        await remoteApiService.chatRooms.createJoinRequest(selectedRoom.value.id, payload)
+  await chatRoomsAdapter.createJoinRequest(selectedRoom.value.id, payload)
         showApplyModal.value = false
       } catch (e) {
         modalError.value = e.message || '申请失败'
@@ -1174,7 +1174,7 @@ export default {
       applying.value = true
       try {
         const payload = { room_id: applyByIdRoomId.value, reason: applyByIdReason.value || null }
-        await remoteApiService.chatRooms.createJoinRequest(applyByIdRoomId.value, payload)
+  await chatRoomsAdapter.createJoinRequest(applyByIdRoomId.value, payload)
         showApplyByIdModal.value = false
       } catch (e) {
         modalError.value = e.message || '申请失败'

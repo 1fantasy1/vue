@@ -146,7 +146,7 @@ import { ref, reactive, computed, watch, nextTick } from 'vue'
 import BaseModal from '@/components/ui/BaseModal.vue'
 import BaseInput from '@/components/ui/BaseInput.vue'
 import BaseButton from '@/components/ui/BaseButton.vue'
-import remoteApiService from '@/services/remoteApi.js'
+import { notesAdapter } from '@/api/openapi/adapters/notesAdapter.js'
 
 export default {
   name: 'NoteModal',
@@ -363,14 +363,14 @@ export default {
 
         let payload
         if (editMode.value) {
-          const updated = await remoteApiService.notes.updateNote(props.note.id, submitData)
+          const updated = await notesAdapter.updateNote(props.note.id, submitData)
           payload = updated
         } else {
-          const created = await remoteApiService.notes.createNote(submitData)
+          const created = await notesAdapter.createNote(submitData)
           payload = created
         }
 
-        // remoteApiService 直接返回数据对象
+  // 适配器直接返回数据对象
         emit('success', payload)
         if (editMode.value) {
           emit('updated', payload)

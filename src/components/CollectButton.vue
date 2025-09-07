@@ -17,7 +17,7 @@
 </template>
 
 <script>
-import remoteApiService from '@/services/remoteApi.js'
+import { collectionsAdapter } from '@/api/openapi/adapters/collectionsAdapter.js'
 
 export default {
   name: 'CollectButton',
@@ -123,7 +123,7 @@ export default {
             title: this.customTitle || null
           }
 
-          const data = await remoteApiService.collections.addFromPlatform(collectionData)
+          const data = await collectionsAdapter.addFromPlatform(collectionData)
           this.isCollected = true
           this.$emit('collected', {
             contentType: this.contentType,

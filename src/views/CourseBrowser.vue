@@ -136,7 +136,7 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import remoteApiService from '@/services/remoteApi.js'
+import { coursesAdapter } from '@/api/openapi/adapters/coursesAdapter.js'
 
 export default {
   name: 'CourseBrowser',
@@ -215,7 +215,7 @@ export default {
     const loadCourses = async () => {
       try {
         loading.value = true
-  const response = await remoteApiService.courses.getAvailableCourses()
+  const response = await coursesAdapter.getAvailableCourses()
   const unwrap = (res) => (res && res.data !== undefined ? res.data : res)
   const data = unwrap(response)
   const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : [])
@@ -257,7 +257,7 @@ export default {
           return
         }
 
-  const resp = await remoteApiService.courses.enrollCourse(courseId)
+  const resp = await coursesAdapter.enrollCourse(courseId)
   const ok = !!resp // 若无异常即视为成功；后端多返回 200/201
   if (ok) {
           // 更新本地状态
