@@ -1,5 +1,5 @@
 import { fileURLToPath, URL } from 'node:url'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
@@ -7,7 +7,11 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 import { resolve } from 'path'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // 加载环境变量
+  const env = loadEnv(mode, process.cwd(), '')
+  
+  return {
   plugins: [
     vue(),
     AutoImport({
@@ -28,18 +32,10 @@ export default defineConfig({
       '@': resolve(__dirname, 'src')
     },
   },
-  server: {
-    port: 5173,
-    open: true,
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:8001',
-        changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/api/, '')
-      }
-    }
-  },
+    server: {
+      port: 5173,
+      open: true
+    },
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
@@ -54,11 +50,10 @@ export default defineConfig({
       }
     }
   },
-  define: {
-    __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
-    // 添加环境变量，帮助应用检测 Electron 环境
-    __IS_ELECTRON__: JSON.stringify(process.env.npm_lifecycle_event === 'electron' || process.env.IS_ELECTRON === 'true'),
-    // 确保生产环境使用正确的API地址
-    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'https://cosbrain.675222.xyz/api')
+    define: {
+      __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
+      // 添加环境变量，帮助应用检测 Electron 环境
+      __IS_ELECTRON__: JSON.stringify(process.env.npm_lifecycle_event === 'electron' || process.env.IS_ELECTRON === 'true')
+    }
   }
 })

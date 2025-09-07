@@ -4,19 +4,8 @@ export const config = {
   api: {
     // 除课程外，所有功能都使用远程API
     useLocalData: false,
-    // 根据环境变量或开发/生产模式设置API地址
-    baseURL: (() => {
-      // 首先检查环境变量
-      if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL) {
-        return import.meta.env.VITE_API_BASE_URL
-      }
-      
-      // 检查是否为开发模式
-      const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV
-      
-      // 开发环境使用代理，生产环境使用完整URL
-      return isDev ? '/api' : 'https://cosbrain.675222.xyz/api'
-    })(),
+    // 直接使用环境变量中的API地址
+    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001',
     timeout: 60000, // 默认超时60秒
     // AI相关请求的特殊超时配置
     aiTimeout: 120000 // AI聊天超时120秒
