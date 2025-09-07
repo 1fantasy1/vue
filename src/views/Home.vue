@@ -1,36 +1,24 @@
 <template>
   <div class="page">
 
-    <!-- 快速操作区域 -->
-    <div class="quick-actions-section">
-      <h3 class="section-title">快速操作</h3>
-      <div class="quick-actions-grid">
-        <button class="quick-action-btn" @click="addNote">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
-          </svg>
-          新建笔记
+  <!-- 智能搜索（来自广场），把快速操作按钮放到标题右侧 -->
+  <SmartSearch style="margin-bottom: 24px;">
+    <template #header-actions>
+      <el-dropdown @command="onMoreCommand">
+        <button class="more-btn" aria-label="更多操作">
+          <span class="more-icon">⋯</span>
         </button>
-        <button class="quick-action-btn" @click="addQuickRecord">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M3,17V19H9V17H3M3,5V7H13V5H3M13,21V19H21V17H13V15H11V21H13M7,9V11H3V13H7V15H9V9H7M21,13V11H11V13H21M15,9H17V7H21V5H17V3H15V9Z"/>
-          </svg>
-          添加随手记录
-        </button>
-        <button class="quick-action-btn" @click="joinGroup">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M16,4C18.11,4 19.99,5.89 19.99,8C19.99,10.11 18.11,12 16,12C13.89,12 12,10.11 12,8C12,5.89 13.89,4 16,4M16,14C20.42,14 24,15.79 24,18V20H8V18C8,15.79 11.58,14 16,14Z"/>
-          </svg>
-          加入群组
-        </button>
-        <button class="quick-action-btn" @click="searchResources">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z"/>
-          </svg>
-          搜索资源
-        </button>
-      </div>
-    </div>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="addNote">新建笔记</el-dropdown-item>
+            <el-dropdown-item command="addQuickRecord">添加随手记录</el-dropdown-item>
+            <el-dropdown-item command="joinGroup">加入群组</el-dropdown-item>
+            <el-dropdown-item command="searchResources">搜索资源</el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
+    </template>
+  </SmartSearch>
 
     <!-- 主要功能卡片区域 -->
     <div class="cards-container">
@@ -149,9 +137,11 @@
 import { useRouter } from 'vue-router'
 import { ref, onMounted } from 'vue'
 import { useDashboardData, useNotesData, useProjectsData } from '@/composables/useApiData.js'
+import SmartSearch from '@/components/SmartSearch.vue'
 
 export default {
   name: 'Home',
+  components: { SmartSearch },
   setup() {
     const router = useRouter()
     const { summary, fetchSummary, fetchDashboardProjects, fetchDashboardCourses } = useDashboardData()
@@ -194,6 +184,16 @@ export default {
       router.push('/knowledge-hub?action=search')
     }
 
+    const onMoreCommand = (cmd) => {
+      const map = {
+        addNote,
+        addQuickRecord,
+        joinGroup,
+        searchResources
+      }
+      if (map[cmd]) map[cmd]()
+    }
+
     // 加载数据
     const loadData = async () => {
       try {
@@ -232,7 +232,8 @@ export default {
       addNote,
       addQuickRecord,
       joinGroup,
-      searchResources
+  searchResources,
+  onMoreCommand
     }
   }
 }
@@ -363,50 +364,28 @@ export default {
 
 
 
-.quick-actions-section {
-  margin-bottom: 32px;
-  margin-top: 8px;
-}
 
-.section-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #2c3e50;
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-.quick-actions-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.quick-action-btn {
+.more-btn {
   background: white;
-  color: #667eea;
-  padding: 16px 20px;
-  border: 2px solid #e6edff;
-  border-radius: 12px;
+  color: #2c3e50;
+  padding: 6px 8px;
+  border: 1px solid #e6edff;
+  border-radius: 10px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
-  transition: all 0.3s ease;
-  display: flex;
+  transition: all 0.2s ease;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
 }
 
-.quick-action-btn:hover {
-  background: #667eea;
-  color: white;
-  border-color: #667eea;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
+.more-btn:hover {
+  background: #f1f4ff;
+  border-color: #c7d2fe;
 }
+
+.more-icon { font-size: 18px; line-height: 1; }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
@@ -438,11 +417,6 @@ export default {
     font-size: 2rem;
   }
 
-  .quick-actions-grid {
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-
   .quick-action-btn {
     padding: 12px 16px;
     font-size: 13px;
@@ -465,10 +439,6 @@ export default {
 
   .welcome-title {
     font-size: 1.8rem;
-  }
-
-  .quick-actions-grid {
-    grid-template-columns: 1fr;
   }
 
   .stat-item {

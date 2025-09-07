@@ -1,254 +1,53 @@
 <template>
   <div class="page">
-    <!-- 智能搜索匹配 - 核心功能区 -->
-    <div class="search-section">
-      <div class="search-header">
-        <div class="search-title">
-          <div class="search-icon">🎯</div>
-          <div class="search-title-text">
-            <h2>智能搜索匹配</h2>
-            <p class="search-subtitle">AI驱动的精准推荐，让每次搜索都有所收获</p>
-          </div>
-        </div>
-        <div class="search-stats">
-          <div class="stat-item">
-            <span class="stat-number">{{ totalMatches }}</span>
-            <span class="stat-label">今日匹配</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-number">{{ successRate }}%</span>
-            <span class="stat-label">成功率</span>
-          </div>
-        </div>
-      </div>
-      
-      <div class="search-input-section">
-        <div class="search-input-wrapper">
-          <div class="search-input-icon">🔍</div>
-          <input
-            type="text"
-            class="enhanced-search-input"
-            placeholder="描述你的需求，AI将为你智能匹配最佳结果..."
-            v-model="searchQuery"
-            @input="onSearchInput"
-            @focus="onSearchFocus"
-            @blur="onSearchBlur"
-          />
-          <button class="search-action-btn" @click="performSearch" :disabled="!searchQuery.trim() || isSearching">
-            搜索
-          </button>
-        </div>
+  
+
+  <!-- 社区动态流 -->
+  <!-- 发布动态（页面内隐藏，改为弹窗） -->
+  <div class="simple-card" v-if="false">
         
-        <!-- 搜索建议 -->
-        <div class="search-suggestions" v-if="showSuggestions && searchSuggestions.length">
-          <div class="suggestions-title">推荐搜索</div>
-          <div class="suggestions-list">
-            <span 
-              v-for="suggestion in searchSuggestions" 
-              :key="suggestion"
-              class="suggestion-tag"
-              @click="applySuggestion(suggestion)"
-            >
-              {{ suggestion }}
-            </span>
-          </div>
-        </div>
-      </div>
-
-  <div class="smart-match-container" v-if="showSmartMatch">
-        <div class="match-types-header">
-          <span class="match-types-title">智能推荐类型</span>
-          <span class="match-types-desc">选择推荐模式，获得个性化内容</span>
-        </div>
-        
-        <div class="smart-match-grid">
-          <div 
-            class="match-type-card" 
-            @click="selectRecommendationType('project')"
-            :class="{ 'active': selectedType === 'project' }"
-          >
-            <div class="match-type-icon">🎯</div>
-            <div class="match-type-content">
-              <div class="match-type-title">项目推荐</div>
-              <div class="match-type-desc">基于双塔模型的智能项目推荐</div>
-              <div class="match-type-stats">
-                <span class="stats-badge success">{{ projectRecommendations.length }}个推荐</span>
-                <span class="stats-badge info">92%匹配度</span>
-              </div>
-            </div>
-          </div>
-          
-          <div 
-            class="match-type-card" 
-            @click="selectRecommendationType('course')"
-            :class="{ 'active': selectedType === 'course' }"
-          >
-            <div class="match-type-icon">🎓</div>
-            <div class="match-type-content">
-              <div class="match-type-title">课程推荐</div>
-              <div class="match-type-desc">基于兴趣匹配的个性化课程推荐</div>
-              <div class="match-type-stats">
-                <span class="stats-badge success">{{ courseRecommendations.length }}个推荐</span>
-                <span class="stats-badge warning">热门</span>
-              </div>
-            </div>
-          </div>
-          
-          <div 
-            class="match-type-card" 
-            @click="selectRecommendationType('knowledge')"
-            :class="{ 'active': selectedType === 'knowledge' }"
-          >
-            <div class="match-type-icon">💡</div>
-            <div class="match-type-content">
-              <div class="match-type-title">知识库推荐</div>
-              <div class="match-type-desc">热门知识点和创新方法论推荐</div>
-              <div class="match-type-stats">
-                <span class="stats-badge success">{{ knowledgeRecommendations.length }}个推荐</span>
-                <span class="stats-badge primary">实时更新</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 推荐内容弹窗 -->
-    <BaseModal :show="showRecommendationModal" :title="selectedType === 'project' ? '智能项目推荐' : selectedType === 'course' ? '个性化课程推荐' : '知识库推荐'" @close="closeRecommendationModal">
-      <div class="modal-content">
-          <!-- 项目推荐内容 -->
-          <div v-if="selectedType === 'project'" class="modal-recommendations">
-            <div
-              class="modal-recommendation-item"
-              v-for="project in projectRecommendations"
-              :key="project.id"
-            >
-              <div class="recommendation-header">
-                <div class="recommendation-title">{{ project.title }}</div>
-                <div class="match-percentage">{{ project.match }}%匹配</div>
-              </div>
-              <div class="recommendation-meta">
-                <span class="meta-item">
-                  <span class="meta-icon">🛠️</span>
-                  需要技能: {{ project.skills }}
-                </span>
-                <span class="meta-item">
-                  <span class="meta-icon">👥</span>
-                  团队规模: {{ project.teamSize }}
-                </span>
-              </div>
-              <p class="recommendation-description">{{ project.description }}</p>
-              <div class="recommendation-actions">
-                <BaseButton variant="primary">立即查看</BaseButton>
-                <BaseButton variant="secondary">收藏</BaseButton>
-                <BaseButton variant="ghost">分享</BaseButton>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 课程推荐内容 -->
-          <div v-if="selectedType === 'course'" class="modal-recommendations">
-            <div
-              class="modal-recommendation-item"
-              v-for="course in courseRecommendations"
-              :key="course.id"
-            >
-              <div class="recommendation-header">
-                <div class="recommendation-title">{{ course.title }}</div>
-                <div class="match-percentage">{{ course.match }}%匹配</div>
-              </div>
-              <div class="recommendation-meta">
-                <span class="meta-item">
-                  <span class="meta-icon">👨‍🏫</span>
-                  讲师: {{ course.instructor }}
-                </span>
-                <span class="meta-item">
-                  <span class="meta-icon">⏱️</span>
-                  时长: {{ course.duration }}
-                </span>
-              </div>
-              <p class="recommendation-description">{{ course.description }}</p>
-              <div class="recommendation-actions">
-                <BaseButton variant="primary">开始学习</BaseButton>
-                <BaseButton variant="secondary">加入收藏</BaseButton>
-                <BaseButton variant="ghost">分享课程</BaseButton>
-              </div>
-            </div>
-          </div>
-          
-          <!-- 知识库推荐内容 -->
-          <div v-if="selectedType === 'knowledge'" class="modal-recommendations">
-            <div
-              class="modal-recommendation-item"
-              v-for="knowledge in knowledgeRecommendations"
-              :key="knowledge.id"
-            >
-              <div class="recommendation-header">
-                <div class="recommendation-title">{{ knowledge.title }}</div>
-                <div class="popularity-badge">{{ knowledge.popularity }}</div>
-              </div>
-              <div class="recommendation-meta">
-                <span class="meta-item">
-                  <span class="meta-icon">📂</span>
-                  类型: {{ knowledge.type }}
-                </span>
-                <span class="meta-item">
-                  <span class="meta-icon">📅</span>
-                  更新: {{ knowledge.updated }}
-                </span>
-              </div>
-              <p class="recommendation-description">{{ knowledge.description }}</p>
-              <div class="recommendation-actions">
-                <BaseButton variant="primary">立即学习</BaseButton>
-                <BaseButton variant="secondary">加入书签</BaseButton>
-                <BaseButton variant="ghost">推荐给好友</BaseButton>
-              </div>
-            </div>
-          </div>
-      </div>
-      <template #footer>
-        <div class="d-flex" style="gap: 8px; justify-content: flex-end; width: 100%">
-          <BaseButton variant="secondary" @click="refreshRecommendations">
-            <span class="refresh-icon">🔄</span>
-            刷新推荐
-          </BaseButton>
-          <BaseButton variant="primary" @click="closeRecommendationModal">关闭</BaseButton>
-        </div>
-      </template>
-    </BaseModal>
-
-    <!-- 分隔线 -->
-    <div class="section-divider">
-      <div class="divider-line"></div>
-      <div class="divider-text">社区动态</div>
-      <div class="divider-line"></div>
-    </div>
-
-    <!-- 社区动态流 -->
-    <div class="simple-card">
-      <div class="card-title" style="margin-bottom: 16px;">
-        <div class="card-icon">�</div>
-        社区动态
-        <span class="online-count">{{ onlineUsers }}人在线</span>
-      </div>
-      
-      <!-- 发布动态 -->
-      <div class="post-composer">
-        <div class="composer-header">
-          <div class="user-avatar">👤</div>
-          <span class="composer-username">我</span>
-        </div>
         <textarea
           class="composer-input"
-          placeholder="分享你的想法、项目进展或学习心得..."
+          placeholder="有什么新鲜事想分享给大家?"
           v-model="newPost"
           maxlength="500"
           rows="3"
         ></textarea>
+
+        <!-- 工具栏：图标 + 文本样式 -->
+        <div class="composer-toolbar">
+          <div class="toolbar-left">
+            <button class="action-item" title="表情（暂未开放）">
+              <span class="action-icon">😊</span>
+              <span class="action-label">表情</span>
+            </button>
+            <button class="action-item" title="添加文件" @click="newPostMediaType = 'file'; showMediaInputs = true">
+              <span class="action-icon">📄</span>
+              <span class="action-label">添加文件</span>
+            </button>
+            <div class="action-item topic-item" @click="showTopicPicker = !showTopicPicker">
+              <span class="action-icon">#</span>
+              <span class="action-label">话题</span>
+              <div class="topic-popover" v-if="showTopicPicker" @click.stop>
+                <div class="topic-option" :class="{active: !selectedPostTopic}" @click="selectedPostTopic = ''; showTopicPicker = false">🏷️ 无标签</div>
+                <div class="topic-option" v-for="topic in hotTopics" :key="topic.id" :class="{active: selectedPostTopic === topic.name}" @click="selectedPostTopic = topic.name; showTopicPicker = false"># {{ topic.name }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="toolbar-right">
+            <button class="schedule-btn" title="定时发送（暂未开放）">🕒</button>
+            <select class="visibility-select" v-model="visibility">
+              <option value="public">公开</option>
+              <option value="friends">好友</option>
+              <option value="private">私密</option>
+            </select>
+            <button class="publish-btn" @click="publishPost" :disabled="!canPublishPost">发送</button>
+          </div>
+        </div>
         <div class="composer-media-row" v-if="showMediaInputs || newPostMediaType">
           <div class="media-header">
             <span class="media-title">📎 添加媒体内容</span>
-            <button class="media-toggle-btn" @click="toggleMediaInputs" v-if="!newPostMediaType">
+            <button class="media-toggle-btn" @click="toggleMediaInputs" title="收起">
               ✕
             </button>
           </div>
@@ -319,49 +118,178 @@
             </div>
           </div>
         </div>
-        
-        <div class="media-quick-actions" v-if="!showMediaInputs && !newPostMediaType">
-          <button class="quick-media-btn" @click="showMediaInputs = true">
-            <span class="btn-icon">📎</span>
-            <span>添加媒体</span>
-          </button>
+
+        <!-- 媒体预览 -->
+        <div
+          class="composer-media-preview"
+          v-if="newPostMediaType && (newPostMediaUrl || newPostFile)"
+        >
+          <template v-if="newPostMediaType === 'image'">
+            <img
+              class="preview-image"
+              :src="newPostFile ? getObjectUrl(newPostFile) : newPostMediaUrl"
+              alt="图片预览"
+            />
+          </template>
+          <template v-else-if="newPostMediaType === 'video'">
+            <video
+              class="preview-video"
+              :src="newPostFile ? getObjectUrl(newPostFile) : newPostMediaUrl"
+              controls
+              preload="metadata"
+            ></video>
+          </template>
+          <template v-else-if="newPostMediaType === 'audio'">
+            <audio
+              class="preview-audio"
+              :src="newPostFile ? getObjectUrl(newPostFile) : newPostMediaUrl"
+              controls
+              preload="metadata"
+            ></audio>
+          </template>
+          <template v-else>
+            <div class="preview-file">
+              <span class="file-icon">{{ newPostFile ? getFileIcon(newPostFile.name) : '📄' }}</span>
+              <span class="file-name">{{ newPostFile ? newPostFile.name : newPostMediaUrl }}</span>
+            </div>
+          </template>
         </div>
-        <div class="composer-footer">
-          <div class="topic-selector">
-            <select v-model="selectedPostTopic" class="topic-select">
-              <option value="">选择话题</option>
-              <option v-for="topic in hotTopics" :key="topic.id" :value="topic.name">
-                # {{ topic.name }}
-              </option>
-            </select>
+        
+  <!-- 底部区域已合并进工具栏（右侧发送/可见范围） -->
+  </div>
+
+  <!-- 悬浮发布按钮 -->
+  <button class="fab-compose" @click="openComposer" title="发布动态">✍️</button>
+
+  <!-- 发布弹窗界面 -->
+  <el-dialog
+    v-model="showComposer"
+    title="发布动态"
+    width="700px"
+    append-to-body
+    :close-on-click-modal="true"
+    :destroy-on-close="false"
+    @closed="onComposerClosed"
+  >
+    <div class="compose-dialog-body">
+      <!-- 复用原发布表单结构：只需插入核心表单区域 -->
+      <textarea
+        class="composer-input"
+        placeholder="有什么新鲜事想分享给大家?"
+        v-model="newPost"
+        maxlength="500"
+        rows="4"
+      ></textarea>
+
+      <div class="composer-toolbar">
+        <div class="toolbar-left">
+          <button class="action-item" title="表情（暂未开放）">
+            <span class="action-icon">😊</span>
+            <span class="action-label">表情</span>
+          </button>
+          <button class="action-item" title="添加文件" @click="newPostMediaType = 'file'; showMediaInputs = true">
+            <span class="action-icon">📎</span>
+            <span class="action-label">添加文件</span>
+          </button>
+          <div class="action-item topic-item" @click.stop="showTopicPicker = !showTopicPicker">
+            <span class="action-icon">#</span>
+            <span class="action-label">话题</span>
+            <div class="topic-popover" v-if="showTopicPicker" @click.stop>
+              <div class="topic-option" :class="{active: !selectedPostTopic}" @click="selectedPostTopic = ''; showTopicPicker = false">🏷️ 无标签</div>
+              <div class="topic-option" v-for="topic in hotTopics" :key="topic.id" :class="{active: selectedPostTopic === topic.name}" @click="selectedPostTopic = topic.name; showTopicPicker = false"># {{ topic.name }}</div>
+            </div>
           </div>
-          <div class="composer-actions">
-            <span class="char-count">{{ newPost.length }}/500</span>
-            <button class="publish-btn" @click="publishPost" :disabled="!canPublishPost">
-              发布
-            </button>
-          </div>
+        </div>
+        <div class="toolbar-right">
+          <button class="schedule-btn" title="定时发送（暂未开放）">🕒</button>
+          <select class="visibility-select" v-model="visibility">
+            <option value="public">公开</option>
+            <option value="friends">好友</option>
+            <option value="private">私密</option>
+          </select>
+          <button class="publish-btn" @click="publishPost" :disabled="!canPublishPost">发送</button>
         </div>
       </div>
-      
-      <!-- 话题过滤 -->
-      <div class="topic-filter">
-        <span 
-          class="filter-tag" 
-          @click="selectTopic(null)"
-          :class="{ 'active': !selectedTopic }"
+
+      <div class="composer-media-row" v-if="showMediaInputs || newPostMediaType">
+        <div class="media-header">
+          <span class="media-title">📎 添加媒体内容</span>
+          <button class="media-toggle-btn" @click="toggleMediaInputs" title="收起">✕</button>
+        </div>
+        <div class="media-fields-grid">
+          <div class="media-field">
+            <label class="media-label"><span class="label-icon">🎯</span>媒体类型</label>
+            <select v-model="newPostMediaType" class="media-type-select">
+              <option value="">选择类型</option>
+              <option value="image">📸 图片</option>
+              <option value="video">🎬 视频</option>
+              <option value="audio">🎵 音频</option>
+              <option value="file">📄 文件</option>
+            </select>
+          </div>
+          <div class="media-field" v-if="newPostMediaType">
+            <label class="media-label"><span class="label-icon">🔗</span>外部链接</label>
+            <input class="media-url-input" v-model="newPostMediaUrl" placeholder="粘贴链接地址..." :disabled="!!newPostFile" />
+          </div>
+          <div class="media-field" v-if="newPostMediaType">
+            <label class="media-label"><span class="label-icon">📁</span>本地文件</label>
+            <div class="file-upload-area">
+              <input type="file" @change="onNewPostFileChange" class="file-input" :disabled="!!newPostMediaUrl.trim()" :accept="getFileAccept(newPostMediaType)" />
+              <div class="file-upload-hint" v-if="!newPostFile">
+                <span class="upload-icon">⬆️</span>
+                <span>点击选择{{getMediaTypeName(newPostMediaType)}}</span>
+              </div>
+              <div class="file-selected" v-if="newPostFile">
+                <span class="file-icon">{{getFileIcon(newPostFile.name)}}</span>
+                <span class="file-name">{{newPostFile.name}}</span>
+                <button @click="clearSelectedFile" class="clear-file-btn">✕</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="media-status" v-if="newPostMediaType">
+          <div class="status-item" :class="{ active: newPostMediaUrl.trim() }"><span class="status-icon">🔗</span><span>外部链接</span></div>
+          <div class="status-divider">或</div>
+          <div class="status-item" :class="{ active: newPostFile }"><span class="status-icon">📁</span><span>本地上传</span></div>
+        </div>
+      </div>
+
+      <div class="composer-media-preview" v-if="newPostMediaType && (newPostMediaUrl || newPostFile)">
+        <template v-if="newPostMediaType === 'image'">
+          <img class="preview-image" :src="newPostFile ? getObjectUrl(newPostFile) : newPostMediaUrl" alt="图片预览" />
+        </template>
+        <template v-else-if="newPostMediaType === 'video'">
+          <video class="preview-video" :src="newPostFile ? getObjectUrl(newPostFile) : newPostMediaUrl" controls preload="metadata"></video>
+        </template>
+        <template v-else-if="newPostMediaType === 'audio'">
+          <audio class="preview-audio" :src="newPostFile ? getObjectUrl(newPostFile) : newPostMediaUrl" controls preload="metadata"></audio>
+        </template>
+        <template v-else>
+          <div class="preview-file"><span class="file-icon">{{ newPostFile ? getFileIcon(newPostFile.name) : '📄' }}</span><span class="file-name">{{ newPostFile ? newPostFile.name : newPostMediaUrl }}</span></div>
+        </template>
+      </div>
+    </div>
+  </el-dialog>
+    <!-- 话题过滤（下拉菜单） -->
+    <div class="simple-card topic-filter-card">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-weight:600; color:#495057;">筛选话题</span>
+        <el-select
+          v-model="selectedTopic"
+          value-key="id"
+          placeholder="全部"
+          clearable
+          style="min-width: 200px;"
+          @change="selectTopic"
         >
-          全部
-        </span>
-        <span 
-          class="filter-tag" 
-          v-for="topic in hotTopics" 
-          :key="topic.id"
-          @click="selectTopic(topic)"
-          :class="{ 'active': selectedTopic?.id === topic.id }"
-        >
-          # {{ topic.name }}
-        </span>
+          <el-option :value="null" label="全部" />
+          <el-option
+            v-for="t in hotTopics"
+            :key="t.id"
+            :label="'# ' + t.name"
+            :value="t"
+          />
+        </el-select>
       </div>
     </div>
 
@@ -642,59 +570,6 @@
   <div ref="infiniteSentinel" style="height: 1px; width: 100%;"></div>
     </div>
 
-    <!-- 推荐内容展示区域 -->
-    <div class="recommendations-container" v-if="selectedType">
-      <div class="recommendations-header">
-        <div class="recommendations-title">
-          <div class="recommendations-icon">
-            {{ selectedType === 'project' ? '🎯' : selectedType === 'course' ? '🎓' : '💡' }}
-          </div>
-          {{ selectedType === 'project' ? '项目推荐' : selectedType === 'course' ? '课程推荐' : '知识库推荐' }}
-        </div>
-      </div>
-      
-      <!-- 项目推荐内容 -->
-      <div v-if="selectedType === 'project'" class="recommendations-content">
-        <div
-          class="recommendation-item"
-          v-for="project in projectRecommendations"
-          :key="project.id"
-        >
-          <div class="recommendation-title">{{ project.title }}</div>
-          <div class="recommendation-meta">需要技能: {{ project.skills }}</div>
-          <p style="font-size: 14px; margin: 8px 0;">{{ project.description }}</p>
-          <span class="match-score">匹配度: {{ project.match }}%</span>
-        </div>
-      </div>
-      
-      <!-- 课程推荐内容 -->
-      <div v-if="selectedType === 'course'" class="recommendations-content">
-        <div
-          class="recommendation-item"
-          v-for="course in courseRecommendations"
-          :key="course.id"
-        >
-          <div class="recommendation-title">{{ course.title }}</div>
-          <div class="recommendation-meta">讲师: {{ course.instructor }} | 时长: {{ course.duration }}</div>
-          <p style="font-size: 14px; margin: 8px 0;">{{ course.description }}</p>
-          <span class="match-score">匹配度: {{ course.match }}%</span>
-        </div>
-      </div>
-      
-      <!-- 知识库推荐内容 -->
-      <div v-if="selectedType === 'knowledge'" class="recommendations-content">
-        <div
-          class="recommendation-item"
-          v-for="knowledge in knowledgeRecommendations"
-          :key="knowledge.id"
-        >
-          <div class="recommendation-title">{{ knowledge.title }}</div>
-          <div class="recommendation-meta">类型: {{ knowledge.type }} | 更新: {{ knowledge.updated }}</div>
-          <p style="font-size: 14px; margin: 8px 0;">{{ knowledge.description }}</p>
-          <span class="match-score">热度: {{ knowledge.popularity }}</span>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -702,42 +577,28 @@
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import remoteApiService from '@/services/remoteApi.js'
-import BaseModal from '@/components/ui/BaseModal.vue'
-import BaseButton from '@/components/ui/BaseButton.vue'
 
 export default {
   name: 'Plaza',
-  components: { BaseModal, BaseButton },
+  components: { },
   setup() {
-    const searchQuery = ref('')
-    const showSmartMatch = ref(false)
-  const selectedType = ref('')
-    const showSuggestions = ref(false)
-    const showRecommendationModal = ref(false)
-  const isSearching = ref(false)
-  let searchTimer = null
+    // 智能搜索模块已移除
     
-    // 智能搜索相关数据
-    const totalMatches = ref(247)
-    const successRate = ref(94)
-    const searchSuggestions = ref([
-      'Python数据分析项目',
-      'Web前端开发团队',
-      '机器学习课程推荐',
-      'React项目合作',
-      'UI设计学习资源'
-    ])
+  // 智能搜索相关数据已移除
     
     // 社区动态相关数据
     const onlineUsers = ref(128)
     const selectedTopic = ref(null)
     const selectedPostTopic = ref('')
+  const showTopicPicker = ref(false)
+  const visibility = ref('public')
     const newPost = ref('')
     const newPostFile = ref(null)
     const newPostMediaUrl = ref('')
     const newPostMediaType = ref('')
     const showMediaInputs = ref(false)
     const hasMore = ref(true)
+  const showComposer = ref(false)
 
     const hotTopics = ref([
       { id: 1, name: '技术交流' },
@@ -885,87 +746,9 @@ export default {
       return posts.value
     })
 
-    const projectRecommendations = ref([
-      {
-        id: 1,
-        title: '智能客服机器人开发',
-        skills: 'Python, NLP, 深度学习',
-        description: '基于大语言模型的智能客服系统，提升用户体验。',
-        match: 95,
-        teamSize: '3-5人'
-      },
-      {
-        id: 2,
-        title: '区块链存证平台',
-        skills: '区块链, Solidity, Web3',
-        description: '构建去中心化的数据存证解决方案。',
-        match: 87,
-        teamSize: '2-4人'
-      },
-      {
-        id: 3,
-        title: '数据可视化仪表板',
-        skills: 'React, D3.js, 数据分析',
-        description: '为企业提供直观的数据分析和展示平台。',
-        match: 82,
-        teamSize: '4-6人'
-      }
-    ])
+  // 推荐数据与类型选择已移除
 
-    const courseRecommendations = ref([
-      {
-        id: 1,
-        title: '深度学习进阶课程',
-        instructor: '李教授',
-        duration: '40课时',
-        description: '深入学习CNN、RNN、Transformer等前沿技术。',
-        match: 93
-      },
-      {
-        id: 2,
-        title: '大数据处理实战',
-        instructor: '张博士',
-        duration: '32课时',
-        description: 'Spark、Hadoop生态系统实战应用。',
-        match: 88
-      }
-    ])
-
-    const knowledgeRecommendations = ref([
-      {
-        id: 1,
-        title: 'AI创新方法论',
-        type: '方法论文档',
-        updated: '2024-08-01',
-        description: '系统性的AI项目创新思维框架。',
-        popularity: '🔥🔥🔥'
-      },
-      {
-        id: 2,
-        title: '创业项目案例集',
-        type: '案例文档',
-        updated: '2024-07-28',
-        description: '100+成功创业项目的详细分析。',
-        popularity: '🔥🔥'
-      }
-    ])
-
-    const toggleSmartMatch = () => {
-      if (!searchQuery.value.trim()) {
-        ElMessage.warning('请输入搜索条件')
-        return
-      }
-      showSmartMatch.value = !showSmartMatch.value
-      if (!showSmartMatch.value) {
-        selectedType.value = ''
-      }
-    }
-
-    const selectRecommendationType = (type) => {
-      selectedType.value = type
-      showRecommendationModal.value = true
-      ElMessage.success(`正在为您匹配${type === 'project' ? '项目' : type === 'course' ? '课程' : '知识库'}推荐...`)
-    }
+  // 智能匹配相关方法已移除
 
     // 社区动态方法
     const selectTopic = async (topic) => {
@@ -1007,6 +790,13 @@ export default {
       newPostFile.value = null
     }
 
+    const openComposer = () => {
+      showComposer.value = true
+    }
+    const onComposerClosed = () => {
+      showTopicPicker.value = false
+    }
+
     const getFileAccept = (mediaType) => {
       switch (mediaType) {
         case 'image': return 'image/*'
@@ -1036,6 +826,16 @@ export default {
       if (['doc', 'docx'].includes(ext)) return '📝'
       if (['zip', 'rar', '7z'].includes(ext)) return '📦'
       return '📄'
+    }
+
+    // 生成临时预览 URL（用于本地文件预览）
+    const getObjectUrl = (file) => {
+      if (!file) return ''
+      try {
+        return URL.createObjectURL(file)
+      } catch {
+        return ''
+      }
     }
 
     const canPublishPost = computed(() => {
@@ -1363,118 +1163,31 @@ export default {
       return timestamp.toLocaleDateString()
     }
 
-    // 智能搜索相关方法
-    const onSearchInput = () => {
-      if (searchQuery.value.length > 2) {
-        showSuggestions.value = true
-      } else {
-        showSuggestions.value = false
-      }
-    }
+  // 智能搜索输入与推荐弹窗方法已移除
 
-    const onSearchFocus = () => {
-      if (searchQuery.value.length > 2) {
-        showSuggestions.value = true
-      }
-    }
-
-    const onSearchBlur = () => {
-      // 延迟隐藏，允许点击建议
-      setTimeout(() => {
-        showSuggestions.value = false
-      }, 200)
-    }
-
-    const applySuggestion = (suggestion) => {
-      searchQuery.value = suggestion
-      showSuggestions.value = false
-      performSearch()
-    }
-
-    const performSearch = () => {
-      if (!searchQuery.value.trim()) {
-        ElMessage.warning('请输入搜索内容')
-        return
-      }
-      // 防抖：如果正在搜索中，忽略重复点击
-      if (isSearching.value) return
-      isSearching.value = true
-      // 点击一次有效搜索即计数+1
-      try {
-        totalMatches.value = Number(totalMatches.value) + 1
-      } catch (_) {
-        // 容错：保证不致崩溃
-      }
-      // 清理旧定时器
-      if (searchTimer) {
-        clearTimeout(searchTimer)
-        searchTimer = null
-      }
-      ElMessage.success('正在智能分析您的需求...')
-      // 延迟6秒后展示推荐卡片
-      searchTimer = setTimeout(() => {
-        showSmartMatch.value = true
-        selectedType.value = ''
-        showRecommendationModal.value = false
-        isSearching.value = false
-      }, 5000)
-      // 这里可以添加实际的搜索逻辑（调用后端等）
-    }
-
-    const refreshRecommendations = () => {
-      ElMessage.info('正在刷新推荐内容...')
-      // 这里可以添加刷新推荐的逻辑
-      setTimeout(() => {
-        ElMessage.success('推荐内容已更新')
-      }, 1000)
-    }
-
-    const closeRecommendationModal = () => {
-      showRecommendationModal.value = false
-      selectedType.value = ''
+    const onDocClick = (e) => {
+      // 任何文档点击都关闭话题选择浮层
+      if (showTopicPicker.value) showTopicPicker.value = false
     }
 
     onMounted(async () => {
       await loadTopics(true)
       nextTick(() => setupInfiniteObserver())
+      document.addEventListener('click', onDocClick)
     })
 
     onUnmounted(() => {
       if (observer) observer.disconnect()
-      if (searchTimer) {
-        clearTimeout(searchTimer)
-        searchTimer = null
-      }
+      document.removeEventListener('click', onDocClick)
     })
 
     return {
-      // 智能搜索数据
-      searchQuery,
-      showSmartMatch,
-      selectedType,
-      showSuggestions,
-      showRecommendationModal,
-  isSearching,
-      totalMatches,
-      successRate,
-      searchSuggestions,
-      projectRecommendations,
-      courseRecommendations,
-      knowledgeRecommendations,
-      // 智能搜索方法
-      toggleSmartMatch,
-      selectRecommendationType,
-      onSearchInput,
-      onSearchFocus,
-      onSearchBlur,
-      applySuggestion,
-      performSearch,
-      refreshRecommendations,
-      closeRecommendationModal,
       // 社区动态
       onlineUsers,
       selectedTopic,
       selectedPostTopic,
+  showTopicPicker,
+  visibility,
       newPost,
       newPostFile,
       newPostMediaUrl,
@@ -1485,6 +1198,9 @@ export default {
       hotTopics,
       posts,
       filteredPosts,
+  showComposer,
+  openComposer,
+  onComposerClosed,
       selectTopic,
       publishPost,
       onNewPostFileChange,
@@ -1493,6 +1209,7 @@ export default {
       getFileAccept,
       getMediaTypeName,
       getFileIcon,
+  getObjectUrl,
       canPublishPost,
       toggleLike,
       toggleComments,
@@ -1521,609 +1238,9 @@ export default {
 </script>
 
 <style scoped>
-/* 智能搜索匹配区域样式 */
-.search-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px;
-  padding: 32px;
-  margin-bottom: 32px;
-  color: white;
-  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
-}
+/* 智能搜索/推荐模块样式已移除 */
 
-/* 移动端搜索区域优化 */
-@media (max-width: 768px) {
-  .search-section {
-    padding: 20px 16px;
-    margin-bottom: 20px;
-    border-radius: 12px;
-  }
-}
-
-.search-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 24px;
-}
-
-.search-title {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.search-icon {
-  width: 48px;
-  height: 48px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  backdrop-filter: blur(10px);
-}
-
-.search-title-text h2 {
-  margin: 0;
-  font-size: 2rem;
-  font-weight: 700;
-  background: linear-gradient(45deg, #fff, #e0e7ff);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.search-subtitle {
-  margin: 8px 0 0 0;
-  opacity: 0.9;
-  font-size: 1rem;
-}
-
-.search-stats {
-  display: flex;
-  gap: 24px;
-}
-
-/* 移动端搜索头部优化 */
-@media (max-width: 768px) {
-  .search-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 16px;
-    margin-bottom: 20px;
-  }
-  
-  .search-title {
-    gap: 12px;
-  }
-  
-  .search-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 20px;
-  }
-  
-  .search-title-text h2 {
-    font-size: 1.5rem;
-  }
-  
-  .search-subtitle {
-    font-size: 0.9rem;
-  }
-  
-  .search-stats {
-    gap: 12px;
-    justify-content: space-around;
-  }
-}
-
-.stat-item {
-  text-align: center;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 16px 20px;
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.stat-number {
-  display: block;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #fff;
-}
-
-.stat-label {
-  display: block;
-  font-size: 0.875rem;
-  opacity: 0.8;
-  margin-top: 4px;
-}
-
-/* 移动端统计项优化 */
-@media (max-width: 768px) {
-  .stat-item {
-    padding: 12px 16px;
-    flex: 1;
-  }
-  
-  .stat-number {
-    font-size: 1.2rem;
-  }
-  
-  .stat-label {
-    font-size: 0.75rem;
-  }
-}
-
-.search-input-section {
-  margin-bottom: 32px;
-}
-
-.search-input-wrapper {
-  display: flex;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 16px;
-  padding: 4px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
-}
-
-.search-input-icon {
-  padding: 0 16px;
-  font-size: 20px;
-  color: #667eea;
-}
-
-.enhanced-search-input {
-  flex: 1;
-  padding: 16px 8px;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: 16px;
-  color: #333;
-}
-
-.enhanced-search-input::placeholder {
-  color: #999;
-}
-
-.search-action-btn {
-  padding: 12px 24px;
-  background: #667eea;
-  color: white;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.2s ease;
-}
-
-/* 移动端搜索输入优化 */
-@media (max-width: 768px) {
-  .search-input-section {
-    margin-bottom: 20px;
-  }
-  
-  .search-input-wrapper {
-    border-radius: 12px;
-    padding: 6px;
-  }
-  
-  .search-input-icon {
-    padding: 0 12px;
-    font-size: 18px;
-  }
-  
-  .enhanced-search-input {
-    padding: 12px 8px;
-    font-size: 14px;
-  }
-  
-  .search-action-btn {
-    padding: 10px 16px;
-    font-size: 14px;
-  }
-}
-
-.search-action-btn:hover:not(:disabled) {
-  background: #5a67d8;
-  transform: translateY(-1px);
-}
-
-.search-action-btn:disabled {
-  background: #e9ecef;
-  color: #6c757d;
-  cursor: not-allowed;
-}
-
-.search-suggestions {
-  margin-top: 16px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 16px;
-  backdrop-filter: blur(10px);
-}
-
-.suggestions-title {
-  font-size: 14px;
-  margin-bottom: 12px;
-  opacity: 0.9;
-}
-
-.suggestions-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.suggestion-tag {
-  padding: 6px 12px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 20px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.suggestion-tag:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: translateY(-1px);
-}
-
-.match-types-header {
-  margin-bottom: 20px;
-}
-
-.match-types-title {
-  font-size: 1.2rem;
-  font-weight: 600;
-  display: block;
-  margin-bottom: 4px;
-}
-
-.match-types-desc {
-  opacity: 0.8;
-  font-size: 0.9rem;
-}
-
-/* 移动端推荐类型标题优化 */
-@media (max-width: 768px) {
-  .match-types-header {
-    margin-bottom: 16px;
-  }
-  
-  .match-types-title {
-    font-size: 1.1rem;
-  }
-  
-  .match-types-desc {
-    font-size: 0.85rem;
-  }
-}
-
-.smart-match-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 16px;
-}
-
-/* 移动端响应式优化 */
-@media (max-width: 768px) {
-  .smart-match-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-}
-
-.match-type-card {
-  background: rgba(255, 255, 255, 0.1);
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  border-radius: 16px;
-  padding: 24px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
-}
-
-.match-type-card:hover {
-  background: rgba(255, 255, 255, 0.15);
-  transform: translateY(-4px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-}
-
-.match-type-card.active {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.5);
-  transform: translateY(-2px);
-}
-
-/* 移动端卡片优化 */
-@media (max-width: 768px) {
-  .match-type-card {
-    padding: 16px;
-    border-radius: 12px;
-  }
-  
-  .match-type-card:hover {
-    transform: translateY(-2px);
-  }
-}
-
-.match-type-icon {
-  width: 48px;
-  height: 48px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  margin-bottom: 16px;
-}
-
-.match-type-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.match-type-desc {
-  opacity: 0.9;
-  font-size: 0.9rem;
-  margin-bottom: 16px;
-  line-height: 1.5;
-}
-
-/* 移动端图标和文字优化 */
-@media (max-width: 768px) {
-  .match-type-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 20px;
-    margin-bottom: 12px;
-  }
-  
-  .match-type-title {
-    font-size: 1rem;
-    margin-bottom: 6px;
-  }
-  
-  .match-type-desc {
-    font-size: 0.85rem;
-    margin-bottom: 12px;
-    line-height: 1.4;
-  }
-}
-
-.match-type-stats {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.stats-badge {
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-/* 移动端统计徽章优化 */
-@media (max-width: 768px) {
-  .match-type-stats {
-    gap: 6px;
-  }
-  
-  .stats-badge {
-    padding: 3px 6px;
-    font-size: 11px;
-    border-radius: 8px;
-  }
-}
-
-.stats-badge.success {
-  background: rgba(40, 167, 69, 0.2);
-  color: #28a745;
-  border: 1px solid rgba(40, 167, 69, 0.3);
-}
-
-.stats-badge.info {
-  background: rgba(23, 162, 184, 0.2);
-  color: #17a2b8;
-  border: 1px solid rgba(23, 162, 184, 0.3);
-}
-
-.stats-badge.warning {
-  background: rgba(255, 193, 7, 0.2);
-  color: #ffc107;
-  border: 1px solid rgba(255, 193, 7, 0.3);
-}
-
-.stats-badge.primary {
-  background: rgba(0, 123, 255, 0.2);
-  color: #007bff;
-  border: 1px solid rgba(0, 123, 255, 0.3);
-}
-
-.modal-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px 32px;
-}
-
-.modal-recommendations {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.modal-recommendation-item {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 16px;
-  padding: 24px;
-  transition: all 0.3s ease;
-}
-
-.modal-recommendation-item:hover {
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
-  border-color: #667eea;
-}
-
-/* 弹窗内推荐项样式 */
-.modal-recommendation-item .recommendation-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 16px;
-}
-
-.modal-recommendation-item .recommendation-title {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #495057;
-  flex: 1;
-}
-
-.modal-recommendation-item .match-percentage {
-  background: linear-gradient(135deg, #28a745, #20c997);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 16px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.modal-recommendation-item .popularity-badge {
-  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 16px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.modal-recommendation-item .recommendation-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.modal-recommendation-item .meta-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 14px;
-  color: #6c757d;
-}
-
-.modal-recommendation-item .meta-icon {
-  font-size: 16px;
-}
-
-.modal-recommendation-item .recommendation-description {
-  color: #495057;
-  line-height: 1.6;
-  margin-bottom: 20px;
-  font-size: 14px;
-}
-
-.modal-recommendation-item .recommendation-actions {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.modal-recommendation-item .action-btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.modal-recommendation-item .action-btn.primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: white;
-}
-
-.modal-recommendation-item .action-btn.primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
-.modal-recommendation-item .action-btn.secondary {
-  background: #f8f9fa;
-  color: #495057;
-  border: 1px solid #e9ecef;
-}
-
-.modal-recommendation-item .action-btn.secondary:hover {
-  background: #e9ecef;
-  transform: translateY(-1px);
-}
-
-.modal-recommendation-item .action-btn.ghost {
-  background: transparent;
-  color: #6c757d;
-  border: 1px solid #e9ecef;
-}
-
-.modal-recommendation-item .action-btn.ghost:hover {
-  background: #f8f9fa;
-  color: #495057;
-}
-
-/* 弹窗移动端优化 */
-@media (max-width: 768px) {
-  .modal-content {
-    padding: 16px 20px;
-  }
-  
-  .modal-recommendation-item {
-    padding: 16px;
-  }
-}
-
-/* 推荐内容展示区域 */
-.recommendations-container {
-  display: none; /* 不再使用，改为弹窗显示 */
-}
-
-/* 分隔线样式 */
-.section-divider {
-  display: flex;
-  align-items: center;
-  margin: 40px 0;
-  gap: 16px;
-}
-
-.divider-line {
-  flex: 1;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #e9ecef, transparent);
-}
-
-.divider-text {
-  padding: 8px 24px;
-  background: white;
-  border: 2px solid #e9ecef;
-  border-radius: 20px;
-  font-weight: 600;
-  color: #495057;
-  font-size: 1.1rem;
-  white-space: nowrap;
-}
+/* 顶部分隔线已移除 */
 
 /* 社区动态区域样式 */
 .simple-card {
@@ -2209,6 +1326,68 @@ export default {
   min-height: 60px;
   margin-bottom: 12px;
 }
+
+/* 工具栏 */
+.composer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 8px 0 6px;
+}
+.toolbar-left { display: flex; gap: 8px; align-items: center; }
+.toolbar-right { display: flex; gap: 8px; align-items: center; }
+
+.action-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 13px;
+  color: #475569;
+}
+.action-item:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+.action-icon { font-size: 16px; }
+.action-label { font-size: 12px; color: #64748b; }
+
+.schedule-btn { border: none; background: transparent; cursor: pointer; font-size: 16px; }
+.visibility-select {
+  padding: 6px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 12px;
+}
+
+.topic-item { position: relative; }
+.topic-popover {
+  position: absolute;
+  top: 110%;
+  left: 0;
+  min-width: 160px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: var(--shadow-light);
+  padding: 6px;
+  z-index: 10;
+}
+.topic-option {
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #374151;
+  cursor: pointer;
+}
+.topic-option:hover { background: #f8fafc; }
+.topic-option.active { background: var(--primary-light); color: var(--primary-color); }
 
 /* 媒体上传区域美化样式 */
 .composer-media-row {
@@ -2408,6 +1587,40 @@ export default {
   border: 1px solid #e5e7eb;
 }
 
+/* 发布区媒体预览 */
+.composer-media-preview {
+  margin: 12px 0 4px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 280px;
+  display: block;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.preview-video {
+  width: 100%;
+  max-height: 320px;
+  border-radius: 8px;
+  background: #000;
+}
+
+.preview-audio { width: 100%; }
+
+.preview-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: #475569;
+}
+
 .status-item {
   display: flex;
   align-items: center;
@@ -2531,31 +1744,34 @@ export default {
   cursor: not-allowed;
 }
 
-.topic-filter {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 20px;
-}
+.topic-filter-card { margin-bottom: 20px; }
 
-.filter-tag {
-  padding: 6px 12px;
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 16px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
+/* 旧的标签筛选样式已移除 */
 
-.filter-tag:hover {
-  background: #e9ecef;
-}
-
-.filter-tag.active {
-  background: #667eea;
-  color: white;
-  border-color: #667eea;
+/* 移动端：横向滚动展示话题标签 */
+@media (max-width: 768px) {
+  .topic-filter {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    gap: 10px;
+    padding-bottom: 2px;
+  }
+  .filter-tag {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .topic-filter::-webkit-scrollbar {
+    height: 6px;
+  }
+  .topic-filter::-webkit-scrollbar-thumb {
+    background: #e5e7eb;
+    border-radius: 4px;
+  }
+  .topic-filter::-webkit-scrollbar-track {
+    background: transparent;
+  }
 }
 
 .feed-container {
@@ -2625,6 +1841,39 @@ export default {
   font-size: 14px;
   color: #888;
   line-height: 1.5;
+}
+
+/* 悬浮发布按钮 */
+.fab-compose {
+  position: fixed;
+  right: 24px;
+  bottom: 120px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+  color: #fff;
+  box-shadow: var(--shadow-medium);
+  cursor: pointer;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.fab-compose:hover { filter: brightness(1.05); box-shadow: var(--shadow-heavy); }
+.compose-dialog-body { padding-top: 4px; }
+
+/* 移动端：避开底部导航栏与安全区 */
+@media (max-width: 768px) {
+  .fab-compose {
+    right: 16px;
+    bottom: calc(16px + var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
+    width: 52px;
+    height: 52px;
+    font-size: 20px;
+  }
 }
 
 .feed-item {
