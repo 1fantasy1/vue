@@ -333,7 +333,7 @@ export default {
     const filters = ref([
       { 
         key: 'all', 
-        label: '全部项目', 
+        label: '我的项目', 
         icon: 'M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z' 
       },
       { 
